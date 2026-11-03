@@ -39,7 +39,7 @@ def check_database(db_path: Path) -> dict[str, Any]:
     try:
         con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         try:
-            con.execute("SELECT 1").fetchone()
+            con.execute("SELECT count(*) FROM sqlite_master").fetchone()
         finally:
             con.close()
     except sqlite3.Error as err:

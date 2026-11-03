@@ -32,6 +32,7 @@ strict = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+junit_family = "legacy"  # описания тестов (record_property) попадают в отчёт и сводку CI
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-ra"
 markers = ["integration: тесты с базой и поддельным Telegram"]
