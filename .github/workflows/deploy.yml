@@ -39,8 +39,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success" \
-            --jq '.total_count')
+          # Смотрим на сами тесты (задание «Проверка»), а не на итог всего запуска:
+          # запуск может быть красным из-за упавшей выкладки при зелёных тестах.
+          passed=0
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA" \
+                         --jq '.workflow_runs[].id'); do
+            n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run/jobs" \
+                  --jq '[.jobs[] | select(.name == "Проверка" and .conclusion == "success")] | length')
+            if [ "$n" != "0" ]; then passed=1; break; fi
+          done
           if [ "$passed" = "0" ]; then
             echo "### ❌ «Проверка» на коммите ${GITHUB_SHA:0:7} не проходила — выкладка отменена" >> "$GITHUB_STEP_SUMMARY"
             exit 1
