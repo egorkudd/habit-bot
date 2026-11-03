@@ -81,7 +81,10 @@ class App:
         await self.engine.dispose()
 
 
-def build_app(settings: Settings, *, telegram_session: BaseSession | None = None, clock: Clock | None = None) -> App:
+def build_app(
+    settings: Settings, *, telegram_session: BaseSession | None = None, clock: Clock | None = None,
+    geocoder: object | None = None,
+) -> App:
     engine = make_engine(settings.database_url)
     sessionmaker = make_sessionmaker(engine)
     events = EventBus()
@@ -98,7 +101,7 @@ def build_app(settings: Settings, *, telegram_session: BaseSession | None = None
 
     ctx = ModuleContext(
         settings=settings, clock=clock, uow=uow, events=events, idempotency=IdempotencyStore(),
-        channels=channels, services={"alerter": alerter},
+        channels=channels, services={"alerter": alerter, **({"geocoder": geocoder} if geocoder else {})},
     )
     ctx.add_job(JobSpec("dialogs.expire", EXPIRE_EVERY, telegram.expire_idle))
     registry = ModuleRegistry(KNOWN_MODULES)

@@ -25,7 +25,7 @@ def test_upgrade_downgrade_upgrade(tmp_path: Path) -> None:
     url = f"sqlite:///{db}"
     assert current_revision(db) is None
     migrate(url)
-    assert current_revision(db) == head_revision() == "0002_dialog_states"
+    assert current_revision(db) == head_revision() == "0003_users_profile"
     assert {"users", "identities", "idempotency_keys", "admin_alerts", "dialog_states"} <= _tables(db)
     migrate(url, "base")
     assert "users" not in _tables(db)
@@ -35,7 +35,8 @@ def test_upgrade_downgrade_upgrade(tmp_path: Path) -> None:
     assert current_revision(db) == "0001_initial"
     assert "dialog_states" not in _tables(db)
     migrate(url)
-    assert current_revision(db) == "0002_dialog_states"
+    assert current_revision(db) == "0003_users_profile"
+    assert {"users_profile", "users_goal", "users_invite", "users_body_weight", "source_cache"} <= _tables(db)
 
 
 def test_current_revision_without_alembic_table(tmp_path: Path) -> None:
@@ -57,7 +58,7 @@ def test_prepare_reports_config_problems(base_env: dict[str, str], capsys: Any) 
 def test_prepare_requires_migrations(base_env: dict[str, str], capsys: Any) -> None:
     """Бот не стартует на базе, схема которой не на версии кода."""
     assert entry.prepare(base_env) == entry.EXIT_MIGRATIONS
-    assert "код ждёт 0002_dialog_states" in capsys.readouterr().err
+    assert "код ждёт 0003_users_profile" in capsys.readouterr().err
 
 
 def test_prepare_ok(migrated_env: dict[str, str]) -> None:
@@ -79,5 +80,5 @@ def test_migrate_upgrade_to_newer_target(tmp_path: Path, monkeypatch: pytest.Mon
     migrate(f"sqlite:///{db}", "0001_initial")
     calls: list[str] = []
     monkeypatch.setattr("habit_bot.kernel.migrations.command.upgrade", lambda cfg, target: calls.append(target))
-    migrate(f"sqlite:///{db}", "0003_future")
-    assert calls == ["0003_future"]
+    migrate(f"sqlite:///{db}", "0009_future")
+    assert calls == ["0009_future"]

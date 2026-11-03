@@ -11,7 +11,7 @@ from habit_bot.channels.telegram.dialogs.models import DialogState
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb, StepCb
 from habit_bot.channels.telegram.ui.routes import CANCELLED, MORE_TITLE, NOT_UNDERSTOOD, NOTHING_TO_CANCEL
 from habit_bot.kernel.identity import User
-from tests.conftest import ADMIN_ID
+from tests.conftest import ADMIN_ID, register_active
 from tests.fakes import callback_update, message_update
 
 STALE = "Это меню устарело. Вот главное меню 👇"
@@ -54,6 +54,7 @@ class Chat:
 
 
 async def _chat(app: Any, fake_session: Any) -> Chat:
+    await register_active(app)
     chat = Chat(app, fake_session)
     await chat.say("/start")
     return chat
@@ -88,9 +89,9 @@ async def test_more_menu(app: Any, fake_session: Any) -> None:
         ["📅 Другой день", "✍️ Текстом"], ["🛌 Выходной", "⚙️ Настройки"], ["🛠 Админ"],
     ]
     user_id = await chat.user_id()
-    await chat.press(MenuCb(o=user_id, t=0, k="settings").pack())
+    await chat.press(MenuCb(o=user_id, t=0, k="other_day").pack())
     answer = fake_session.answers()[-1]
-    assert answer.text == "⚙️ Настройки — скоро: раздел появится в части 3 плана."
+    assert answer.text == "📅 Другой день — скоро: раздел появится в части 4 плана."
 
 
 async def test_ready_section_is_left_to_its_module(app: Any, fake_session: Any) -> None:

@@ -60,6 +60,9 @@ def test_range_missing_digit_and_far_off() -> None:
     with pytest.raises(AppError) as err:
         parse_number_in_range("5", low=120, high=230, field="Рост", unit="см")
     assert err.value.user_text() == "Рост — от 120 до 230 см. Вы ввели 5"
+    with pytest.raises(AppError) as err:
+        parse_number_in_range("0", low=1, high=10, field="Повторы", unit="")
+    assert err.value.user_text() == "Повторы — от 1 до 10. Вы ввели 0"
 
 
 @pytest.mark.parametrize(

@@ -167,8 +167,12 @@ class TelegramChannel:
     def add_outer_middleware(self, middleware: BaseMiddleware) -> None:
         self.dispatcher.update.outer_middleware(middleware)
 
-    def add_router(self, router: Router) -> None:
+    def add_router(self, router: Router, *, first: bool = False) -> None:
+        """``first=True`` — раньше отмены и меню (например, анкета: она перехватывает весь ввод до конца)."""
         self.dispatcher.include_router(router)
+        if first:
+            self.dispatcher.sub_routers.remove(router)
+            self.dispatcher.sub_routers.insert(0, router)
 
     def finalize(self) -> None:
         """После модулей: сброс по бездействию (нужен вход — он от модуля users) и ответ на необработанное."""

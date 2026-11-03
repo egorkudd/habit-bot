@@ -96,10 +96,17 @@ def fake_session() -> Any:
 
 
 @pytest.fixture
-async def app(settings: Any, fake_session: Any, clock: FixedClock) -> AsyncIterator[Any]:
+def geocoder() -> Any:
+    from tests.fakes import FakeGeocoder
+
+    return FakeGeocoder()
+
+
+@pytest.fixture
+async def app(settings: Any, fake_session: Any, clock: FixedClock, geocoder: Any) -> AsyncIterator[Any]:
     from habit_bot.app import build_app
 
-    application = build_app(settings, telegram_session=fake_session, clock=clock)
+    application = build_app(settings, telegram_session=fake_session, clock=clock, geocoder=geocoder)
     await application.startup()
     yield application
     await application.close()
@@ -120,3 +127,30 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
     monkeypatch.setattr(socket.socket, "connect", guarded)
     yield
+
+
+OWNER_PROFILE = {
+    "name": "Егор", "sex": "male", "birth_date": "2003-03-15", "height_cm": "178", "weight_kg": "75",
+    "activity": "light", "mode": "gain", "experience": "intermediate",
+}
+
+
+async def register_active(app: Any, tg_id: int = ADMIN_ID, *, invite_code: str | None = None, **overrides: str) -> Any:
+    """Пользователь, прошедший анкету (для тестов, которым анкета не важна). Возвращает Actor."""
+    from datetime import date
+    from decimal import Decimal
+
+    from habit_bot.modules.users.domain.kbju import Activity, Experience, GoalMode, Sex
+    from habit_bot.modules.users.dto import ProfileData
+
+    values = {**OWNER_PROFILE, **overrides}
+    actor = await app.ctx.services["users.sign_in"].execute(tg_id, values["name"], invite_code=invite_code)
+    profiles = app.ctx.services["users.profiles"]
+    data = ProfileData(
+        name=values["name"], sex=Sex(values["sex"]), birth_date=date.fromisoformat(values["birth_date"]),
+        height_cm=Decimal(values["height_cm"]), weight_kg=Decimal(values["weight_kg"]),
+        activity=Activity(values["activity"]), mode=GoalMode(values["mode"]), target_weight=None,
+        experience=Experience(values["experience"]),
+    )
+    await profiles.complete_onboarding(actor, data, targets=profiles.targets(data), source="calc")
+    return actor
