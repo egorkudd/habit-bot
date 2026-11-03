@@ -3,6 +3,7 @@
 # подъём с копии схемы предыдущей версии (ветка main).
 set -euo pipefail
 work=$(mktemp -d)
+# shellcheck disable=SC2317  # функция вызывается через trap
 cleanup() { git worktree remove --force "$work/prev" >/dev/null 2>&1 || true; rm -rf "$work"; }
 trap cleanup EXIT
 

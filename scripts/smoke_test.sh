@@ -11,6 +11,7 @@ chmod 777 "$data"
 docker build -q -t "$image" --build-arg VERSION=ci . >/dev/null
 python scripts/fake_bot_api.py --port 8081 &
 api_pid=$!
+# shellcheck disable=SC2317  # функция вызывается через trap
 cleanup() {
   docker rm -f "$name" >/dev/null 2>&1 || true
   kill "$api_pid" 2>/dev/null || true
