@@ -14,7 +14,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message, ReplyKey
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb
 from habit_bot.channels.telegram.ui.screens import Screens
-from habit_bot.kernel.domain.formatting import format_date
+from habit_bot.kernel.domain.formatting import format_day
 from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.identity import Actor
 from habit_bot.modules.users.domain.city import BUTTON_CITIES, City
@@ -186,15 +186,15 @@ def build_settings_router(flow: SettingsFlow) -> Router:
 
     @router.callback_query(UCb.filter(F.a == "soon"))
     async def soon(query: CallbackQuery, callback_data: UCb) -> None:
-        await flow.screens.close_buttons(query, toast=SOON.get(callback_data.v, "Скоро"))
+        await flow.screens.close_buttons(query, toast=SOON.get(callback_data.value, "Скоро"))
 
     @router.callback_query(UCb.filter(F.a == "settings"))
     async def section(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
         chat_id = query.from_user.id
-        if callback_data.v == "profile":
+        if callback_data.value == "profile":
             await flow.show_profile(bot, chat_id, actor)
-        elif callback_data.v == "goals":
+        elif callback_data.value == "goals":
             await flow.show_goals(bot, chat_id, actor)
         else:
             token = await start_dialog(state, SettingsInput.delete)
@@ -204,8 +204,8 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     @router.callback_query(UCb.filter(F.a == "edit"))
     async def edit(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
-        if callback_data.v in FIELDS:
-            await flow.ask_field(bot, query.from_user.id, actor, state, callback_data.v)
+        if callback_data.value in FIELDS:
+            await flow.ask_field(bot, query.from_user.id, actor, state, callback_data.value)
 
     @router.message(StateFilter(SettingsInput.value), F.text)
     async def text_value(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
@@ -235,7 +235,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     async def set_value(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
         data = await state.get_data()
-        field, raw, chat_id = data.get("field", ""), callback_data.v, query.from_user.id
+        field, raw, chat_id = data.get("field", ""), callback_data.value, query.from_user.id
         value: Any = None
         if field == "sex" and raw in {s.value for s in Sex}:
             value = Sex(raw)
@@ -294,10 +294,10 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         kcal, protein, fat, carbs = (int(v) for v in (await state.get_data())["targets"])
         targets = Targets(kcal, protein, fat, carbs)
         await state.clear()
-        if callback_data.v == "yes":
+        if callback_data.value == "yes":
             goal = await flow.profiles.set_goal(actor, targets, source="calc")
             await flow.show_goals(bot, query.from_user.id, actor,
-                                  f"Новая цель с {format_date(goal.start_date)}: {targets_line(goal)}")
+                                  f"Новая цель с {format_day(goal.start_date)}: {targets_line(goal)}")
         else:
             await flow.show_profile(bot, query.from_user.id, actor, "КБЖУ оставлены как есть.")
 
@@ -305,11 +305,11 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     async def goal_action(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
         chat_id = query.from_user.id
-        if callback_data.v == "calc":
+        if callback_data.value == "calc":
             view = await flow.profiles.profile(actor)
             assert view is not None
             goal = await flow.profiles.set_goal(actor, flow.profiles.targets(view), source="calc")
-            await flow.show_goals(bot, chat_id, actor, f"Новая цель с {format_date(goal.start_date)}: "
+            await flow.show_goals(bot, chat_id, actor, f"Новая цель с {format_day(goal.start_date)}: "
                                                        f"{targets_line(goal)}")
             return
         token = await start_dialog(state, SettingsInput.kbju)
@@ -325,7 +325,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         await state.clear()
         notes = "".join(f"\n⚠️ {w}" for w in warnings)
         await flow.show_goals(bot, message.chat.id, actor,
-                              f"Новая цель с {format_date(goal.start_date)}: {targets_line(goal)}{notes}")
+                              f"Новая цель с {format_day(goal.start_date)}: {targets_line(goal)}{notes}")
 
     @router.callback_query(StateFilter(SettingsInput.delete), UCb.filter(F.a == "delete"))
     async def delete(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext) -> None:

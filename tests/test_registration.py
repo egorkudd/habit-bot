@@ -193,7 +193,7 @@ async def test_guest_cannot_manage_invites(app: Any, fake_session: Any) -> None:
     chat = TgChat(app, fake_session, OTHER_ID, "Аня")
     await chat.say("☰ Ещё")
     assert "🛠 Админ" not in chat.labels()
-    await chat.press_data(UCb(o=guest.user_id, t=0, a="inv_days", v="5:7").pack())
+    await chat.press_data(UCb(o=guest.user_id, t=0, a="inv_days", v="5_7").pack())
     assert chat.texts()[-1] == "Эта кнопка не ваша — ничего не изменено. Вот главное меню 👇"
     assert len(await _rows(app, Invite)) == 1
 

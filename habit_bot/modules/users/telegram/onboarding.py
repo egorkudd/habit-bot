@@ -11,7 +11,7 @@ from decimal import Decimal
 from typing import Any
 
 from aiogram import Bot, F, Router
-from aiogram.filters import CommandStart, StateFilter
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import (
@@ -25,6 +25,7 @@ from aiogram.types import (
 
 from habit_bot.channels.telegram.dialogs.fsm import context_for, dialog_token
 from habit_bot.channels.telegram.dialogs.policy import ONBOARDING
+from habit_bot.channels.telegram.ui.routes import is_cancel_word
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_number
 from habit_bot.kernel.errors import AppError
@@ -295,6 +296,17 @@ def build_onboarding_router(flow: OnboardingFlow) -> Router:
         await flow.screens.close_buttons(query)
         await flow.begin(bot, query.from_user.id, actor, state, query.from_user.first_name)
 
+    @router.message(in_onboarding, CommandStart())
+    async def resume(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        await message.answer(RESUME)
+        await flow.ask(bot, message.chat.id, actor, state)
+
+    @router.message(in_onboarding, Command("cancel"))
+    @router.message(in_onboarding, F.text.func(is_cancel_word))
+    async def cancel_attempt(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        await message.answer(ANSWER_ABOVE)
+        await flow.ask(bot, message.chat.id, actor, state)
+
     # --- ответы текстом ---
     @router.message(StateFilter(Onboarding.name), F.text)
     async def name_text(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
@@ -358,7 +370,7 @@ def build_onboarding_router(flow: OnboardingFlow) -> Router:
     async def picked(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
         current = await state.get_state()
-        value = callback_data.v
+        value = callback_data.value
         chat_id = query.from_user.id
         data = await state.get_data()
         if current == Onboarding.name.state and value == "tg" and data.get("tg_name"):
@@ -413,8 +425,8 @@ def build_onboarding_router(flow: OnboardingFlow) -> Router:
     @router.callback_query(StateFilter(Onboarding.kit), UCb.filter(F.a == "kit"))
     async def toggle_kit(query: CallbackQuery, callback_data: UCb, actor: Actor, state: FSMContext) -> None:
         chosen = set((await state.get_data()).get("kit", []))
-        if callback_data.v in STARTER_KIT:
-            chosen ^= {callback_data.v}
+        if callback_data.value in STARTER_KIT:
+            chosen ^= {callback_data.value}
         await state.update_data(kit=[k for k in STARTER_KIT if k in chosen])
         await query.answer()
         if isinstance(query.message, Message):
@@ -441,18 +453,13 @@ def build_onboarding_router(flow: OnboardingFlow) -> Router:
     # --- после анкеты ---
     @router.callback_query(UCb.filter(F.a == "after"))
     async def after(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor) -> None:
-        if callback_data.v == "ai":
+        if callback_data.value == "ai":
             await flow.screens.close_buttons(query, toast=AI_SOON)
             return
         await flow.screens.close_buttons(query)
         await flow.screens.home(bot, query.from_user.id, actor, LATER_TEXT)
 
     # --- всё остальное во время анкеты: напомнить вопрос ---
-    @router.message(in_onboarding, CommandStart())
-    async def resume(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
-        await message.answer(RESUME)
-        await flow.ask(bot, message.chat.id, actor, state)
-
     @router.message(in_onboarding)
     async def other_message(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await message.answer(ANSWER_ABOVE)

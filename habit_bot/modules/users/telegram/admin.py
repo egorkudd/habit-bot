@@ -69,14 +69,14 @@ def build_admin_router(invites: Invites, screens: Screens) -> Router:
     @router.callback_query(UCb.filter(F.a == "inv_uses"))
     async def ask_days(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor) -> None:
         await screens.close_buttons(query)
-        uses = int(callback_data.v) if callback_data.v.isdigit() else 1
-        row = [button(actor, 0, days_label(d), "inv_days", f"{uses}:{d}") for d in DAYS_CHOICES]
+        uses = int(callback_data.value) if callback_data.value.isdigit() else 1
+        row = [button(actor, 0, days_label(d), "inv_days", f"{uses}_{d}") for d in DAYS_CHOICES]
         await bot.send_message(query.from_user.id, "Срок действия ссылки?", reply_markup=keyboard([row[:2], row[2:]]))
 
     @router.callback_query(UCb.filter(F.a == "inv_days"))
     async def create(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor) -> None:
         await screens.close_buttons(query)
-        uses_text, _, days_text = callback_data.v.partition(":")
+        uses_text, _, days_text = callback_data.value.partition("_")
         uses = int(uses_text) if uses_text.isdigit() else 1
         days = int(days_text) if days_text.isdigit() else 0
         invite = await invites.create(actor, max_uses=uses, days=days)
@@ -89,7 +89,7 @@ def build_admin_router(invites: Invites, screens: Screens) -> Router:
 
     @router.callback_query(UCb.filter(F.a == "inv_rv"))
     async def revoke(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor) -> None:
-        revoked = await invites.revoke(actor, callback_data.v)
+        revoked = await invites.revoke(actor, callback_data.value)
         await screens.close_buttons(query, toast="Приглашение отозвано" if revoked else "Уже не действует")
         await show_invites(bot, query.from_user.id, actor)
 

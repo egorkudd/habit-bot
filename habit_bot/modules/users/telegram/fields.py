@@ -9,7 +9,7 @@ from decimal import Decimal
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from habit_bot.kernel.domain.formatting import format_date, format_number
+from habit_bot.kernel.domain.formatting import format_date, format_day, format_number
 from habit_bot.kernel.domain.parsing import parse_number_in_range
 from habit_bot.kernel.identity import Actor
 from habit_bot.modules.users.domain.city import BUTTON_CITIES, City
@@ -24,7 +24,11 @@ class UCb(CallbackData, prefix="u"):
     o: int
     t: int
     a: str
-    v: str = ""
+    v: str | None = None  # пустое значение aiogram распаковывает как None
+
+    @property
+    def value(self) -> str:
+        return self.v or ""
 
 
 SEX_LABELS = {Sex.MALE: "Мужской", Sex.FEMALE: "Женский"}
@@ -49,7 +53,8 @@ OTHER_CITY = "other"
 
 
 def button(actor: Actor, token: int, text: str, action: str, value: str = "") -> InlineKeyboardButton:
-    return InlineKeyboardButton(text=text, callback_data=UCb(o=actor.user_id, t=token, a=action, v=value).pack())
+    data = UCb(o=actor.user_id, t=token, a=action, v=value or None).pack()
+    return InlineKeyboardButton(text=text, callback_data=data)
 
 
 def keyboard(rows: Sequence[Sequence[InlineKeyboardButton]]) -> InlineKeyboardMarkup:
@@ -112,5 +117,5 @@ def profile_card(view: ProfileView) -> str:
 
 def goal_line(goal: GoalView, today: date) -> str:
     source = "расчёт" if goal.source == "calc" else "вручную"
-    since = "сегодня" if goal.start_date == today else f"с {format_date(goal.start_date)}"
+    since = "сегодня" if goal.start_date == today else f"с {format_day(goal.start_date)}"
     return f"{since}: {targets_line(goal)} ({source})"
