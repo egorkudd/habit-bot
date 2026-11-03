@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from aiogram import Bot, F, Router
@@ -64,6 +65,10 @@ TEXT_PROMPTS = {
     "weight": "Вес, кг — например 75 или 77,5.",
     "target": "Целевой вес, кг.",
 }
+
+
+def whole(value: Decimal) -> int:
+    return int(value.to_integral_value(rounding=ROUND_HALF_UP))
 
 
 class SettingsInput(StatesGroup):
@@ -286,7 +291,8 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     @router.callback_query(StateFilter(SettingsInput.recalc), UCb.filter(F.a == "recalc"))
     async def recalc(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
-        targets = Targets(*(int(v) for v in (await state.get_data())["targets"]))
+        kcal, protein, fat, carbs = (int(v) for v in (await state.get_data())["targets"])
+        targets = Targets(kcal, protein, fat, carbs)
         await state.clear()
         if callback_data.v == "yes":
             goal = await flow.profiles.set_goal(actor, targets, source="calc")
@@ -314,7 +320,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     async def manual_goal(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
         kcal, protein, fat, carbs = parse_kbju_line(message.text or "")
         warnings = check_manual_targets(kcal, protein, fat, carbs)
-        targets = Targets(*(int(v.to_integral_value()) for v in (kcal, protein, fat, carbs)))
+        targets = Targets(kcal=whole(kcal), protein=whole(protein), fat=whole(fat), carbs=whole(carbs))
         goal = await flow.profiles.set_goal(actor, targets, source="manual")
         await state.clear()
         notes = "".join(f"\n⚠️ {w}" for w in warnings)

@@ -169,7 +169,7 @@ class OnboardingFlow:
 
     # --- вопросы ---
     async def ask(self, bot: Bot, chat_id: int, actor: Actor, state: FSMContext) -> None:
-        current = await state.get_state() or Onboarding.name.state
+        current = str(await state.get_state() or Onboarding.name.state)
         data = await state.get_data()
         token = await dialog_token(state)
         step = step_number(current)
@@ -237,10 +237,11 @@ class OnboardingFlow:
         return "Стартовый набор — отметьте, что добавить (можно ничего):", rows
 
     # --- переходы ---
-    async def go(self, bot: Bot, chat_id: int, actor: Actor, state: FSMContext, target: State, **data: Any) -> None:
+    async def go(self, bot: Bot, chat_id: int, actor: Actor, state: FSMContext, next_state: State,
+                 **data: Any) -> None:
         if data:
             await state.update_data(**data)
-        await state.set_state(target)
+        await state.set_state(next_state)
         await self.ask(bot, chat_id, actor, state)
 
     async def begin(self, bot: Bot, chat_id: int, actor: Actor, state: FSMContext, tg_name: str) -> None:
