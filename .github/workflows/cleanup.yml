@@ -1,0 +1,47 @@
+name: Очистить сервер
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cleanup:
+    name: Очистить сервер
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Секреты
+        run: bash scripts/require_secrets.sh SERVER_HOST DEPLOY_SSH_KEY
+
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Старые образы, кэш Docker, временные файлы
+        run: |
+          ssh server 'bash /srv/bot/app/remote.sh cleanup' | tee cleanup.log
+          result=$(grep '^RESULT ' cleanup.log | tail -1)
+          freed=$(sed -n 's/.*freed_mb=\(-\?[0-9]*\).*/\1/p' <<< "$result")
+          disk=$(sed -n 's/.* disk=\([0-9]*\).*/\1/p' <<< "$result")
+          {
+            echo "### Сервер очищен ✅"
+            echo
+            echo "Освобождено: ${freed:-0} МБ. Диск занят на ${disk:-?}%."
+            echo "На сервере остались текущий и предыдущий образ бота и одна последняя копия базы."
+          } >> "$GITHUB_STEP_SUMMARY"

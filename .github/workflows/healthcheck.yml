@@ -1,0 +1,84 @@
+name: Бот жив?
+
+# Раз в час проверяет бота с серверов GitHub: у них есть связь с Telegram, даже когда у VPS её нет.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: server
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  health:
+    name: Бот жив?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Бот уже выкладывался?
+        id: deployed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          auto=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+            --jq '.total_count' || echo 0)
+          manual=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?status=success&per_page=1" \
+            --jq '.total_count' || echo 0)
+          if [ "$((auto + manual))" = "0" ] || [ -z "$SERVER_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+            echo "### Бот жив?: пропущено — бот ещё не выкладывался" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.deployed.outputs.yes == 'true'
+        uses: ./.github/actions/ssh
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: "Проверка — контейнер, база, Telegram, диск, память"
+        id: check
+        if: steps.deployed.outputs.yes == 'true'
+        run: |
+          set +e
+          ssh server 'bash /srv/bot/app/remote.sh health' > health.log 2>&1
+          code=$?
+          cat health.log
+          [ "$code" = "255" ] && echo "ssh_failed=1" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Отчёт
+        id: report
+        if: steps.deployed.outputs.yes == 'true'
+        env:
+          SSH_FAILED: ${{ steps.check.outputs.ssh_failed }}
+        run: |
+          args=()
+          [ "$SSH_FAILED" = "1" ] && args+=(--ssh-failed)
+          python3 scripts/actions_report.py health --log health.log "${args[@]}" \
+            --summary "$GITHUB_STEP_SUMMARY" --message-out message.txt
+          { echo 'text<<END_OF_TEXT'; cat message.txt; echo; echo 'END_OF_TEXT'; } >> "$GITHUB_OUTPUT"
+          if [ -s message.txt ]; then echo "alert=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Оповещение
+        if: steps.report.outputs.alert == 'true'
+        uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.report.outputs.text }}
+          bot-token: ${{ secrets.BOT_TOKEN }}
+          admin-ids: ${{ secrets.ADMIN_TG_IDS }}

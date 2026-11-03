@@ -1,0 +1,115 @@
+name: Настроить сервер
+
+# Запускается вручную один раз (раздел 7.3). Повторный запуск безопасен: идёт по ключу deploy.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  bootstrap:
+    name: Настроить сервер
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_ROOT_PASSWORD: ${{ secrets.SERVER_ROOT_PASSWORD }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_SSH_PUBLIC_KEY: ${{ secrets.DEPLOY_SSH_PUBLIC_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Секреты
+        run: bash scripts/require_secrets.sh SERVER_HOST DEPLOY_SSH_KEY DEPLOY_SSH_PUBLIC_KEY
+
+      - name: Подготовка
+        run: sudo apt-get install -y -q sshpass >/dev/null
+
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Подключение к серверу
+        id: connect
+        run: |
+          if ssh server 'sudo -n true' 2>/dev/null; then
+            echo "mode=key" >> "$GITHUB_OUTPUT"
+            echo "Вход по ключу deploy уже работает — повторная настройка."
+            exit 0
+          fi
+          if [ -n "$SERVER_ROOT_PASSWORD" ] && SSHPASS="$SERVER_ROOT_PASSWORD" sshpass -e \
+               ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no -o ConnectTimeout=20 \
+               "root@$SERVER_HOST" true; then
+            echo "mode=password" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          text=$(python3 -m habit_bot.ops render SSH-ROOT)
+          echo "$text"
+          { echo "### ❌ Подключение к серверу"; echo; echo "$text"; } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Обновления, файрвол, подкачка, Docker, пользователь deploy
+        env:
+          MODE: ${{ steps.connect.outputs.mode }}
+        run: |
+          if [ "$MODE" = "key" ]; then
+            ssh server "sudo DEPLOY_PUB='$DEPLOY_SSH_PUBLIC_KEY' bash -s" < deploy/bootstrap.sh
+          else
+            SSHPASS="$SERVER_ROOT_PASSWORD" sshpass -e \
+              ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no "root@$SERVER_HOST" \
+              "DEPLOY_PUB='$DEPLOY_SSH_PUBLIC_KEY' bash -s" < deploy/bootstrap.sh
+          fi
+
+      - name: Проверка входа по ключу
+        run: |
+          if ! ssh server 'docker version --format "Docker {{.Server.Version}}"'; then
+            text=$(python3 -m habit_bot.ops render SSH-KEY)
+            echo "$text"
+            { echo "### ❌ Проверка входа по ключу"; echo; echo "$text"; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Отключение входа по паролю и под root
+        run: ssh server 'sudo bash -s' < deploy/harden.sh
+
+      - name: Связь с Telegram и моделью
+        run: |
+          status=0
+          { echo "### Сервер настроен"; echo; echo "| Проверка | Результат |"; echo "|---|---|"; } >> "$GITHUB_STEP_SUMMARY"
+          echo "| Docker, файрвол, подкачка, пользователь deploy | ✅ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Вход по паролю и под root | ✅ отключён |" >> "$GITHUB_STEP_SUMMARY"
+          if tg=$(ssh server "curl -s -o /dev/null -w '%{time_total}' --max-time 10 https://api.telegram.org"); then
+            echo "| api.telegram.org | ✅ ответ за ${tg} с |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            text=$(python3 -m habit_bot.ops render SERVER-TG)
+            echo "$text"
+            echo "| api.telegram.org | ❌ ${text//$'\n'/ } |" >> "$GITHUB_STEP_SUMMARY"
+            status=1
+          fi
+          if [ -n "$LLM_BASE_URL" ]; then
+            if ssh server "curl -s -o /dev/null --max-time 10 '$LLM_BASE_URL'"; then
+              echo "| API модели | ✅ доступен |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              text=$(python3 -m habit_bot.ops render SERVER-LLM)
+              echo "| API модели | ⚠️ ${text//$'\n'/ } |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "| API модели | — LLM_BASE_URL ещё не задан (нужен с части 9) |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          {
+            echo
+            echo "Что дальше: удалите секрет \`SERVER_ROOT_PASSWORD\` (Settings → Secrets and variables → Actions)."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
