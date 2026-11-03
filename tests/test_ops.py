@@ -66,8 +66,10 @@ def test_restore(migrated_env: dict[str, str]) -> None:
     db.write_bytes(b"broken")
     (db.parent / "bot.db-wal").write_bytes(b"x")
     assert ops.main(["restore"], env=migrated_env) == 0
-    assert sqlite3.connect(db).execute("SELECT version_num FROM alembic_version").fetchone() == ("0001_initial",)
     assert not (db.parent / "bot.db-wal").exists()
+    con = sqlite3.connect(db)
+    assert con.execute("SELECT version_num FROM alembic_version").fetchone() == ("0001_initial",)
+    con.close()
 
 
 def test_restore_without_backup(base_env: dict[str, str], capsys: Any) -> None:
