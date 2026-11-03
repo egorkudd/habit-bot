@@ -26,4 +26,4 @@ class UsersModule(Module):
 
             assert isinstance(channel, TelegramChannel)
             channel.add_outer_middleware(AuthMiddleware(sign_in))
-            channel.add_router(build_router())
+            channel.add_router(build_router(channel.menu))

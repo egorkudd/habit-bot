@@ -9,7 +9,14 @@ from typing import Any
 from aiogram import Bot
 from aiogram.client.session.base import BaseSession
 from aiogram.exceptions import TelegramForbiddenError
-from aiogram.methods import EditMessageText, GetMe, SendMessage, TelegramMethod
+from aiogram.methods import (
+    AnswerCallbackQuery,
+    EditMessageReplyMarkup,
+    EditMessageText,
+    GetMe,
+    SendMessage,
+    TelegramMethod,
+)
 from aiogram.types import Chat, Message, User
 
 BOT_USER = User(id=1000001, is_bot=True, first_name="Habit Test", username="habit_test_bot")
@@ -66,6 +73,15 @@ class FakeTelegramSession(BaseSession):
     def edits(self) -> list[EditMessageText]:
         return [m for m in self.requests if isinstance(m, EditMessageText)]
 
+    def last(self, chat_id: int) -> SendMessage:
+        return self.sent(chat_id)[-1]
+
+    def answers(self) -> list[AnswerCallbackQuery]:
+        return [m for m in self.requests if isinstance(m, AnswerCallbackQuery)]
+
+    def markup_removals(self) -> list[EditMessageReplyMarkup]:
+        return [m for m in self.requests if isinstance(m, EditMessageReplyMarkup)]
+
 
 def message_update(update_id: int, user_id: int, text: str, first_name: str = "Егор") -> dict[str, Any]:
     return {
@@ -78,5 +94,25 @@ def message_update(update_id: int, user_id: int, text: str, first_name: str = "�
             "text": text,
             **({"entities": [{"type": "bot_command", "offset": 0, "length": len(text.split()[0])}]}
                if text.startswith("/") else {}),
+        },
+    }
+
+
+def callback_update(update_id: int, user_id: int, data: str, message_id: int = 500) -> dict[str, Any]:
+    """Нажатие кнопки под сообщением бота."""
+    return {
+        "update_id": update_id,
+        "callback_query": {
+            "id": f"cb{update_id}",
+            "chat_instance": "ci",
+            "from": {"id": user_id, "is_bot": False, "first_name": "Егор"},
+            "data": data,
+            "message": {
+                "message_id": message_id,
+                "date": int(datetime(2026, 11, 3, 12, 0, tzinfo=UTC).timestamp()),
+                "chat": {"id": user_id, "type": "private"},
+                "from": {"id": BOT_USER.id, "is_bot": True, "first_name": BOT_USER.first_name},
+                "text": "…",
+            },
         },
     }

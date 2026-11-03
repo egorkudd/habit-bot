@@ -11,6 +11,7 @@ from aiogram.types import Message, TelegramObject
 from aiogram.types import User as TgUser
 
 from habit_bot import __version__
+from habit_bot.channels.telegram.ui.menu import MenuRegistry
 from habit_bot.kernel.errors.catalog import user_message
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.logs import current_user_id
@@ -18,9 +19,10 @@ from habit_bot.modules.users.usecases import SignInTelegram
 
 ADMIN_GREETING = (
     "Привет, администратор 👋\n"
-    "Бот работает, версия {version}. Разделы появятся в следующих частях."
+    "Бот работает, версия {version}. Меню внизу; разделы появятся в следующих частях.\n"
+    "/check — проверка ввода чисел, времени и дат, /cancel — отмена ввода."
 )
-USER_GREETING = "Привет! Бот пока настраивается — разделы появятся в следующих частях."
+USER_GREETING = "Привет! Меню внизу; разделы появятся в следующих частях."
 
 
 class AuthMiddleware(BaseMiddleware):
@@ -48,14 +50,12 @@ class AuthMiddleware(BaseMiddleware):
         return await handler(event, data)
 
 
-def build_router() -> Router:
+def build_router(menu: MenuRegistry) -> Router:
     router = Router(name="users")
 
     @router.message(CommandStart())
     async def start(message: Message, actor: Actor) -> None:
-        if actor.is_admin:
-            await message.answer(ADMIN_GREETING.format(version=__version__))
-        else:
-            await message.answer(USER_GREETING)
+        text = ADMIN_GREETING.format(version=__version__) if actor.is_admin else USER_GREETING
+        await message.answer(text, reply_markup=menu.home_keyboard(actor))
 
     return router

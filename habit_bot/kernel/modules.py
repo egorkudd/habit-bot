@@ -15,6 +15,7 @@ from habit_bot.kernel.config import Settings
 from habit_bot.kernel.db import UowFactory
 from habit_bot.kernel.events import EventBus
 from habit_bot.kernel.idempotency import IdempotencyStore
+from habit_bot.kernel.jobs import JobSpec
 
 
 class Stage(StrEnum):
@@ -39,12 +40,16 @@ class ModuleContext:
     channels: ChannelRegistry
     services: dict[str, Any] = field(default_factory=dict)
     startup_hooks: list[StartupHook] = field(default_factory=list)
+    jobs: list[JobSpec] = field(default_factory=list)
 
     def channel(self, name: str) -> Channel | None:
         return self.channels.get(name)
 
     def on_startup(self, hook: StartupHook) -> None:
         self.startup_hooks.append(hook)
+
+    def add_job(self, job: JobSpec) -> None:
+        self.jobs.append(job)
 
 
 class Module(ABC):
