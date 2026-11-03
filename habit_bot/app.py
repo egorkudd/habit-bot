@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from aiogram.client.session.base import BaseSession
@@ -19,12 +19,14 @@ from habit_bot.kernel.config import Settings
 from habit_bot.kernel.db import UnitOfWork, make_engine, make_sessionmaker
 from habit_bot.kernel.events import EventBus
 from habit_bot.kernel.idempotency import IdempotencyStore
+from habit_bot.kernel.jobs import JobSpec, run_forever, run_safely
 from habit_bot.kernel.modules import ModuleContext, ModuleRegistry
 from habit_bot.modules import KNOWN_MODULES
 from habit_bot.platform.alerts.alerter import AdminAlerter
 
 log = logging.getLogger(__name__)
 HEARTBEAT_EVERY_SECONDS = 30
+EXPIRE_EVERY = timedelta(minutes=1)
 
 
 def heartbeat_path(data_dir: Path) -> Path:
@@ -50,6 +52,9 @@ class App:
     async def startup(self) -> None:
         for hook in self.ctx.startup_hooks:
             await hook()
+        for job in self.ctx.jobs:
+            if job.run_at_start:
+                await run_safely(job)
         self.telegram.finalize()
 
     async def heartbeat_forever(self) -> None:  # pragma: no cover — бесконечный цикл; одна итерация — write_heartbeat
@@ -59,13 +64,16 @@ class App:
 
     async def run(self) -> None:  # pragma: no cover — проверяется пробным запуском контейнера в CI
         await self.startup()
-        heartbeat = asyncio.create_task(self.heartbeat_forever())
+        tasks = [asyncio.create_task(self.heartbeat_forever())]
+        tasks += [asyncio.create_task(run_forever(job)) for job in self.ctx.jobs]
         try:
             await self.telegram.start()
         finally:
-            heartbeat.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await heartbeat
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
             await self.close()
 
     async def close(self) -> None:
@@ -83,7 +91,7 @@ def build_app(settings: Settings, *, telegram_session: BaseSession | None = None
         return UnitOfWork(sessionmaker, events)
 
     channels = ChannelRegistry()
-    telegram = TelegramChannel(settings, session=telegram_session)
+    telegram = TelegramChannel(settings, uow=uow, clock=clock, session=telegram_session)
     channels.add(telegram)
     alerter = AdminAlerter(uow=uow, clock=clock, notifier=telegram.notifier, admin_chat_ids=settings.admin_tg_ids)
     telegram.set_alerter(alerter)
@@ -92,6 +100,7 @@ def build_app(settings: Settings, *, telegram_session: BaseSession | None = None
         settings=settings, clock=clock, uow=uow, events=events, idempotency=IdempotencyStore(),
         channels=channels, services={"alerter": alerter},
     )
+    ctx.add_job(JobSpec("dialogs.expire", EXPIRE_EVERY, telegram.expire_idle))
     registry = ModuleRegistry(KNOWN_MODULES)
     registry.load(settings.enabled_modules)
     registry.register_all(ctx)

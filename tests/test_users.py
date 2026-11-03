@@ -49,9 +49,10 @@ async def test_repeated_start_does_not_duplicate(app: Any, fake_session: Any) ->
 
 
 async def test_unknown_text_gets_fallback(app: Any, fake_session: Any) -> None:
-    """Пока разделов нет, любое сообщение получает подсказку про /start."""
+    """Непонятный текст — подсказка выбрать раздел и главное меню."""
     await app.telegram.dispatcher.feed_raw_update(app.telegram.bot, message_update(1, ADMIN_ID, "привет"))
-    assert fake_session.texts(ADMIN_ID) == ["Этот раздел появится в следующих частях. Напишите /start."]
+    assert fake_session.texts(ADMIN_ID) == ["Не понял. Выберите раздел в меню 👇"]
+    assert fake_session.last(ADMIN_ID).reply_markup is not None
 
 
 async def test_role_follows_admin_list(app: Any) -> None:

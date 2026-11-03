@@ -5,25 +5,37 @@ from __future__ import annotations
 import logging
 import traceback
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
+from datetime import datetime, tzinfo
 from pathlib import Path
 from typing import Any, Protocol
+from zoneinfo import ZoneInfo
 
 from aiogram import BaseMiddleware, Bot, Dispatcher, Router
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.session.base import BaseSession
 from aiogram.client.telegram import PRODUCTION, TelegramAPIServer
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import Message, TelegramObject, Update
+from aiogram.types import TelegramObject, Update
 
+from habit_bot.channels.telegram.dialogs.fsm import DbFsmStorage
+from habit_bot.channels.telegram.dialogs.input_check import build_input_check_router
+from habit_bot.channels.telegram.dialogs.middleware import ActivityMiddleware
+from habit_bot.channels.telegram.dialogs.store import DialogStore
+from habit_bot.channels.telegram.ui.guard import CallbackGuardMiddleware
+from habit_bot.channels.telegram.ui.menu import MenuRegistry
+from habit_bot.channels.telegram.ui.routes import build_core_router, build_fallback_router
+from habit_bot.channels.telegram.ui.screens import Screens
+from habit_bot.kernel.clock import Clock, SystemClock
 from habit_bot.kernel.config import Settings
+from habit_bot.kernel.db import UowFactory
 from habit_bot.kernel.errors import AppError, new_incident_id
 from habit_bot.kernel.errors.catalog import user_message
 from habit_bot.kernel.logs import current_handler, current_user_id
 
 log = logging.getLogger(__name__)
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]  # каталог habit_bot/
-
-FALLBACK_TEXT = "Этот раздел появится в следующих частях. Напишите /start."
+DEFAULT_TZ: tzinfo = ZoneInfo("Europe/Moscow")  # раздел 4.3: в MVP у всех московское время
 
 
 class Alerter(Protocol):
@@ -95,6 +107,9 @@ class ErrorMiddleware(BaseMiddleware):
         chat_id = chat_id_of(event) if isinstance(event, Update) else None
         if bot is None or chat_id is None or not text:
             return
+        if isinstance(event, Update) and event.callback_query is not None:
+            with suppress(TelegramAPIError):
+                await bot.answer_callback_query(event.callback_query.id)
         try:
             await bot.send_message(chat_id, text)
         except TelegramAPIError:
@@ -126,13 +141,25 @@ class TelegramNotifier:
 class TelegramChannel:
     name = "telegram"
 
-    def __init__(self, settings: Settings, *, session: BaseSession | None = None) -> None:
+    def __init__(
+        self, settings: Settings, *, uow: UowFactory, clock: Clock | None = None,
+        session: BaseSession | None = None, tz: tzinfo = DEFAULT_TZ,
+    ) -> None:
         self.bot = Bot(settings.bot_token, session=session or build_session(settings))
-        self.dispatcher = Dispatcher()
+        self.clock = clock or SystemClock()
+        # Состояния ввода хранит DbFsmStorage по user_id бота; встроенное хранилище aiogram не нужно.
+        self.dispatcher = Dispatcher(disable_fsm=True)
         self.notifier = TelegramNotifier(self.bot)
+        self.dialogs = DialogStore(uow=uow)
+        self.storage = DbFsmStorage(self.dialogs, self.clock)
+        self.menu = MenuRegistry()
+        self.screens = Screens(self.menu)
         self._error_middleware = ErrorMiddleware(None)
         self.dispatcher.update.outer_middleware(self._error_middleware)
-        self._fallback_added = False
+        self.dispatcher.callback_query.middleware(CallbackGuardMiddleware(self.storage, self.screens))
+        self.dispatcher.include_router(build_core_router(self.menu, self.screens))
+        self.dispatcher.include_router(build_input_check_router(self.clock, tz, self.screens))
+        self._finalized = False
 
     def set_alerter(self, alerter: Alerter) -> None:
         self._error_middleware._alerter = alerter
@@ -144,17 +171,16 @@ class TelegramChannel:
         self.dispatcher.include_router(router)
 
     def finalize(self) -> None:
-        """Последним подключается ответ на всё, что модули не обработали."""
-        if self._fallback_added:
+        """После модулей: сброс по бездействию (нужен вход — он от модуля users) и ответ на необработанное."""
+        if self._finalized:
             return
-        fallback = Router(name="fallback")
+        self.add_outer_middleware(ActivityMiddleware(self.storage, self.clock))
+        self.dispatcher.include_router(build_fallback_router(self.screens))
+        self._finalized = True
 
-        @fallback.message()
-        async def _fallback(message: Message) -> None:
-            await message.answer(FALLBACK_TEXT)
-
-        self.dispatcher.include_router(fallback)
-        self._fallback_added = True
+    async def expire_idle(self, now: datetime | None = None) -> int:
+        """Сброс по таймеру (раз в минуту и при старте): незаконченный ввод старше срока удаляется молча."""
+        return len(await self.dialogs.expire(now or self.clock.now()))
 
     async def start(self) -> None:  # pragma: no cover — долгий опрос Telegram проверяется пробным запуском в CI
         self.finalize()
