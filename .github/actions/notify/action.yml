@@ -1,0 +1,19 @@
+name: Оповещение в Telegram
+description: Текст администраторам из ADMIN_TG_IDS. Никогда не роняет сценарий.
+inputs:
+  text:
+    description: Текст оповещения
+    required: true
+  bot-token:
+    required: true
+  admin-ids:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        BOT_TOKEN: ${{ inputs.bot-token }}
+        ADMIN_TG_IDS: ${{ inputs.admin-ids }}
+        TEXT: ${{ inputs.text }}
+      run: bash scripts/notify_admins.sh "$TEXT"

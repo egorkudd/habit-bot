@@ -1,0 +1,4 @@
+*
+!requirements.txt
+!habit_bot/
+habit_bot/**/__pycache__

@@ -1,0 +1,19 @@
+# Пишется на сервер «Выкладкой». Образ и файл настроек передаются переменными окружения
+# (BOT_IMAGE, BOT_ENV_FILE, APP_UID, APP_GID) из deploy/remote.sh.
+name: habit-bot
+services:
+  bot:
+    image: ${BOT_IMAGE:?образ не задан}
+    env_file: ${BOT_ENV_FILE:-/srv/bot/app/.env}
+    environment:
+      DATA_DIR: /data
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    volumes:
+      - /srv/bot/data:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"

@@ -1,0 +1,34 @@
+name: SSH к серверу
+description: Ключ deploy и известный хост; дальше команды идут через «ssh server».
+inputs:
+  host:
+    description: IP-адрес сервера (секрет SERVER_HOST)
+    required: true
+  key:
+    description: Закрытый ключ выкладки (секрет DEPLOY_SSH_KEY)
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HOST: ${{ inputs.host }}
+        KEY: ${{ inputs.key }}
+      run: |
+        install -m 700 -d ~/.ssh
+        printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        for _ in 1 2 3; do
+          ssh-keyscan -T 15 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null && break
+          sleep 5
+        done
+        {
+          echo "Host server"
+          echo "  HostName $HOST"
+          echo "  User deploy"
+          echo "  IdentityFile ~/.ssh/deploy_key"
+          echo "  IdentitiesOnly yes"
+          echo "  BatchMode yes"
+          echo "  ConnectTimeout 20"
+          echo "  ServerAliveInterval 15"
+        } >> ~/.ssh/config

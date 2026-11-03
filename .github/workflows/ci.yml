@@ -1,0 +1,131 @@
+name: Проверка
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: Проверка
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: 1. Линтер
+        run: |
+          ruff check .
+          mypy habit_bot scripts
+          lint-imports
+          shellcheck deploy/*.sh scripts/*.sh
+          python scripts/gen_error_table.py --check
+
+      - name: 2. Модульные тесты
+        id: unit
+        run: pytest -m "not integration" --cov --cov-report= --junitxml=junit-unit.xml
+
+      - name: Сводка — модульные тесты
+        if: always() && steps.unit.outcome != 'skipped'
+        run: python scripts/ci_summary.py junit-unit.xml --step "2. Модульные тесты" --summary "$GITHUB_STEP_SUMMARY" || true
+
+      - name: 3. Интеграционные тесты
+        id: integration
+        run: pytest -m integration --cov --cov-append --cov-report= --junitxml=junit-integration.xml
+
+      - name: Сводка — интеграционные тесты
+        if: always() && steps.integration.outcome != 'skipped'
+        run: >-
+          python scripts/ci_summary.py junit-integration.xml --step "3. Интеграционные тесты"
+          --summary "$GITHUB_STEP_SUMMARY" || true
+
+      - name: 4. Покрытие
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          coverage json -q -o coverage.json
+          coverage xml -q -o coverage.xml
+          status=0
+          python scripts/coverage_gate.py coverage.json --summary "$GITHUB_STEP_SUMMARY" || status=1
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            if ! diff-cover coverage.xml --compare-branch="origin/$BASE_REF" --fail-under=95 \
+                 --format "markdown:diff-cover.md"; then
+              status=1
+              { echo "### 4. Покрытие нового и изменённого кода ниже 95%"; cat diff-cover.md; } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          exit "$status"
+
+      - name: 5. Миграции
+        run: bash scripts/check_migrations.sh
+
+      - name: 6. Пробный запуск
+        run: bash scripts/smoke_test.sh
+
+      - name: 7. Поиск секретов
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
+            | tar xz gitleaks
+          if ! ./gitleaks detect --source . --no-banner --redact --report-format json --report-path gitleaks.json; then
+            {
+              echo "### 7. Поиск секретов: найдены возможные секреты ❌"
+              jq -r '.[] | "- `\(.File):\(.StartLine)` — \(.Description) (значение скрыто)"' gitleaks.json
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+  notify-failure:
+    name: Оповещение о красной проверке
+    needs: checks
+    if: failure() && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Текст
+        id: text
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo 'text<<END_OF_TEXT'
+            python3 -m habit_bot.ops render DEPLOY-TESTS "url=$RUN_URL"
+            echo 'END_OF_TEXT'
+          } >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.text.outputs.text }}
+          bot-token: ${{ secrets.BOT_TOKEN }}
+          admin-ids: ${{ secrets.ADMIN_TG_IDS }}
+
+  deploy:
+    name: Выкладка
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit

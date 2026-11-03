@@ -1,0 +1,123 @@
+name: Выкладка
+
+# Запускается из «Проверки» после её успеха на main (зависимость needs) или вручную —
+# тогда сначала проверяется, что «Проверка» на этом же коммите прошла.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  actions: read
+
+concurrency:
+  group: server
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Выкладка
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      ADMIN_TG_IDS: ${{ secrets.ADMIN_TG_IDS }}
+      BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: «Проверка» на этом коммите прошла
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success" \
+            --jq '.total_count')
+          if [ "$passed" = "0" ]; then
+            echo "### ❌ «Проверка» на коммите ${GITHUB_SHA:0:7} не проходила — выкладка отменена" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      - name: Секреты
+        run: bash scripts/require_secrets.sh SERVER_HOST DEPLOY_SSH_KEY BOT_TOKEN ADMIN_TG_IDS BACKUP_PASSWORD
+
+      - name: Версия и образ
+        id: meta
+        run: |
+          version=$(python3 -c "import habit_bot; print(habit_bot.__version__)")
+          owner=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/$owner/habit-bot:$version-${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Сборка образа и публикация в ghcr.io
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          TOKEN: ${{ github.token }}
+        run: |
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -q -t "$IMAGE" --build-arg VERSION="$VERSION" .
+          docker push -q "$IMAGE"
+
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Файлы и настройки на сервер
+        env:
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_MONTHLY_BUDGET_USD: ${{ secrets.LLM_MONTHLY_BUDGET_USD }}
+          TELEGRAM_PROXY: ${{ secrets.TELEGRAM_PROXY }}
+        run: |
+          scp -q deploy/docker-compose.yml deploy/remote.sh server:/srv/bot/app/
+          python3 scripts/write_env.py | ssh server 'umask 077; cat > /srv/bot/app/.env.new'
+
+      - name: Бэкап, миграции, запуск, проверка здоровья
+        id: remote
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          printf '%s\n%s\n' "$TOKEN" "$GITHUB_ACTOR" \
+            | ssh server "bash /srv/bot/app/remote.sh deploy '$IMAGE' '$VERSION'" 2>&1 | tee deploy.log
+          exit "${PIPESTATUS[1]}"
+
+      - name: Отчёт
+        id: report
+        if: always()
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          python3 scripts/actions_report.py deploy --log deploy.log --version "$VERSION" --url "$RUN_URL" \
+            --summary "$GITHUB_STEP_SUMMARY" --message-out message.txt
+          { echo 'text<<END_OF_TEXT'; cat message.txt; echo; echo 'END_OF_TEXT'; } >> "$GITHUB_OUTPUT"
+
+      - name: Оповещение
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.report.outputs.text }}
+          bot-token: ${{ secrets.BOT_TOKEN }}
+          admin-ids: ${{ secrets.ADMIN_TG_IDS }}
+
+      - name: Старые образы в ghcr.io (храним 3 последние версии)
+        if: success()
+        continue-on-error: true
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: habit-bot
+          package-type: container
+          min-versions-to-keep: 3

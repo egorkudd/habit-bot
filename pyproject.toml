@@ -1,0 +1,85 @@
+[project]
+name = "habit-bot"
+dynamic = ["version"]
+description = "Telegram-бот «Дневник привычек»: питание, зарядка, тренировки и свои привычки"
+requires-python = ">=3.12"
+
+[tool.setuptools.dynamic]
+version = { attr = "habit_bot.__version__" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["habit_bot/migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = [
+    "RUF001",  # кириллица в строках — это интерфейс бота
+    "RUF002",
+    "RUF003",
+    "UP046",   # Generic[T] читается привычнее для SQLAlchemy
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["habit_bot.kernel.domain.*", "habit_bot.kernel.errors.*", "habit_bot.kernel.config"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra"
+markers = ["integration: тесты с базой и поддельным Telegram"]
+filterwarnings = ["ignore::DeprecationWarning:aiogram.*"]
+
+[tool.coverage.run]
+branch = true
+source = ["habit_bot", "scripts"]
+omit = ["habit_bot/migrations/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.",
+]
+
+# Границы модулей (раздел 7.3, шаг «1. Линтер»).
+[tool.importlinter]
+root_packages = ["habit_bot"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Ядро не зависит от платформы, модулей и каналов"
+type = "forbidden"
+source_modules = ["habit_bot.kernel"]
+forbidden_modules = ["habit_bot.platform", "habit_bot.modules", "habit_bot.channels"]
+
+[[tool.importlinter.contracts]]
+name = "Логика не зависит от Telegram"
+type = "forbidden"
+source_modules = [
+    "habit_bot.kernel",
+    "habit_bot.platform",
+    "habit_bot.modules.*.usecases",
+    "habit_bot.modules.*.public",
+]
+forbidden_modules = ["aiogram"]
+
+[[tool.importlinter.contracts]]
+name = "Домен — чистые функции без БД и сети"
+type = "forbidden"
+source_modules = ["habit_bot.kernel.domain"]
+forbidden_modules = ["sqlalchemy", "aiogram", "aiohttp", "alembic"]
+
+[[tool.importlinter.contracts]]
+name = "Платформа не зависит от модулей и каналов"
+type = "forbidden"
+source_modules = ["habit_bot.platform"]
+forbidden_modules = ["habit_bot.modules", "habit_bot.channels"]

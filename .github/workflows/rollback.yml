@@ -1,0 +1,67 @@
+name: Откат
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия, например 0.1.0. Пусто — предыдущая выложенная версия"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: server
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  rollback:
+    name: Откат
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Секреты
+        run: bash scripts/require_secrets.sh SERVER_HOST DEPLOY_SSH_KEY
+
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Бэкап, схема базы, запуск выбранной версии
+        env:
+          WANTED: ${{ inputs.version }}
+          TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          printf '%s\n%s\n' "$TOKEN" "$GITHUB_ACTOR" \
+            | ssh server "bash /srv/bot/app/remote.sh rollback '$WANTED'" 2>&1 | tee rollback.log
+          exit "${PIPESTATUS[1]}"
+
+      - name: Отчёт
+        id: report
+        if: always()
+        run: |
+          python3 scripts/actions_report.py rollback --log rollback.log --url "$RUN_URL" \
+            --summary "$GITHUB_STEP_SUMMARY" --message-out message.txt
+          { echo 'text<<END_OF_TEXT'; cat message.txt; echo; echo 'END_OF_TEXT'; } >> "$GITHUB_OUTPUT"
+
+      - name: Оповещение
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.report.outputs.text }}
+          bot-token: ${{ secrets.BOT_TOKEN }}
+          admin-ids: ${{ secrets.ADMIN_TG_IDS }}
