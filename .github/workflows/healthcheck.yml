@@ -34,9 +34,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+          auto=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
             --jq '.total_count' || echo 0)
-          if [ "$runs" = "0" ] || [ -z "$SERVER_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
+          manual=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?status=success&per_page=1" \
+            --jq '.total_count' || echo 0)
+          if [ "$((auto + manual))" = "0" ] || [ -z "$SERVER_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ]; then
             echo "yes=false" >> "$GITHUB_OUTPUT"
             echo "### Бот жив?: пропущено — бот ещё не выкладывался" >> "$GITHUB_STEP_SUMMARY"
           else

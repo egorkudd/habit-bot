@@ -49,6 +49,18 @@ jobs:
       - name: Секреты
         run: bash scripts/require_secrets.sh SERVER_HOST DEPLOY_SSH_KEY BOT_TOKEN ADMIN_TG_IDS BACKUP_PASSWORD
 
+      - uses: ./.github/actions/ssh
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Сервер настроен
+        run: |
+          if ! ssh server 'test -d /srv/bot/app && docker info >/dev/null'; then
+            echo "RESULT fail step=Подключение_к_серверу code=DEPLOY-FAIL rolled_back=not_configured" > deploy.log
+            exit 1
+          fi
+
       - name: Версия и образ
         id: meta
         run: |
@@ -66,11 +78,6 @@ jobs:
           echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build -q -t "$IMAGE" --build-arg VERSION="$VERSION" .
           docker push -q "$IMAGE"
-
-      - uses: ./.github/actions/ssh
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Файлы и настройки на сервер
         env:

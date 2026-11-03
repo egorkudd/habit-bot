@@ -70,10 +70,15 @@ def deploy_report(run: RemoteRun, *, version: str, url: str, kind: str) -> tuple
     params: dict[str, object] = {"version": version, "step": step, "url": url}
     if code == "DEPLOY-FAIL":
         rolled = run.fields.get("rolled_back", "none")
-        params["rollback"] = (
-            f"Вернул {rolled}, данные целы." if rolled not in {"", "none"}
-            else "Предыдущей рабочей версии нет — бот остановлен, данные целы."
-        )
+        if rolled == "not_configured":
+            params["rollback"] = (
+                "Сервер не отвечает по ключу deploy — если он ещё не настроен, запустите «Настроить сервер», "
+                "затем «Выкладку» вручную."
+            )
+        elif rolled not in {"", "none"}:
+            params["rollback"] = f"Вернул {rolled}, данные целы."
+        else:
+            params["rollback"] = "Предыдущей рабочей версии нет — бот остановлен, данные целы."
     elif code == "ROLLBACK-FAIL":
         params["state"] = _human(run.fields.get("state", "")) or "Бот работает на прежней версии."
     elif code == "BKP-FAIL":

@@ -72,6 +72,9 @@ def test_deploy_without_server_output() -> None:
     assert "на шаге «Подключение к серверу»" in message
     _, message = _deploy("STEP Подготовка\nRESULT fail step=Запуск code=DEPLOY-FAIL rolled_back=none\n")
     assert "Предыдущей рабочей версии нет" in message
+    _, message = _deploy("RESULT fail step=Подключение_к_серверу code=DEPLOY-FAIL rolled_back=not_configured\n")
+    assert "на шаге «Подключение к серверу». Сервер не отвечает по ключу deploy" in message
+    assert "запустите «Настроить сервер», затем «Выкладку» вручную" in message
 
 
 def test_backup_and_rollback_messages() -> None:
