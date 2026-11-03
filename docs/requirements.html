@@ -1,0 +1,3884 @@
+<!doctype html>
+<html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media print{pre{white-space:pre-wrap!important;word-break:break-word}.tbl,table{overflow:visible!important} table{min-width:0!important;display:table!important;width:100%!important}.diagram{overflow:visible!important;break-inside:avoid} .diagram pre.mermaid{min-width:0!important}.diagram svg{max-width:100%!important;height:auto!important}}</style></head>
+<body>
+<title>telegram_bot_requirements.md</title>
+<script>
+  /* The viewer toggle stamps data-theme on the root element; the vendored
+     CDS token block below keys its toggle axis on data-mode (the CDS
+     convention) and cannot be edited (provenance-tested byte-identical).
+     Mirroring the attribute lets that block serve the viewer toggle with
+     its own precedence rules — toggle beats OS in both directions. Static,
+     no author bytes. Without JS the toggle axis is inert and the OS axis
+     (pure CSS) still themes the page. */
+  (function () {
+    var root = document.documentElement;
+    var sync = function () {
+      var t = root.getAttribute('data-theme');
+      if (t) root.setAttribute('data-mode', t);
+      else root.removeAttribute('data-mode');
+    };
+    sync();
+    if (typeof MutationObserver !== 'undefined') {
+      new MutationObserver(sync).observe(root, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
+      });
+    }
+  })();
+</script>
+<style>
+  /* ===== BEGIN vendored @ant/cds tokens (src/frame/cdsTokens.vanilla.generated.css) =====
+     Byte-identical to that file (drift-tested in test/frame/planArtifactHtml.test.ts).
+     Do not edit this block: refresh the vendored file from @ant/cds and re-embed. */
+/*
+ * VENDORED — verbatim copy of @ant/cds tokens.vanilla.css (the CDS team's
+ * framework-agnostic token export) from anthropics/apps@230786b7e9757b07527ac4283db9b19676a8ae91
+ * (packages/cds/src/generated/tokens.vanilla.css).
+ * upstream-sha256: 94f136cf38cc5f54c1b6dda76677c466b122f6b7e6f8702ef18774cbc7643152
+ *   (sha256 of everything below this header comment, i.e. of the raw
+ *   upstream file — recomputed and asserted by the "provenance hash"
+ *   test, so a refresh that swaps bytes without updating this line
+ *   fails CI rather than shipping a lying header.)
+ *
+ * Browser floor: the export uses hsl(from …) and color-mix() — ~Chrome 119 /
+ * Safari 16.4. On older viewers the consuming declarations are dropped
+ * SILENTLY (no error, no telemetry): borders, the alpha ramp, and dark
+ * surfaces degrade. This line is the triage breadcrumb for "published
+ * artifact looks broken" reports — ask the browser version first.
+ *
+ * The templates listed in scripts/embed-cds-tokens.ts embed this file
+ * byte-for-byte between BEGIN/END markers; drift tests assert the copies
+ * stay identical. To refresh: copy the upstream generated file below this
+ * header, update the commit hash and upstream-sha256 above, run
+ * `bun scripts/embed-cds-tokens.ts`, then `bun test
+ * test/frame/planArtifactHtml.test.ts` (see that script's header for the rest).
+ */
+
+/**
+ * GENERATED — do not edit. Run `yarn workspace @ant/cds gen:tokens`.
+ *
+ * Framework-agnostic CDS token export: unprefixed `--*` custom
+ * properties under `:root`, with dark-mode overrides under
+ * `[data-mode="dark"]` and `@media (prefers-color-scheme: dark)`.
+ * No `.cds-root` scoping, density steps, or component-private tokens.
+ *
+ * Source: `packages/cds/tokens/`. For the full React/Tailwind build
+ * (scoped under `.cds-root`), see `tokens.css`.
+ */
+
+:root {
+  --radius: 8px;
+  --h-control: 32px;
+  --h-control-nested: 22px;
+  --icon: 20px;
+  --pad-sm: 8px;
+  --pad-md: 12px;
+  --pad-lg: 16px;
+  --pad-xl: 24px;
+  --gap-xs: 8px;
+  --gap-sm: 12px;
+  --gap-md: 16px;
+  --gap-lg: 28px;
+  --gap-xl: 40px;
+  --outset-x: 0px;
+  --outset-y: 0px;
+  --border: var(--alpha-2);
+  --border-accent: var(--blue-250);
+  --border-danger: var(--red-250);
+  --border-success: var(--green-250);
+  --border-warning: var(--yellow-250);
+  --border-pro: var(--violet-250);
+  --border-git-added: color-mix(in srgb, var(--text-git-added) 40%, transparent);
+  --border-git-removed: color-mix(in srgb, var(--text-git-removed) 40%, transparent);
+  --border-git-modified: color-mix(in srgb, var(--text-git-modified) 40%, transparent);
+  --border-git-merged: color-mix(in srgb, var(--text-git-merged) 40%, transparent);
+  --border-git-closed: color-mix(in srgb, var(--text-git-closed) 40%, transparent);
+  --border-git-conflicting: color-mix(in srgb, var(--text-git-conflicting) 40%, transparent);
+  --border-git-draft: color-mix(in srgb, var(--text-git-draft) 40%, transparent);
+  --border-git-opened: var(--border-git-added);
+  --border-git-queued: var(--border-git-modified);
+  --border-strong: var(--alpha-3);
+  --border-stronger: hsl(from var(--neutral-900) h s l / 40%);
+  --shadow-sm: 0 1px 2px 0 hsl(from var(--gray-900) h s l / 6%), 0 2px 8px 0 var(--shadow-color);
+  --shadow-md: 0 2px 4px 0 hsl(from var(--gray-900) h s l / 7%), 0 6px 16px 0 var(--shadow-color);
+  --shadow-lg: 0 4px 8px 0 hsl(from var(--gray-900) h s l / 8%), 0 12px 28px -2px var(--shadow-color);
+  --shadow-color: hsl(from var(--gray-900) h s l / 8%);
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.08);
+  --ring-outer: 1px;
+  --ring-inner: 0px;
+  --ring-color: var(--border);
+  --focus-shadow: inset 0 0 0 1px var(--page-bg), 0 0 0 1px var(--fill-accent), 0 0 6px 1px var(--bg-accent);
+  --font-mono: var(--font-anthropic-mono, "Anthropic Mono Variable"), "Anthropic Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-system: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-anthropic-sans, "Anthropic Sans Variable", "Anthropic Sans"), var(--font-system);
+  --font-voice: var(--font-anthropic-serif, "Anthropic Serif Variable", "Anthropic Serif"), ui-serif, Georgia, "Times New Roman", serif;
+  --ease-out: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --dur-fast: 60ms;
+  --dur-snap: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 450ms;
+  --btn-spring: linear(0, 0.2459, 0.6526, 0.9468, 1.0764, 1.0915, 1.0585, 1.0219, 0.9993, 0.9914, 0.9921, 0.9957, 0.9988, 1.0004, 1);
+  --black: #000000;
+  --oncolor-200: hsl(60 6.7% 97.1% / 0.75);
+  --oncolor-300: hsl(60 6.7% 97.1% / 0.5);
+  --clay: #d97757;
+  --clay-emphasized: #c6613f;
+  --heather: #cbcadb;
+  --plum: #827dbd;
+  --cactus: #bcd1ca;
+  --mineral: #629987;
+  --peach: #ebc9b7;
+  --gray-0: #ffffff;
+  --gray-10: #fcfcfb;
+  --gray-20: #f9f9f7;
+  --gray-30: #f6f6f4;
+  --gray-40: #f3f3f0;
+  --gray-50: #f0efec;
+  --gray-60: #edece8;
+  --gray-70: #eae9e4;
+  --gray-80: #e7e6e1;
+  --gray-90: #e4e3dd;
+  --gray-100: #e1e0d9;
+  --gray-150: #d2d1c7;
+  --gray-200: #c3c2b7;
+  --gray-250: #b4b3a8;
+  --gray-300: #a5a49a;
+  --gray-350: #97958d;
+  --gray-400: #898781;
+  --gray-450: #7b7974;
+  --gray-500: #6d6b67;
+  --gray-550: #5f5e5a;
+  --gray-600: #52514e;
+  --gray-650: #454442;
+  --gray-700: #383835;
+  --gray-750: #2c2c2a;
+  --gray-800: #20201f;
+  --gray-810: #1e1e1d;
+  --gray-820: #1c1c1b;
+  --gray-830: #1a1a19;
+  --gray-840: #181817;
+  --gray-850: #151515;
+  --gray-860: #131313;
+  --gray-870: #111111;
+  --gray-880: #0f0f0f;
+  --gray-890: #0d0d0d;
+  --gray-900: #0b0b0b;
+  --red-0: #ffffff;
+  --red-10: #fffbfb;
+  --red-20: #fef7f7;
+  --red-30: #fef3f3;
+  --red-40: #fdefef;
+  --red-50: #fbebeb;
+  --red-60: #fae7e7;
+  --red-70: #fae3e3;
+  --red-80: #fadfdf;
+  --red-90: #fadada;
+  --red-100: #fad6d6;
+  --red-150: #f7c1c1;
+  --red-200: #f4abab;
+  --red-250: #f09595;
+  --red-300: #ec7e7e;
+  --red-350: #e66767;
+  --red-400: #e34948;
+  --red-450: #d03b3b;
+  --red-500: #b93535;
+  --red-550: #a32c2c;
+  --red-600: #8e2626;
+  --red-650: #791e1e;
+  --red-700: #641919;
+  --red-750: #511212;
+  --red-800: #3c0e0e;
+  --red-810: #380d0d;
+  --red-820: #340c0c;
+  --red-830: #310b0b;
+  --red-840: #2d0a0a;
+  --red-850: #280a0a;
+  --red-860: #230b0a;
+  --red-870: #1d0b0a;
+  --red-880: #170c0b;
+  --red-890: #110c0b;
+  --red-900: #0b0b0b;
+  --orange-0: #ffffff;
+  --orange-10: #fefbfa;
+  --orange-20: #fdf7f5;
+  --orange-30: #fcf4f0;
+  --orange-40: #faf0ec;
+  --orange-50: #f9ece7;
+  --orange-60: #f8e9e2;
+  --orange-70: #f7e5dd;
+  --orange-80: #f7e1d7;
+  --orange-90: #f7dcd1;
+  --orange-100: #f7d8cb;
+  --orange-150: #f3c5b2;
+  --orange-200: #f4ae94;
+  --orange-250: #f09978;
+  --orange-300: #ec835a;
+  --orange-350: #eb6834;
+  --orange-400: #d95926;
+  --orange-450: #c25124;
+  --orange-500: #ae461c;
+  --orange-550: #993d19;
+  --orange-600: #863311;
+  --orange-650: #712b0f;
+  --orange-700: #5d230b;
+  --orange-750: #4b1b08;
+  --orange-800: #371407;
+  --orange-810: #341307;
+  --orange-820: #301106;
+  --orange-830: #2d1006;
+  --orange-840: #290f06;
+  --orange-850: #240e07;
+  --orange-860: #1f0e08;
+  --orange-870: #1a0e09;
+  --orange-880: #150d0a;
+  --orange-890: #100c0b;
+  --orange-900: #0b0b0b;
+  --yellow-0: #ffffff;
+  --yellow-10: #fefcf8;
+  --yellow-20: #fcf8f1;
+  --yellow-30: #fbf5ea;
+  --yellow-40: #f9f2e4;
+  --yellow-50: #f9eeda;
+  --yellow-60: #faebce;
+  --yellow-70: #fae7c2;
+  --yellow-80: #fae3b8;
+  --yellow-90: #f9e0b0;
+  --yellow-100: #f9dca4;
+  --yellow-150: #f9c868;
+  --yellow-200: #fab219;
+  --yellow-250: #eda100;
+  --yellow-300: #db9300;
+  --yellow-350: #c98500;
+  --yellow-400: #b77700;
+  --yellow-450: #a66a00;
+  --yellow-500: #945d00;
+  --yellow-550: #835100;
+  --yellow-600: #734500;
+  --yellow-650: #623900;
+  --yellow-700: #512e00;
+  --yellow-750: #412400;
+  --yellow-800: #311a00;
+  --yellow-810: #2e1800;
+  --yellow-820: #2b1700;
+  --yellow-830: #271500;
+  --yellow-840: #231402;
+  --yellow-850: #1f1204;
+  --yellow-860: #1b1106;
+  --yellow-870: #171007;
+  --yellow-880: #130e09;
+  --yellow-890: #0f0d0a;
+  --yellow-900: #0b0b0b;
+  --green-0: #ffffff;
+  --green-10: #fafdfa;
+  --green-20: #f5fbf4;
+  --green-30: #f0f9ef;
+  --green-40: #ebf7e9;
+  --green-50: #e5f4e4;
+  --green-60: #e0f2de;
+  --green-70: #dbf0d8;
+  --green-80: #d5eed3;
+  --green-90: #d0eccd;
+  --green-100: #caeac7;
+  --green-150: #aee0a9;
+  --green-200: #91d68b;
+  --green-250: #73cb6d;
+  --green-300: #55bf50;
+  --green-350: #35b231;
+  --green-400: #0ca30c;
+  --green-450: #009300;
+  --green-500: #008300;
+  --green-550: #007300;
+  --green-600: #006300;
+  --green-650: #005400;
+  --green-700: #074506;
+  --green-750: #0f350d;
+  --green-800: #11260f;
+  --green-810: #10230f;
+  --green-820: #10210f;
+  --green-830: #101e0f;
+  --green-840: #101b0f;
+  --green-850: #0f180e;
+  --green-860: #0e160e;
+  --green-870: #0e130d;
+  --green-880: #0d100d;
+  --green-890: #0c0e0c;
+  --green-900: #0b0b0b;
+  --aqua-0: #ffffff;
+  --aqua-10: #f9fdfb;
+  --aqua-20: #f3fbf8;
+  --aqua-30: #edf9f4;
+  --aqua-40: #e8f7f1;
+  --aqua-50: #e2f4ed;
+  --aqua-60: #dcf2ea;
+  --aqua-70: #d5f0e6;
+  --aqua-80: #ceefe2;
+  --aqua-90: #c7eddf;
+  --aqua-100: #bfebdb;
+  --aqua-150: #a0e1c9;
+  --aqua-200: #7ad7b4;
+  --aqua-250: #5acba0;
+  --aqua-300: #3bbd8c;
+  --aqua-350: #1baf7a;
+  --aqua-400: #199e70;
+  --aqua-450: #138e65;
+  --aqua-500: #0f7e5c;
+  --aqua-550: #0e6e53;
+  --aqua-600: #065f49;
+  --aqua-650: #095040;
+  --aqua-700: #034235;
+  --aqua-750: #02342b;
+  --aqua-800: #022720;
+  --aqua-810: #02241e;
+  --aqua-820: #02221c;
+  --aqua-830: #021f1a;
+  --aqua-840: #031c18;
+  --aqua-850: #051a16;
+  --aqua-860: #071713;
+  --aqua-870: #081411;
+  --aqua-880: #0a110f;
+  --aqua-890: #0b0e0d;
+  --aqua-900: #0b0b0b;
+  --blue-0: #ffffff;
+  --blue-10: #fafcff;
+  --blue-20: #f5f9fe;
+  --blue-30: #f0f7fe;
+  --blue-40: #ebf4fc;
+  --blue-50: #e7f1fb;
+  --blue-60: #e2eefa;
+  --blue-70: #ddebfa;
+  --blue-80: #d7e8fa;
+  --blue-90: #d2e5fa;
+  --blue-100: #cde2fb;
+  --blue-150: #b7d3f6;
+  --blue-200: #9ec5f4;
+  --blue-250: #86b6ef;
+  --blue-300: #6da7ec;
+  --blue-350: #5598e7;
+  --blue-400: #3987e5;
+  --blue-450: #2a78d6;
+  --blue-500: #256abf;
+  --blue-550: #1c5cab;
+  --blue-600: #184f95;
+  --blue-650: #104281;
+  --blue-700: #0d366b;
+  --blue-750: #062b57;
+  --blue-800: #032042;
+  --blue-810: #031e3d;
+  --blue-820: #021c39;
+  --blue-830: #021a36;
+  --blue-840: #021831;
+  --blue-850: #03162c;
+  --blue-860: #051426;
+  --blue-870: #07121f;
+  --blue-880: #091018;
+  --blue-890: #0a0d11;
+  --blue-900: #0b0b0b;
+  --violet-0: #ffffff;
+  --violet-10: #fcfbff;
+  --violet-20: #f8f8ff;
+  --violet-30: #f5f4ff;
+  --violet-40: #f2f1ff;
+  --violet-50: #efedff;
+  --violet-60: #ebeafe;
+  --violet-70: #e8e6fe;
+  --violet-80: #e5e2fd;
+  --violet-90: #e2dffd;
+  --violet-100: #dfdbfd;
+  --violet-150: #cfcafb;
+  --violet-200: #bfb9f5;
+  --violet-250: #b0a7f2;
+  --violet-300: #a096eb;
+  --violet-350: #9085e9;
+  --violet-400: #8173e3;
+  --violet-450: #7161e0;
+  --violet-500: #6250d6;
+  --violet-550: #5645be;
+  --violet-600: #4a3aa7;
+  --violet-650: #3e318e;
+  --violet-700: #322777;
+  --violet-750: #271e60;
+  --violet-800: #1d1649;
+  --violet-810: #1b1544;
+  --violet-820: #19133f;
+  --violet-830: #17123b;
+  --violet-840: #151036;
+  --violet-850: #130f32;
+  --violet-860: #110e2b;
+  --violet-870: #0f0e23;
+  --violet-880: #0e0d1b;
+  --violet-890: #0c0c13;
+  --violet-900: #0b0b0b;
+  --magenta-0: #ffffff;
+  --magenta-10: #fefbfc;
+  --magenta-20: #fef6f9;
+  --magenta-30: #fdf2f6;
+  --magenta-40: #fbeff3;
+  --magenta-50: #faebf0;
+  --magenta-60: #f9e6ed;
+  --magenta-70: #f9e2eb;
+  --magenta-80: #f9dee8;
+  --magenta-90: #f9d9e5;
+  --magenta-100: #f9d4e2;
+  --magenta-150: #f3c0d3;
+  --magenta-200: #f3a8c3;
+  --magenta-250: #ed93b4;
+  --magenta-300: #e87ba4;
+  --magenta-350: #e46191;
+  --magenta-400: #d55181;
+  --magenta-450: #c04873;
+  --magenta-500: #ad3d66;
+  --magenta-550: #993458;
+  --magenta-600: #862a4c;
+  --magenta-650: #722340;
+  --magenta-700: #5e1c34;
+  --magenta-750: #4c1429;
+  --magenta-800: #390f1f;
+  --magenta-810: #360d1c;
+  --magenta-820: #320c1a;
+  --magenta-830: #2f0b18;
+  --magenta-840: #2b0a16;
+  --magenta-850: #270a14;
+  --magenta-860: #220a12;
+  --magenta-870: #1c0b11;
+  --magenta-880: #170b0f;
+  --magenta-890: #110b0d;
+  --magenta-900: #0b0b0b;
+  --pictogram-highlight-default: var(--gray-80);
+  --pictogram-highlight-heather: var(--heather);
+  --pictogram-highlight-cactus: var(--cactus);
+  --pictogram-highlight-peach: var(--peach);
+  --cursor-interactive: pointer;
+  --neutral-0: var(--gray-0);
+  --neutral-10: var(--gray-10);
+  --neutral-20: var(--gray-20);
+  --neutral-30: var(--gray-30);
+  --neutral-40: var(--gray-40);
+  --neutral-50: var(--gray-50);
+  --neutral-60: var(--gray-60);
+  --neutral-70: var(--gray-70);
+  --neutral-80: var(--gray-80);
+  --neutral-90: var(--gray-90);
+  --neutral-100: var(--gray-100);
+  --neutral-150: var(--gray-150);
+  --neutral-200: var(--gray-200);
+  --neutral-250: var(--gray-250);
+  --neutral-300: var(--gray-300);
+  --neutral-350: var(--gray-350);
+  --neutral-400: var(--gray-400);
+  --neutral-450: var(--gray-450);
+  --neutral-500: var(--gray-500);
+  --neutral-550: var(--gray-550);
+  --neutral-600: var(--gray-600);
+  --neutral-650: var(--gray-650);
+  --neutral-700: var(--gray-700);
+  --neutral-750: var(--gray-750);
+  --neutral-800: var(--gray-800);
+  --neutral-810: var(--gray-810);
+  --neutral-820: var(--gray-820);
+  --neutral-830: var(--gray-830);
+  --neutral-840: var(--gray-840);
+  --neutral-850: var(--gray-850);
+  --neutral-860: var(--gray-860);
+  --neutral-870: var(--gray-870);
+  --neutral-880: var(--gray-880);
+  --neutral-890: var(--gray-890);
+  --neutral-900: var(--gray-900);
+  --alpha-0: hsl(from var(--neutral-900) h s l / 0%);
+  --alpha-1: hsl(from var(--neutral-900) h s l / 5%);
+  --alpha-2: hsl(from var(--neutral-900) h s l / 10%);
+  --alpha-3: hsl(from var(--neutral-900) h s l / 20%);
+  --alpha-4: hsl(from var(--neutral-900) h s l / 35%);
+  --alpha-5: hsl(from var(--neutral-900) h s l / 50%);
+  --alpha-6: hsl(from var(--neutral-900) h s l / 60%);
+  --alpha-7: hsl(from var(--neutral-900) h s l / 70%);
+  --alpha-8: hsl(from var(--neutral-900) h s l / 85%);
+  --alpha-9: hsl(from var(--neutral-900) h s l / 95%);
+  --surface-0: var(--gray-20);
+  --surface-1: var(--gray-10);
+  --surface-2: var(--gray-0);
+  --surface-3: var(--gray-0);
+  --surface-popover: var(--surface-3);
+  --surface-panel: var(--surface-2);
+  --page-bg: var(--surface-0);
+  --fill-accent: var(--blue-450);
+  --fill-accent-hover: var(--blue-400);
+  --fill-danger: var(--red-450);
+  --fill-danger-hover: var(--red-400);
+  --fill-success: var(--green-450);
+  --fill-success-hover: var(--green-400);
+  --fill-warning: var(--yellow-200);
+  --fill-warning-hover: var(--yellow-250);
+  --fill-pro: var(--violet-450);
+  --fill-pro-hover: var(--violet-400);
+  --fill-git-added: #1a8633;
+  --fill-git-added-hover: #1e9b3b;
+  --fill-git-removed: var(--text-git-removed);
+  --fill-git-removed-hover: #de295f;
+  --fill-git-modified: #8b751c;
+  --fill-git-modified-hover: #a08720;
+  --fill-git-merged: #855fd6;
+  --fill-git-merged-hover: #9473db;
+  --fill-git-closed: #ed0b00;
+  --fill-git-closed-hover: #ff1307;
+  --fill-git-conflicting: #b85b19;
+  --fill-git-conflicting-hover: #c5621b;
+  --fill-git-draft: var(--text-git-draft);
+  --fill-git-draft-hover: #808080;
+  --fill-git-opened: var(--fill-git-added);
+  --fill-git-opened-hover: var(--fill-git-added-hover);
+  --fill-git-queued: var(--fill-git-modified);
+  --fill-git-queued-hover: var(--fill-git-modified-hover);
+  --fill-brand: var(--clay-emphasized);
+  --fill-brand-hover: var(--clay);
+  --fill-primary: var(--neutral-900);
+  --fill-primary-hover: var(--neutral-750);
+  --fill-secondary: hsl(0 0% 100% / 0.1);
+  --fill-secondary-hover: var(--alpha-1);
+  --fill-secondary-ring: var(--border);
+  --fill-field: hsl(0 0% 100% / 0.5);
+  --fill-ghost-hover: var(--alpha-1);
+  --fill-disabled: var(--alpha-1);
+  --fill-control: var(--alpha-2);
+  --fill-control-hover: var(--alpha-3);
+  --bg-accent: var(--blue-100);
+  --bg-danger: var(--red-100);
+  --bg-success: var(--green-100);
+  --bg-warning: var(--yellow-100);
+  --bg-pro: var(--violet-100);
+  --bg-git-added: color-mix(in srgb, var(--text-git-added) 20%, transparent);
+  --bg-git-removed: color-mix(in srgb, var(--text-git-removed) 20%, transparent);
+  --bg-git-modified: color-mix(in srgb, var(--text-git-modified) 20%, transparent);
+  --bg-git-merged: color-mix(in srgb, var(--text-git-merged) 20%, transparent);
+  --bg-git-closed: color-mix(in srgb, var(--text-git-closed) 20%, transparent);
+  --bg-git-conflicting: color-mix(in srgb, var(--text-git-conflicting) 20%, transparent);
+  --bg-git-draft: color-mix(in srgb, var(--text-git-draft) 20%, transparent);
+  --bg-git-opened: var(--bg-git-added);
+  --bg-git-queued: var(--bg-git-modified);
+  --bg-neutral: var(--alpha-1);
+  --bg-neutral-hover: var(--alpha-2);
+  --backdrop: rgb(0 0 0 / 0.4);
+  --text-accent: var(--blue-600);
+  --text-danger: var(--red-600);
+  --text-success: var(--green-600);
+  --text-warning: var(--yellow-600);
+  --text-pro: var(--violet-600);
+  --text-git-added: #1e9e3c;
+  --text-git-removed: #cd2054;
+  --text-git-modified: #98801f;
+  --text-git-merged: #8e6bd9;
+  --text-git-closed: #ff3a30;
+  --text-git-conflicting: #c5621b;
+  --text-git-draft: #737373;
+  --text-git-opened: var(--text-git-added);
+  --text-git-queued: var(--text-git-modified);
+  --text-primary: var(--neutral-900);
+  --text-secondary: var(--neutral-600);
+  --text-muted: var(--neutral-400);
+  --text-disabled: var(--alpha-4);
+  --font-size-caption: 12px;
+  --font-size-footnote: 13px;
+  --font-size-code: 13px;
+  --font-size-body: 14px;
+  --font-size-heading: 15px;
+  --font-size-title: 22px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --leading-caption: 14px;
+  --leading-footnote: 16px;
+  --leading-code: 19px;
+  --leading-body: 20px;
+  --leading-heading: 20px;
+  --leading-title: 26px;
+  --on-primary: var(--neutral-0);
+  --on-accent: var(--gray-0);
+  --on-danger: var(--gray-0);
+  --on-success: var(--gray-900);
+  --on-warning: var(--gray-900);
+  --on-pro: var(--gray-0);
+  --on-git-added: var(--gray-0);
+  --on-git-removed: var(--gray-0);
+  --on-git-modified: var(--gray-0);
+  --on-git-merged: var(--gray-0);
+  --on-git-closed: var(--gray-0);
+  --on-git-conflicting: var(--gray-0);
+  --on-git-draft: var(--gray-0);
+  --on-git-opened: var(--on-git-added);
+  --on-git-queued: var(--on-git-modified);
+  --on-brand: var(--gray-0);
+  --z-modal: 40;
+  --z-coachmark: 35;
+  --z-popover: 50;
+  --z-tooltip: 50;
+  --z-toast: 60;
+}
+
+[data-mode="dark"] {
+  --border-accent: var(--blue-700);
+  --border-danger: var(--red-700);
+  --border-success: var(--green-700);
+  --border-warning: var(--yellow-700);
+  --border-pro: var(--violet-700);
+  --shadow-color: hsl(0 0% 0% / 0.24);
+  --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.32), 0 2px 6px rgb(0 0 0 / 0.2);
+  --ring-outer: 0px;
+  --ring-inner: 1px;
+  --ring-color: var(--alpha-2);
+  --focus-shadow: inset 0 0 0 1px var(--page-bg), 0 0 0 1px var(--fill-accent), 0 0 6px 1px hsl(from var(--blue-600) h s l / 60%);
+  --pictogram-highlight-default: var(--gray-650);
+  --pictogram-highlight-heather: var(--plum);
+  --pictogram-highlight-cactus: var(--mineral);
+  --pictogram-highlight-peach: var(--clay-emphasized);
+  --neutral-0: var(--gray-900);
+  --neutral-10: var(--gray-890);
+  --neutral-20: var(--gray-880);
+  --neutral-30: var(--gray-870);
+  --neutral-40: var(--gray-860);
+  --neutral-50: var(--gray-850);
+  --neutral-60: var(--gray-840);
+  --neutral-70: var(--gray-830);
+  --neutral-80: var(--gray-820);
+  --neutral-90: var(--gray-810);
+  --neutral-100: var(--gray-800);
+  --neutral-150: var(--gray-750);
+  --neutral-200: var(--gray-700);
+  --neutral-250: var(--gray-650);
+  --neutral-300: var(--gray-600);
+  --neutral-350: var(--gray-550);
+  --neutral-400: var(--gray-500);
+  --neutral-450: var(--gray-450);
+  --neutral-500: var(--gray-400);
+  --neutral-550: var(--gray-350);
+  --neutral-600: var(--gray-300);
+  --neutral-650: var(--gray-250);
+  --neutral-700: var(--gray-200);
+  --neutral-750: var(--gray-150);
+  --neutral-800: var(--gray-100);
+  --neutral-810: var(--gray-90);
+  --neutral-820: var(--gray-80);
+  --neutral-830: var(--gray-70);
+  --neutral-840: var(--gray-60);
+  --neutral-850: var(--gray-50);
+  --neutral-860: var(--gray-40);
+  --neutral-870: var(--gray-30);
+  --neutral-880: var(--gray-20);
+  --neutral-890: var(--gray-10);
+  --neutral-900: var(--gray-0);
+  --surface-0: var(--gray-890);
+  --surface-1: var(--gray-830);
+  --surface-2: var(--gray-750);
+  --surface-3: var(--gray-700);
+  --fill-git-added: var(--text-git-added);
+  --fill-git-added-hover: #27c840;
+  --fill-git-removed-hover: #ff1342;
+  --fill-git-modified: var(--text-git-modified);
+  --fill-git-modified-hover: #fac800;
+  --fill-git-merged: var(--text-git-merged);
+  --fill-git-merged-hover: #a67dff;
+  --fill-git-closed: var(--text-git-closed);
+  --fill-git-closed-hover: #ff4940;
+  --fill-git-conflicting: var(--text-git-conflicting);
+  --fill-git-conflicting-hover: #f97a1f;
+  --fill-git-draft-hover: #999999;
+  --fill-primary-hover: var(--gray-100);
+  --fill-secondary: var(--alpha-2);
+  --fill-secondary-hover: hsl(0 0% 100% / 0.14);
+  --fill-secondary-ring: transparent;
+  --fill-field: var(--fill-secondary);
+  --bg-accent: var(--blue-800);
+  --bg-danger: var(--red-800);
+  --bg-success: var(--green-800);
+  --bg-warning: var(--yellow-800);
+  --bg-pro: var(--violet-800);
+  --backdrop: rgb(0 0 0 / 0.5);
+  --text-accent: var(--blue-300);
+  --text-danger: var(--red-300);
+  --text-success: var(--green-400);
+  --text-warning: var(--yellow-300);
+  --text-pro: var(--violet-300);
+  --text-git-added: #32d74b;
+  --text-git-removed: #ff2c56;
+  --text-git-modified: #ffd014;
+  --text-git-merged: #b796ff;
+  --text-git-closed: #ff6159;
+  --text-git-conflicting: #fa832e;
+  --text-git-draft: #a6a6a6;
+  --text-secondary: var(--gray-200);
+  --text-muted: var(--gray-400);
+  --on-git-added: var(--gray-900);
+  --on-git-removed: var(--gray-900);
+  --on-git-modified: var(--gray-900);
+  --on-git-merged: var(--gray-900);
+  --on-git-closed: var(--gray-900);
+  --on-git-conflicting: var(--gray-900);
+  --on-git-draft: var(--gray-900);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-mode="light"])) {
+    --border-accent: var(--blue-700);
+    --border-danger: var(--red-700);
+    --border-success: var(--green-700);
+    --border-warning: var(--yellow-700);
+    --border-pro: var(--violet-700);
+    --shadow-color: hsl(0 0% 0% / 0.24);
+    --shadow-popover: 0 8px 24px rgb(0 0 0 / 0.32), 0 2px 6px rgb(0 0 0 / 0.2);
+    --ring-outer: 0px;
+    --ring-inner: 1px;
+    --ring-color: var(--alpha-2);
+    --focus-shadow: inset 0 0 0 1px var(--page-bg), 0 0 0 1px var(--fill-accent), 0 0 6px 1px hsl(from var(--blue-600) h s l / 60%);
+    --pictogram-highlight-default: var(--gray-650);
+    --pictogram-highlight-heather: var(--plum);
+    --pictogram-highlight-cactus: var(--mineral);
+    --pictogram-highlight-peach: var(--clay-emphasized);
+    --neutral-0: var(--gray-900);
+    --neutral-10: var(--gray-890);
+    --neutral-20: var(--gray-880);
+    --neutral-30: var(--gray-870);
+    --neutral-40: var(--gray-860);
+    --neutral-50: var(--gray-850);
+    --neutral-60: var(--gray-840);
+    --neutral-70: var(--gray-830);
+    --neutral-80: var(--gray-820);
+    --neutral-90: var(--gray-810);
+    --neutral-100: var(--gray-800);
+    --neutral-150: var(--gray-750);
+    --neutral-200: var(--gray-700);
+    --neutral-250: var(--gray-650);
+    --neutral-300: var(--gray-600);
+    --neutral-350: var(--gray-550);
+    --neutral-400: var(--gray-500);
+    --neutral-450: var(--gray-450);
+    --neutral-500: var(--gray-400);
+    --neutral-550: var(--gray-350);
+    --neutral-600: var(--gray-300);
+    --neutral-650: var(--gray-250);
+    --neutral-700: var(--gray-200);
+    --neutral-750: var(--gray-150);
+    --neutral-800: var(--gray-100);
+    --neutral-810: var(--gray-90);
+    --neutral-820: var(--gray-80);
+    --neutral-830: var(--gray-70);
+    --neutral-840: var(--gray-60);
+    --neutral-850: var(--gray-50);
+    --neutral-860: var(--gray-40);
+    --neutral-870: var(--gray-30);
+    --neutral-880: var(--gray-20);
+    --neutral-890: var(--gray-10);
+    --neutral-900: var(--gray-0);
+    --surface-0: var(--gray-890);
+    --surface-1: var(--gray-830);
+    --surface-2: var(--gray-750);
+    --surface-3: var(--gray-700);
+    --fill-git-added: var(--text-git-added);
+    --fill-git-added-hover: #27c840;
+    --fill-git-removed-hover: #ff1342;
+    --fill-git-modified: var(--text-git-modified);
+    --fill-git-modified-hover: #fac800;
+    --fill-git-merged: var(--text-git-merged);
+    --fill-git-merged-hover: #a67dff;
+    --fill-git-closed: var(--text-git-closed);
+    --fill-git-closed-hover: #ff4940;
+    --fill-git-conflicting: var(--text-git-conflicting);
+    --fill-git-conflicting-hover: #f97a1f;
+    --fill-git-draft-hover: #999999;
+    --fill-primary-hover: var(--gray-100);
+    --fill-secondary: var(--alpha-2);
+    --fill-secondary-hover: hsl(0 0% 100% / 0.14);
+    --fill-secondary-ring: transparent;
+    --fill-field: var(--fill-secondary);
+    --bg-accent: var(--blue-800);
+    --bg-danger: var(--red-800);
+    --bg-success: var(--green-800);
+    --bg-warning: var(--yellow-800);
+    --bg-pro: var(--violet-800);
+    --backdrop: rgb(0 0 0 / 0.5);
+    --text-accent: var(--blue-300);
+    --text-danger: var(--red-300);
+    --text-success: var(--green-400);
+    --text-warning: var(--yellow-300);
+    --text-pro: var(--violet-300);
+    --text-git-added: #32d74b;
+    --text-git-removed: #ff2c56;
+    --text-git-modified: #ffd014;
+    --text-git-merged: #b796ff;
+    --text-git-closed: #ff6159;
+    --text-git-conflicting: #fa832e;
+    --text-git-draft: #a6a6a6;
+    --text-secondary: var(--gray-200);
+    --text-muted: var(--gray-400);
+    --on-git-added: var(--gray-900);
+    --on-git-removed: var(--gray-900);
+    --on-git-modified: var(--gray-900);
+    --on-git-merged: var(--gray-900);
+    --on-git-closed: var(--gray-900);
+    --on-git-conflicting: var(--gray-900);
+    --on-git-draft: var(--gray-900);
+  }
+}
+
+  /* ===== END vendored @ant/cds tokens ===== */
+
+  /* Deviations from stock CDS — the only hand-maintained token values.
+     De-brand invariant: published artifacts use plain system font stacks
+     (no Anthropic fonts or serif voice) and a white light surface. Both
+     font overrides are load-bearing — the vendored stacks lead with
+     Anthropic Sans/Mono. The --hl-* highlight theme is this template's
+     own extension, mapped to canonical CDS palette stops above. */
+  :root {
+    color-scheme: light dark;
+    --font-sans: var(--font-system);
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --surface-0: #ffffff;
+    --hl-comment: var(--gray-400);
+    --hl-keyword: var(--violet-600);
+    --hl-string: var(--green-600);
+    --hl-number: var(--magenta-600);
+    --hl-title: var(--blue-600);
+    --hl-attr: var(--aqua-600);
+    --hl-deletion: var(--red-600);
+  }
+  /* Dark re-overrides: the white-surface deviation above is light-only,
+     and source order would otherwise beat the vendored dark block (equal
+     :root specificity), so dark restores the canonical surface here —
+     under both axes, mirroring the vendored block's own structure: the
+     media block carries the same :where() zero-specificity guard so an
+     explicit light stamp beats OS-dark, and the attribute block forces
+     dark on an OS-light machine. */
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-mode="light"])) {
+      --surface-0: var(--gray-890);
+      --hl-keyword: var(--violet-300);
+      --hl-string: var(--green-300);
+      --hl-number: var(--magenta-300);
+      --hl-title: var(--blue-300);
+      --hl-attr: var(--aqua-300);
+      --hl-deletion: var(--red-300);
+    }
+  }
+  :root[data-mode="dark"] {
+    color-scheme: dark;
+    --surface-0: var(--gray-890);
+    --hl-keyword: var(--violet-300);
+    --hl-string: var(--green-300);
+    --hl-number: var(--magenta-300);
+    --hl-title: var(--blue-300);
+    --hl-attr: var(--aqua-300);
+    --hl-deletion: var(--red-300);
+  }
+  :root[data-mode="light"] { color-scheme: light; }
+  /* Print is always light, regardless of the OS scheme or the toggle stamp
+     (browsers don't print backgrounds by default). The vendored dark block
+     cannot be switched off in print, so this re-pins — as literals — every
+     token this template's element rules actually paint with; the selector
+     list ties the attribute-dark scope and wins by source order. */
+  @media print {
+    :root, :root[data-mode="dark"] {
+      color-scheme: light;
+      --surface-0: #ffffff;
+      --text-primary: #0b0b0b;
+      --text-secondary: #52514e;
+      --text-accent: #184f95;
+      --border: rgba(11, 11, 11, 0.1);
+      --border-strong: rgba(11, 11, 11, 0.2);
+      --border-stronger: rgba(11, 11, 11, 0.4);
+      --fill-control: rgba(11, 11, 11, 0.1);
+      --hl-keyword: #4a3aa7;
+      --hl-string: #006300;
+      --hl-number: #862a4c;
+      --hl-title: #184f95;
+      --hl-attr: #065f49;
+      --hl-deletion: #8e2626;
+    }
+  }
+
+  body {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 14px/1.5 var(--font-sans);
+    overflow-wrap: break-word;
+  }
+  article {
+    max-width: 76ch;
+    margin: 0 auto;
+    padding: var(--gap-xl) 24px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xl);
+  }
+  header { display: flex; flex-direction: column; gap: var(--gap-sm); }
+  .eyebrow {
+    font: 600 12px/14px var(--font-sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-accent);
+  }
+  /* Document heading scale: 24/19/16/14 over the 14px body (~1.19 steps).
+     Deliberately looser than the closed CDS UI scale — a long document
+     needs more size differentiation between levels than app chrome does. */
+  h1 {
+    font: 600 24px/30px var(--font-sans);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h2 {
+    font: 600 19px/25px var(--font-sans);
+    text-wrap: balance;
+    margin: 0;
+  }
+  h3 {
+    font: 600 16px/22px var(--font-sans);
+    text-wrap: balance;
+    margin: 0;
+  }
+  h4, h5, h6 {
+    font: 600 14px/20px var(--font-sans);
+    text-wrap: balance;
+    margin: 0;
+  }
+  section { display: flex; flex-direction: column; gap: var(--gap-md); }
+  /* Heading rhythm inside the single mechanical-fill section: headings group
+     with the content below them, not the paragraph above. Inert in the
+     skill's multi-section flow, where each h2 is its section's first child. */
+  section > :is(h2, h3, h4):not(:first-child) { margin-top: var(--gap-sm); }
+  section > h2:not(:first-child) { margin-top: var(--gap-md); }
+  p, li { margin: 0; max-width: 68ch; }
+  .lede { font-size: 15px; line-height: 1.5; color: var(--text-secondary); }
+  .lede:empty { display: none; }
+  header h1:empty { display: none; }
+  a { color: var(--text-accent); }
+  code {
+    font: 0.92em/1.5 var(--font-mono);
+    background: var(--fill-control);
+    padding: 1px 3px;
+    border-radius: 4px;
+  }
+  a > code { background: none; color: inherit; }
+  pre {
+    font: 13px/19px var(--font-mono);
+    background: var(--fill-control);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--gap-sm) var(--gap-md);
+    overflow-x: auto;
+    margin: 0;
+  }
+  pre code { background: none; padding: 0; font: inherit; }
+  /* Syntax-highlight theme for the hljs-* spans the injected client-side
+     runtime (hljsHighlight.ts) emits. Colors are @ant/cds base-palette
+     stops (600s light / 300s dark) — the hue families CDS derives its role
+     colors from. */
+  .hljs-comment, .hljs-quote, .hljs-meta { color: var(--hl-comment); font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type, .hljs-doctag { color: var(--hl-keyword); }
+  .hljs-string, .hljs-regexp, .hljs-addition { color: var(--hl-string); }
+  .hljs-number, .hljs-symbol { color: var(--hl-number); }
+  .hljs-title, .hljs-name, .hljs-section, .hljs-built_in { color: var(--hl-title); }
+  .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-template-variable, .hljs-params, .hljs-selector-attr, .hljs-selector-class, .hljs-selector-id { color: var(--hl-attr); }
+  .hljs-deletion { color: var(--hl-deletion); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: 600; }
+  blockquote {
+    border-left: 2px solid var(--border-strong);
+    padding-left: var(--gap-sm);
+    color: var(--text-secondary);
+    margin: 0;
+  }
+  table {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: var(--gap-xs) var(--gap-sm);
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    font: 600 12px/14px var(--font-sans);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    border-bottom-color: var(--border-strong);
+  }
+  ul, ol { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: var(--gap-xs); }
+  /* Task-list items: the box replaces the bullet in the same gutter, and the
+     native disabled-checkbox rendering (dim, sub-pixel) is replaced with a
+     CDS-colored box so checks read at a glance in both modes. fill-accent
+     has no dark override in CDS, so the white check passes contrast in both.
+     Both tight (`li > input`) and loose (`li > p > input` — marked wraps
+     multi-block items in <p>) task-list shapes are covered. */
+  li:has(> input[type="checkbox"]),
+  li:has(> p:first-child > input[type="checkbox"]:first-child) {
+    list-style: none;
+    margin-left: -1.25rem;
+  }
+  :is(li, li > p:first-child) > input[type="checkbox"] {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border-stronger);
+    border-radius: 4px;
+    background: var(--surface-0);
+    margin: 0 6px 0 0;
+    vertical-align: -2px;
+  }
+  :is(li, li > p:first-child) > input[type="checkbox"]:checked {
+    background: var(--fill-accent) url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2012%2012%27%3E%3Cpath%20d=%27M2.5%206.5%205%209l4.5-5.5%27%20fill=%27none%27%20stroke=%27%23fff%27%20stroke-width=%272%27%20stroke-linecap=%27round%27%20stroke-linejoin=%27round%27/%3E%3C/svg%3E") center/10px 10px no-repeat;
+    border-color: var(--fill-accent);
+  }
+  /* Loose / multi-block list items: space the blocks inside an item. */
+  :is(li, td, th) > * + :is(p, ul, ol, blockquote, pre) { margin-top: var(--gap-xs); }
+  img { max-width: 100%; height: auto; border-radius: var(--radius); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+</style>
+
+<article>
+  <header>
+    <span class="eyebrow">Markdown · telegram_bot_requirements.md</span>
+    <h1></h1>
+    <p class="lede"></p>
+  </header>
+
+  <section><h1>Telegram-бот «Дневник привычек: питание, зарядка, тренировки»: бизнес-требования</h1>
+<p>03.11.2026 · <strong>версия для начала разработки (редакция 10)</strong></p>
+<blockquote>
+<p><strong>История редакций.</strong></p>
+<ul>
+<li><strong>Редакция 2.</strong> Многопользовательский режим: регистрация, свои данные, расчёт КБЖУ, изоляция данных, администратор.</li>
+<li><strong>Редакция 3.</strong> Только владелец и близкие: без согласий и возрастных ограничений; сервер за пределами РФ (раздел 7.1).</li>
+<li><strong>Редакция 4.</strong> Только московское время; запись за прошедшие дни; свои привычки; дробные числа через точку и запятую.</li>
+<li><strong>Редакция 5.</strong><ul>
+<li>Вернули границу суток 04:00.</li>
+<li>Вместо «Площадки A/B» — типы «Зал», «Уличная площадка», «Бег».</li>
+<li>База упражнений с фильтрами по полу, месту, резинке и «лёжа на земле»; умная прогрессия.</li>
+<li>Целевой темп по весу убран.</li>
+<li>Новые кнопки зарядки.</li>
+<li>Кнопки дат в формате «Вчера (24.10)»; выход из режима «Другой день» на любом шаге.</li>
+<li>Статистика: дневная — по выбранной привычке, периоды — картинками и светофорами без ИИ.</li>
+<li>Напоминания стали «Уведомлениями»: свои, настраиваемые кнопками, и готовые — погода, пожелания и др.</li>
+<li>Команды обычным текстом через ИИ с подтверждением — в MVP.</li>
+</ul>
+</li>
+<li><strong>Редакция 6.</strong> Убрано уведомление «Лучшее время для бега»; «Качество воздуха» переименовано в «Предупреждение о грязном воздухе». Любой незаконченный ввод сбрасывается через 15 минут бездействия. Город для погоды у каждого свой — в анкете и настройках, с распознаванием без учёта регистра.</li>
+<li><strong>Редакция 7.</strong><ul>
+<li>Убрано предупреждение о грязном воздухе.</li>
+<li>Бэкап — раз в 2 дня.</li>
+<li>Простая запись тренировок и бега перенесена в MVP; планы, сборка и рекомендации остались в v2.</li>
+<li>Добавлена отметка «Выходной».</li>
+<li>Уточнено, какие кнопки устаревают после сброса.</li>
+<li>Исправлены нумерация анкеты, модель данных и группировка критериев приёмки.</li>
+</ul>
+</li>
+<li><strong>Редакция 8.</strong><ul>
+<li>Языковая модель — DeepSeek V4.1 Flash вместо Claude; провайдер меняется через .env.</li>
+<li>Все данные хранятся только в БД.</li>
+<li>Экспорт — CSV-таблицы со словарём колонок вместо markdown.</li>
+<li>Импорт файлов удалён; первоначальное заполнение — сообщениями через ИИ (раздел 3.12).</li>
+<li>Развёртывание и обновление — через GitHub Actions, без ручного доступа разработчика к серверу (раздел 7.3).</li>
+<li>Описана регистрация первого администратора по <code>ADMIN_TG_IDS</code> (раздел 3.0).</li>
+<li>«Проверка» усилена: покрытие, миграции, smoke-тест; выкладка только после зелёной проверки того же коммита (раздел 7.3).</li>
+<li>План разработки MVP из 10 частей (раздел 8.1).</li>
+</ul>
+</li>
+<li><strong>Редакция 9.</strong><ul>
+<li>Добавлены требования к понятным ошибкам: каталог ошибок с кодами, тексты для пользователя, оповещения администратору с подсказкой, что исправить, читаемые отчёты CI/CD (раздел 7.4).</li>
+<li>Отмечены этапы v2 и v3 в сценариях.</li>
+<li>Исправлены мелкие несостыковки.</li>
+</ul>
+</li>
+<li><strong>Редакция 10.</strong><ul>
+<li>Логика бота не зависит от Telegram: в следующих версиях к ней подключатся мобильное и веб-приложение (раздел 7, «Архитектура»; раздел 8).</li>
+<li>Модель данных (раздел 5): способы входа вынесены в <code>Identity</code>; общие служебные поля у пользовательских записей; часовой пояс в профиле; таблицы <code>DialogState</code> и <code>IdempotencyKey</code>.</li>
+<li>Повтор одного и того же действия не создаёт дублей (раздел 7, «Повторы запросов»).</li>
+<li>Все части MVP разрабатываются в одной сессии по очереди (раздел 8.1).</li>
+<li>Добавлены критерии приёмки «Архитектура» (раздел 9).</li>
+<li>Защита ветки <code>main</code> не включается: на бесплатном тарифе GitHub она недоступна для приватных репозиториев (раздел 7.3).</li>
+<li>После каждой части документы проекта (требования, архитектура, диаграммы, отчёт о ходе) обновляются и выгружаются в <code>docs/</code> репозитория (раздел 8.1).</li>
+<li>Экономия места на сервере: хранится только последний бэкап, текущий и предыдущий образ бота, логи не больше 50 МБ (раздел 7).</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<h2>1. Цель и контекст</h2>
+<p>Бот заменяет ручной текстовый лог в чате. Еда, зарядки, тренировки, бег и свои привычки вносятся кнопками за 1–3 нажатия или одной фразой текстом. КБЖУ, остатки, стоимость, прогресс и рекомендации считаются автоматически.</p>
+<ul>
+<li><strong>Пользователи:</strong> владелец бота (администратор) и его близкие — семья и друзья, которых он пригласил. У каждого свой профиль, цели и история. Ориентир — до 10–20 пользователей. Публичного доступа нет.</li>
+<li><strong>Как сейчас:</strong> владелец пишет данные текстом в чат с Claude, Claude ведёт файлы health_log.md (лог с 22.09.2026) и training_plan.md (план тренировок).</li>
+<li><strong>Проблема:</strong><ul>
+<li>каждый день приходится писать одно и то же руками;</li>
+<li>итог дня виден только после ответа;</li>
+<li>в зале нет подсказки, какой вес брать;</li>
+<li>другим людям такой способ не передать.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Цели продукта:</strong></p>
+<ol>
+<li>Новый пользователь регистрируется и получает рассчитанные цели КБЖУ за 2–3 минуты.</li>
+<li>Типовой приём пищи из своих рецептов — 2 нажатия; зарядка «как в прошлый раз» — 1 нажатие; отметка своей привычки — 1 нажатие.</li>
+<li>На тренировке бот предлагает упражнения и вес. Рекомендация учитывает паузу, самочувствие, этап цикла и плато.</li>
+<li>Сложную правку можно описать одной фразой: ИИ разберёт её, покажет, что сделает, и выполнит после подтверждения.</li>
+<li>Статистика наглядна: день — по выбранной привычке; неделя и месяц — картинками и светофорами, с минимумом текста.</li>
+<li>Уведомления настраиваются кнопками почти без ввода текста; есть готовые полезные уведомления (погода, пожелание дня, итоги).</li>
+<li>Забытую запись можно внести в любой прошедший день.</li>
+<li>Каждый пользователь может выгрузить свои данные и удалить аккаунт.</li>
+</ol>
+<h2>2. Пользователи и сценарии</h2>
+<h3>2.1 Роли</h3>
+<table>
+<thead>
+<tr>
+<th>Роль</th>
+<th>Кто</th>
+<th>Что может</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Администратор</td>
+<td>Владелец бота (может быть несколько)</td>
+<td>Всё, что пользователь, плюс приглашения, список пользователей, блокировка, общий каталог, бэкапы</td>
+</tr>
+<tr>
+<td>Пользователь</td>
+<td>Близкий человек, приглашённый владельцем</td>
+<td>Свой профиль, цели, привычки, записи, статистика, уведомления, экспорт, удаление аккаунта</td>
+</tr>
+<tr>
+<td>Гость</td>
+<td>Любой, кто нашёл бота без приглашения</td>
+<td>Видит сообщение «Бот доступен по приглашению»</td>
+</tr>
+</tbody></table>
+<p>Администратор <strong>не видит</strong> чужие записи — только технические данные: имя в Telegram, дату регистрации, последнюю активность и число записей.</p>
+<h3>2.2 Типичный день (пример владельца)</h3>
+<p>Ботом пользуются на ходу, в короткие перерывы, часто после полуночи или на следующее утро за прошлый день. Поэтому есть граница суток в 04:00 и быстрая запись за прошедший день (раздел 3.7).</p>
+<table>
+<thead>
+<tr>
+<th>Время</th>
+<th>Что происходит</th>
+<th>Где</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>7:00</td>
+<td>Завтрак, зарядка (10 мин)</td>
+<td>Дом</td>
+</tr>
+<tr>
+<td>8:00–17:00</td>
+<td>Работа, можно выпить коктейль</td>
+<td>Работа</td>
+</tr>
+<tr>
+<td>~12:00</td>
+<td>Обед (20 мин), вторая зарядка</td>
+<td>Дом</td>
+</tr>
+<tr>
+<td>17:00–18:10</td>
+<td>Приём пищи</td>
+<td>—</td>
+</tr>
+<tr>
+<td>18:10–21:00</td>
+<td>ВУЗ, 4 дня в неделю, есть нельзя</td>
+<td>ВУЗ</td>
+</tr>
+<tr>
+<td>Вечер</td>
+<td>Ужин; в свободный от вуза день — зал</td>
+<td>Дом / зал</td>
+</tr>
+</tbody></table>
+<p><strong>Ограничения владельца:</strong> нет кухни (только готовая еда и кипяток); в воскресенье зал не работает; на выходных часто поездки, там только уличная площадка или резина.</p>
+<h3>2.3 Ключевые сценарии</h3>
+<ol>
+<li><strong>Регистрация:</strong> ссылка-приглашение → «Начать» (администратор из <code>ADMIN_TG_IDS</code> — просто <code>/start</code> без ссылки, раздел 3.0) → 12 коротких вопросов, в основном кнопками → рассчитанные КБЖУ → «Принять» или «Изменить» → стартовый набор → «✍️ Заполнить с помощью ИИ» (свои рецепты, цели, результаты одним текстом) или «Позже» → главное меню.</li>
+<li><strong>Изменение профиля:</strong> «Настройки» → «Профиль» → «Вес» → «77.5» → «Пересчитать цели? Было 2800 ккал → станет 2850» → «Да» / «Оставить».</li>
+<li><strong>Зарядка:</strong> «Зарядка» → «Как в прошлый раз» (1 нажатие) или «Планка +15 сек» → «Записать».</li>
+<li><strong>Еда:</strong> «Еда» → «Творог ужин» → запись и карточка дня.</li>
+<li><strong>Зал (v2, умный режим):</strong> «Тренировка» → «Зал» → «Как самочувствие?» → бот ведёт по упражнениям: «Присед: было 110 кг 4×8 → сегодня 112,5 кг 4×6–8 (все подходы 8/8)» → «Как предложено» → … → «Завершить».</li>
+<li><strong>Уличная площадка (v2, сборка):</strong> «Тренировка» → «Площадка» → «Резинка с собой?» «Нет» → бот собирает тренировку только из турника, брусьев, лавки и упражнений стоя.</li>
+<li><strong>Бег:</strong> «Тренировка» → «Бег» → «5 км» → «28:40» → «Темп 5:44 мин/км, на 0:12 быстрее прошлого».</li>
+<li><strong>Своя привычка:</strong> кнопка «👁 Глаза» на главном экране → 2/3 сегодня.</li>
+<li><strong>Забыл записать вчера:</strong> «Ещё» → «📅 Другой день» → «Вчера (24.10)» → внести → «Вернуться к сегодня». Выйти можно на любом шаге.</li>
+<li><strong>Текстом:</strong> «вчера на обед было 2 бедра и пакет гречи, а коктейль сегодня удали» → бот показывает 3 действия → «Выполнить».</li>
+<li><strong>Статистика дня:</strong> «Итоги» → «Еда» → картинка с полосками КБЖУ и таблицей блюд.</li>
+<li><strong>Обзор недели:</strong> «Итоги» → «Неделя» → картинка-светофор по всем целям.</li>
+<li><strong>Уведомление-напоминание (v2):</strong> «Настройки» → «Уведомления» → «➕» → «👁 Глаза» → «Каждый день» → «3 раза: 10:00 / 13:00 / 16:00» → «Сохранить» — без ввода текста.</li>
+<li><strong>Готовое уведомление (v3):</strong> «Уведомления» → «Готовые» → «🌤 Погода на сегодня» → «07:00» (город берётся из профиля).</li>
+<li><strong>Выходной:</strong> «Ещё» → «🛌 Выходной» — день не считается пропуском: серии не прерываются, в светофоре он серый.</li>
+<li><strong>Экспорт:</strong> «Настройки» → «Данные» → «Экспорт» → период → набор CSV-файлов в чат, их можно сразу загрузить в любую нейросеть для анализа.</li>
+<li><strong>Приглашение (админ):</strong> «Админ» → «Пригласить» → ссылка <code>t.me/&lt;bot&gt;?start=&lt;код&gt;</code>.</li>
+<li><strong>Удаление аккаунта:</strong> «Настройки» → «Удалить аккаунт» → предложение скачать экспорт → ввод слова «УДАЛИТЬ».</li>
+</ol>
+<h2>3. Функциональные требования</h2>
+<p>Всё управление — кнопками; текст нужен для разовых блюд, чисел и команд через ИИ (раздел 3.10). Приоритет: MVP — первая версия, v2 и v3 — позже (раздел 8).</p>
+<p><strong>Термин «привычка».</strong> Привычка — всё, что пользователь отслеживает в боте.</p>
+<ul>
+<li><strong>Встроенные привычки:</strong> «Еда» (КБЖУ), «Зарядка», «Тренировка» (зал, уличная площадка, бег).</li>
+<li><strong>Свои привычки:</strong> зарядка для глаз, вода, витамины и т. п. (раздел 3.6).</li>
+</ul>
+<p>У каждой привычки может быть цель: для еды — КБЖУ на день, для зарядки — раз в день, для тренировок — раз в неделю, для своей — значение в день. Статистика, уведомления и главный экран работают со всеми привычками одинаково.</p>
+<p><strong>Ввод чисел (во всём боте).</strong> Допускаются целые и дробные значения. Дробная часть отделяется <strong>точкой или запятой</strong>: «77.5» = «77,5». В строке «Другое» поля разделяются пробелами: «Маффин 320 4.5 15 41» = «Маффин 320 4,5 15 41». Бот показывает числа с запятой. Некорректный ввод («4,5,1») — подсказка с примером, диалог не сбрасывается (тексты ошибок — раздел 7.4).</p>
+<p><strong>Отмена.</strong> В любом многошаговом диалоге есть кнопка «✕ Отмена». Также работают слово «отмена» и команда /cancel. Отмена закрывает текущий ввод, ничего не записывая.</p>
+<p><strong>Сброс через 15 минут бездействия.</strong> Если пользователь начал что-то вводить кнопками и не закончил, через 15 минут без действий бот возвращается в исходное состояние — так, будто ввода не было.</p>
+<ul>
+<li>Пример: «Другой день» → «Вчера (24.10)» → «Записи дня» → «Еда» → «Изменить количество», и пользователь остановился. Через 15 минут изменение не применено, режим «Другой день» выключен, следующее действие идёт с главного меню за сегодня.</li>
+<li>Под сброс попадают:<ul>
+<li>выбор даты и режим «Другой день»;</li>
+<li>выбор блюда, количества и множителя;</li>
+<li>черновик зарядки;</li>
+<li>правка, перенос и удаление записи до подтверждения;</li>
+<li>создание привычки или уведомления;</li>
+<li>«Отметить несколько» до «Записать»;</li>
+<li>неподтверждённая карточка команды текстом (раздел 3.10).</li>
+</ul>
+</li>
+<li>Сохраняется только то, что пользователь явно подтвердил («Записать», «Сохранить», «Выполнить», отдельные нажатия на привычку или рецепт).</li>
+<li>Бот не присылает сообщение о сбросе. Кнопки незаконченного ввода после сброса не срабатывают: при нажатии бот отвечает «Это меню устарело» и показывает главное меню.</li>
+<li>Кнопки под карточкой <strong>уже сохранённой</strong> записи («Отменить», «×2», «📅 На вчера») не устаревают через 15 минут и работают 24 часа: запись уже есть, кнопка только меняет её. Исключение — «↩️ Отменить всё» после команды текстом: работает 10 минут (раздел 3.10).</li>
+<li>Если сбросился режим «Другой день», то при следующей записи бот одной строкой пишет «Записываю за сегодня» и даёт кнопку «📅 Нет, за 24.10» — чтобы запись не попала не в тот день незаметно.</li>
+<li><strong>Исключения:</strong><ul>
+<li><strong>Идущая тренировка.</strong> Отдых и смена тренажёров бывают дольше 15 минут, поэтому тренировка остаётся открытой до 3 часов. Записанные подходы сохраняются сразу. Через 3 часа без действий тренировка завершается автоматически с тем, что успели записать.</li>
+<li><strong>Анкета регистрации.</strong> Продолжается с того же шага.</li>
+</ul>
+</li>
+</ul>
+<h3>3.0 Регистрация и профиль (MVP)</h3>
+<p><strong>Доступ.</strong> Только по ссылке-приглашению от администратора. Код может быть одноразовым или с лимитом использований и сроком действия. Без кода — «Бот доступен по приглашению». Администратор может отозвать код и заблокировать пользователя.</p>
+<p><strong>Первый пользователь — администратор (без приглашения).</strong></p>
+<ol>
+<li>Перед первой выкладкой владелец узнаёт свой Telegram-ID (например, у бота @userinfobot) и записывает его в секрет <code>ADMIN_TG_IDS</code> (раздел 7.3). Можно указать несколько ID через запятую.</li>
+<li>Владелец пишет боту <code>/start</code> без ссылки. Бот видит, что ID есть в <code>ADMIN_TG_IDS</code>, и пускает без приглашения. Дальше идёт обычная анкета (раздел ниже), а пользователь получает роль <strong>«Администратор»</strong>.</li>
+<li>Любой другой ID без приглашения получает «Бот доступен по приглашению».</li>
+<li>Роль администратора определяется списком <code>ADMIN_TG_IDS</code> при каждом запуске бота:<ul>
+<li>ID добавлен — пользователь становится администратором; если он ещё не зарегистрирован, то может зарегистрироваться без приглашения;</li>
+<li>ID убран — роль снимается, аккаунт и данные остаются.</li>
+</ul>
+</li>
+<li><strong>Защита.</strong><ul>
+<li>Администратора нельзя заблокировать или удалить из интерфейса бота — только убрав его ID из <code>ADMIN_TG_IDS</code>.</li>
+<li>Последний администратор не может удалить свой аккаунт, пока в списке нет другого.</li>
+</ul>
+</li>
+<li>Если <code>ADMIN_TG_IDS</code> пуст, бот не запускается и пишет в лог понятную ошибку.</li>
+</ol>
+<p><strong>Анкета.</strong> Вопросы по одному, кнопками там, где можно, на каждом шаге есть «Назад».</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Вопрос</th>
+<th>Ввод</th>
+<th>Проверка</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Как к вам обращаться?</td>
+<td>Текст или кнопка с именем из Telegram</td>
+<td>1–32 символа</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Пол</td>
+<td>Мужской / Женский</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Дата рождения</td>
+<td>ДД.ММ.ГГГГ</td>
+<td>Не в будущем, не раньше 1900 года</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Рост, см</td>
+<td>Число</td>
+<td>120–230</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Текущий вес, кг</td>
+<td>Число</td>
+<td>35–250</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Уровень активности</td>
+<td>5 кнопок с пояснением (раздел 4)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Цель</td>
+<td>Набор массы / Поддержание / Снижение веса</td>
+<td>Снижение недоступно при ИМТ &lt; 18,5</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Целевой вес</td>
+<td>Число или «Пропустить»</td>
+<td>Согласован с целью (набор — больше текущего и т. д.)</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Опыт тренировок</td>
+<td>Новичок / Средний / Продвинутый</td>
+<td>Нужен для подбора упражнений и прогрессии</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Город (для погоды)</td>
+<td>Кнопки «Москва», «Санкт-Петербург», «Череповец», «Другой» → ввод текстом</td>
+<td>Распознавание по правилам раздела 4.12; можно пропустить</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Рассчитанные КБЖУ</td>
+<td>«Принять» / «Изменить вручную»</td>
+<td>Ручные значения: ккал 1200–6000, Б/Ж/У ≥ 0; расхождение Б·4 + Ж·9 + У·4 с ккал &gt; 5% — предупреждение</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Стартовый набор</td>
+<td>Галочки: «Базовые продукты», «Зарядка по умолчанию», «Шаблон плана для зала» (используется с v2), «Примеры привычек»</td>
+<td>Можно ничего не выбирать</td>
+</tr>
+</tbody></table>
+<ul>
+<li>Шаги 10–12 можно пропустить кнопкой «Заполнить позже»: город остаётся пустым, подставятся расчётные КБЖУ и пустой стартовый набор.</li>
+<li>Прерванная анкета продолжается с того же шага.</li>
+<li>Время для всех — московское. В профиле хранится часовой пояс со значением Europe/Moscow: в MVP он не меняется и в анкете не спрашивается, это задел на будущее.</li>
+<li>Возраст считается по дате рождения; раз в год бот предлагает пересчитать цели.</li>
+</ul>
+<p><strong>Профиль в настройках.</strong> Карточка со всеми полями и кнопкой на каждое поле.</p>
+<ul>
+<li>Имя, опыт и город меняются сразу. Город выбирается так же, как в анкете.</li>
+<li>При изменении веса, роста, даты рождения, пола, активности или цели бот показывает новые КБЖУ рядом с текущими: «Пересчитать» / «Оставить как есть».</li>
+<li>КБЖУ можно ввести вручную в любой момент.</li>
+</ul>
+<p>Новая цель создаётся записью с датой начала «сегодня»; прошлые дни считаются по старой цели. Вес из профиля пишется и в историю веса тела.</p>
+<h3>3.1 Главное меню и карточка дня (MVP)</h3>
+<ul>
+<li><strong>Клавиатура по умолчанию:</strong> «Еда», «Зарядка», «Тренировка», «Привычки», «Итоги», «Ещё». В «Ещё»: «📅 Другой день», «✍️ Текстом», «🛌 Выходной», «Настройки», у администратора — «Админ».</li>
+<li><strong>«🛌 Выходной»</strong> отмечает текущий (или выбранный в режиме «Другой день») день как выходной: болезнь, поездка, отдых. Записи в такой день вносить можно. Цели в нём не проверяются, серии не прерываются, в светофоре день серый. Повторное нажатие снимает отметку.</li>
+<li><strong>Клавиатура настраивается</strong> («Настройки» → «Главный экран»): до 8 кнопок по 2 в ряд, любые привычки и разделы, любой порядок. Ненужное можно скрыть, например «Тренировка». «Ещё» скрыть нельзя.</li>
+<li><strong>«Привычки»</strong> открывает список всех привычек на день с выполнением: «🍽 Еда 2 340/2 800», «🤸 Зарядка 1/2», «👁 Глаза 2/3». Невыполненные — сверху. Нажатие на «Еду», «Зарядку» или «Тренировку» открывает их раздел, на свою привычку — сразу отмечает её (раздел 3.6).</li>
+<li><strong>Карточка дня</strong> после каждой записи — короткий текст моноширинным блоком: дата; Факт / Цель / Остаток по КБЖУ; сумма в рублях; одна строка привычек («🤸 1/2 · 👁 2/3 · 💧 6/8»).</li>
+<li>Запись попадает в текущий день с учётом границы суток 04:00 (раздел 4). Запись в прошедший день — раздел 3.7.</li>
+</ul>
+<h3>3.2 Еда (MVP)</h3>
+<ol>
+<li><strong>Рецепты кнопками.</strong> Список своих рецептов и продуктов, сверху — частые за 14 дней. Нажатие добавляет 1 порцию в день записи.</li>
+<li><strong>Множитель.</strong> Под карточкой блюда: «×0,5», «×2», «Отменить», «📅 На вчера».</li>
+<li><strong>Продукты на вес и в штуках:</strong> кнопки 100 / 150 / 200 / 300 г или 1 / 2 / 3 / 4 шт и ввод числа.</li>
+<li><strong>«Другое».</strong> Одна строка: «Маффин 320 4,5 15 41 [цена]» → запись → кнопка «Сохранить как рецепт».</li>
+<li><strong>Записи дня:</strong> «Изменить количество», «Удалить», «Перенести на дату».</li>
+<li><strong>Свои рецепты и продукты:</strong> создаются, меняются и скрываются в настройках. Поля: название, состав, единица (порция / 100 г / 1 шт), КБЖУ на единицу, цена.</li>
+<li><strong>Общий каталог.</strong> «Еда» → «Каталог» → «Добавить к себе» копирует продукт в личный список.</li>
+<li><strong>История не меняется</strong> при правке рецепта: запись хранит КБЖУ и цену на момент записи.</li>
+</ol>
+<h3>3.3 Зарядка (MVP)</h3>
+<ol>
+<li><p>Зарядка — набор упражнений пользователя. По умолчанию: отжимания (повторы), ягодичный мостик (повторы), планка (время), спина (повторы). Набор меняется в настройках: добавить, убрать, поменять порядок.</p>
+</li>
+<li><p><strong>Экран зарядки</strong> показывает черновик, заполненный значениями прошлой зарядки, и кнопки:</p>
+<pre><code>Зарядка · 25.10 · 2-я за день
+Отжимания 50 · Мостик 50 · Планка 5:45 · Спина 25
+
+[✅ Как в прошлый раз]
+[Отжимания +5]   [Мостик +5]
+[Планка +15 сек] [Спина +5]
+[✏️ Изменить]    [💾 Записать]
+</code></pre>
+<ul>
+<li><strong>«Как в прошлый раз»</strong> сразу записывает значения прошлой зарядки (1 нажатие).</li>
+<li><strong>Кнопки «+шаг»</strong> — по одной на каждое упражнение набора. Каждое нажатие прибавляет шаг к черновику, а надпись на экране обновляется («Планка 6:00»). Сохраняет «Записать».</li>
+<li><strong>Шаги:</strong> по умолчанию у планки и других упражнений на время +15 сек, у остальных +5 повторов. Шаг каждого упражнения настраивается («Настройки» → «Зарядка» → «Шаги»), и надпись на кнопке меняется («Отжимания +10»).</li>
+<li><strong>«Изменить»</strong> открывает по каждому упражнению кнопки «−» и «+» (на величину шага) и ввод точного числа. Для времени — «5:45», «5.45» или секунды.</li>
+</ul>
+</li>
+<li><p>Номер зарядки в дне (1-я, 2-я) ставится автоматически.</p>
+</li>
+<li><p>У первой зарядки нового пользователя нет прошлых значений: бот просит ввести стартовые, а «Как в прошлый раз» скрыта.</p>
+</li>
+<li><p><strong>Личные цели по упражнениям.</strong> Можно задать цель — значение и дату (у владельца — планка 11:00 к 03.12.2026). После записи — строка прогресса: максимум, сколько осталось, нужный и фактический темп.</p>
+</li>
+</ol>
+<h3>3.4 Тренировки: зал и уличная площадка (MVP — запись, v2 — планы и рекомендации)</h3>
+<p><strong>Типы тренировок:</strong> «Зал», «Уличная площадка», «Бег» (раздел 3.5), «Свободная» — любые упражнения из базы без плана.</p>
+<h4>3.4.0 Простая запись тренировки (MVP)</h4>
+<p>Чтобы до v2 не терять историю тренировок, в MVP есть запись без рекомендаций:</p>
+<ol>
+<li>«Тренировка» → «Зал» / «Площадка» / «Свободная».</li>
+<li>«➕ Упражнение» → кнопки 10 последних упражнений этого типа и «Все по группам» (группа мышц → упражнение) из базы (раздел 3.4.1). Есть и «Новое упражнение».</li>
+<li>Подходы:<ul>
+<li>«Как в прошлый раз (110 кг 4×8)» — 1 нажатие;</li>
+<li>или вес (кнопки «−шаг» / «+шаг» от прошлого веса либо ввод) и повторы — одинаковые для всех подходов («4×8») или по подходам.</li>
+</ul>
+</li>
+<li>«Следующее упражнение» или «Завершить» → длительность → итог: список упражнений и тоннаж.</li>
+</ol>
+<p>Сборка, самочувствие, тип сессии и рекомендации веса добавляются в v2 (разделы 3.4.2–3.4.3) поверх той же истории.</p>
+<p><strong>Уличная площадка</strong> — стандартный набор: турник, брусья, низкая перекладина, шведская стенка (лестница), лавка, рукоход. Перед тренировкой — кнопка «Чего-то нет?», чтобы исключить отсутствующее на этот раз.</p>
+<h4>3.4.1 База упражнений</h4>
+<p>На этапе разработки в бот загружается база: не меньше 70 упражнений для зала, 35 для площадки и 15 с резинкой (состав — раздел 6.1). У каждого упражнения есть:</p>
+<table>
+<thead>
+<tr>
+<th>Поле</th>
+<th>Значения</th>
+<th>Зачем</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Место</td>
+<td>зал / площадка / везде</td>
+<td>Фильтр по типу тренировки</td>
+</tr>
+<tr>
+<td>Оборудование</td>
+<td>штанга, гантели, тренажёр, блок, гиря, турник, брусья, низкая перекладина, шведская стенка, лавка, рукоход, резинка, без оборудования</td>
+<td>Фильтр по доступному</td>
+</tr>
+<tr>
+<td>Мышцы</td>
+<td>основная группа + вторичные</td>
+<td>Баланс тренировки, восстановление</td>
+</tr>
+<tr>
+<td>Движение</td>
+<td>присед, наклон/тяга бедром, выпад, горизонтальный жим, вертикальный жим, горизонтальная тяга, вертикальная тяга, кор, изоляция</td>
+<td>Сборка тренировки</td>
+</tr>
+<tr>
+<td>Сложность</td>
+<td>новичок / средний / продвинутый</td>
+<td>Фильтр по опыту</td>
+</tr>
+<tr>
+<td>Измерение</td>
+<td>вес × повторы / повторы / время / резинка × повторы</td>
+<td>Ввод и прогрессия</td>
+</tr>
+<tr>
+<td>Лёжа на земле</td>
+<td>да / нет</td>
+<td>На улице не предлагаются упражнения, где нужно лечь, сесть или встать на колени или предплечья на землю (планка, скручивания, ягодичный мост на полу). Отжимания с упором ладонями допускаются, но первыми предлагаются от лавки или брусьев</td>
+</tr>
+<tr>
+<td>Предлагать</td>
+<td>всем / только мужчинам / только женщинам</td>
+<td>Фильтр автоподбора по полу из профиля</td>
+</tr>
+<tr>
+<td>Отягощение</td>
+<td>да / нет</td>
+<td>На улице упражнения с дополнительным весом (рюкзак, пояс) не предлагаются — это задел на будущее</td>
+</tr>
+<tr>
+<td>Проще / сложнее</td>
+<td>ссылки на соседние варианты</td>
+<td>Прогрессия упражнений с собственным весом</td>
+</tr>
+<tr>
+<td>Шаг веса, диапазон повторов, «вес каждой гантели»</td>
+<td>—</td>
+<td>Прогрессия и тоннаж</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>Фильтр по полу</strong> влияет только на автоподбор. Любое упражнение можно добавить вручную, а в настройках есть «Показывать все упражнения».</li>
+<li><strong>Примеры:</strong> женщинам по умолчанию не предлагаются шраги со штангой и гантелями, тяга штанги к подбородку; мужчинам — отведение и сведение бедра в тренажёре, отведение ноги назад в кроссовере. Итоговый список согласуется при наполнении базы.</li>
+<li><strong>Резинка.</strong> Перед тренировкой на улице бот спрашивает «Резинка с собой?» «Да» / «Нет»; по умолчанию стоит прошлый ответ. При «Нет» упражнения с резинкой исключаются. Какие резинки есть (лёгкая / средняя / тяжёлая), указывается в настройках.</li>
+</ul>
+<h4>3.4.2 Планы и сборка тренировки (v2)</h4>
+<ul>
+<li><strong>Свой план:</strong> упражнения, порядок, подходы, диапазон повторов, стартовый вес, отдых. Планы создаются вручную или из шаблона каталога.</li>
+<li><strong>«Собрать тренировку»</strong> — бот составляет план сам по правилам из раздела 4. Нужно выбрать место (зал / площадка), фокус (всё тело / верх / низ; по умолчанию бот предлагает то, что давно не тренировалось) и длительность (45 / 60 / 75 мин). Учитываются пол, опыт, оборудование, резинка и запрет «лёжа на земле».</li>
+<li>Собранную тренировку можно поправить («Заменить упражнение» предлагает 3 варианта на ту же группу и движение) и сохранить как план. Дальше план повторяется, чтобы прогрессия была измеримой. Ротацию упражнений бот предлагает в конце цикла или при плато.</li>
+</ul>
+<h4>3.4.3 Ход тренировки с рекомендациями (v2)</h4>
+<ol>
+<li><strong>Самочувствие</strong> (можно отключить в настройках): «Отлично» / «Нормально» / «Устал или плохо спал».</li>
+<li><strong>Тип сессии.</strong> Бот определяет тип — тяжёлая, обычная, лёгкая или разгрузка — и пишет одну строку причины: «Сегодня обычная: 3-я неделя цикла, 6 дней с прошлой». Тип можно сменить кнопкой.</li>
+<li><strong>Упражнения по очереди.</strong> Для каждого — прошлый результат, рекомендация и короткая причина: «↑ +2,5 кг: все подходы 8/8», «= вес: пауза 16 дней», «↓ −15%: перерыв 5 недель», «плато: пробуем 8–12 повторов».</li>
+<li><strong>Запись упражнения:</strong><ul>
+<li>«✅ Как предложено» — 1 нажатие;</li>
+<li>«Как в прошлый раз»;</li>
+<li>«Вес ±шаг»;</li>
+<li>повторы по подходам;</li>
+<li>«Пропустить».
+ Рядом — необязательная оценка «😌 Легко» / «😮‍💨 Тяжело»; без нажатия считается «Нормально».</li>
+</ul>
+</li>
+<li><strong>«Добавить упражнение»</strong> — из базы с теми же фильтрами или новое.</li>
+<li><strong>«Завершить»:</strong> длительность (60 / 70 / 80 / 90 мин или ввод), итог — тоннаж, рекорды, сравнение с прошлой тренировкой ▲▼.</li>
+<li><strong>Дата начала цикла</strong> задаётся в настройках плана; у владельца — 10.10.2026.</li>
+</ol>
+<h3>3.5 Бег (MVP)</h3>
+<p>Одна запись — один забег: дистанция и время.</p>
+<ol>
+<li>«Тренировка» → «Бег» → дистанция: «Как в прошлый раз (5,0 км)», «3 км», «5 км», «10 км», «Ввести» (дробное: «5.2» или «5,2»).</li>
+<li>Время: ввод «28:40», «28.40», «1:05:10» или «28» (минуты).</li>
+<li>Бот считает темп (мин/км) и скорость (км/ч) и показывает карточку: «🏃 5,2 км · 28:40 · темп 5:31 · 10,88 км/ч · ▲ на 0:09 быстрее прошлого».</li>
+<li><strong>Рекорды:</strong> самая длинная дистанция; лучший темп в группах «до 5 км», «5–10 км», «10 км и больше».</li>
+<li><strong>Проверка.</strong> Темп быстрее 2:30 или медленнее 15:00 мин/км — переспросить: «Всё верно?».</li>
+<li>Бег считается тренировкой для цели «тренировок в неделю» и входит в статистику (км за неделю, темп).</li>
+</ol>
+<h3>3.6 Свои привычки (MVP)</h3>
+<p>Своя привычка — любое регулярное действие помимо еды, зарядки и тренировок: зарядка для глаз, вода, витамины, шаги, сон, чтение.</p>
+<table>
+<thead>
+<tr>
+<th>Тип</th>
+<th>Что записывается</th>
+<th>Примеры</th>
+<th>Нажатие на привычку</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Отметка</td>
+<td>Факт выполнения, можно несколько раз в день</td>
+<td>Глаза 3 раза, витамины</td>
+<td>Сразу +1</td>
+</tr>
+<tr>
+<td>Количество</td>
+<td>Число в своей единице, дробное допустимо</td>
+<td>Вода (стаканы), шаги, сон («7,5» ч)</td>
+<td>Сразу + шаг по умолчанию</td>
+</tr>
+<tr>
+<td>Длительность</td>
+<td>Минуты</td>
+<td>Чтение, растяжка</td>
+<td>Сразу + шаг по умолчанию</td>
+</tr>
+</tbody></table>
+<p><strong>Настройки привычки:</strong></p>
+<ul>
+<li>название и эмодзи, тип, единица;</li>
+<li>цель на день (необязательно);</li>
+<li>шаг по умолчанию и до 4 быстрых значений;</li>
+<li>расписание: каждый день или дни недели (цель «N раз в неделю» — v2);</li>
+<li>«На главном экране», порядок.</li>
+</ul>
+<p>Привычку можно изменить, архивировать (история сохраняется) или удалить вместе с историей.</p>
+<p><strong>Создание.</strong> «Настройки» → «Привычки» → «Новая» → шаблон или «Своя». У своей бот спрашивает кнопками название, тип, цель и показ на главном экране.</p>
+<table>
+<thead>
+<tr>
+<th>Шаблон</th>
+<th>Тип</th>
+<th>Цель на день</th>
+<th>Шаг</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>👁 Зарядка для глаз</td>
+<td>Отметка</td>
+<td>3 раза</td>
+<td>1</td>
+</tr>
+<tr>
+<td>💧 Вода</td>
+<td>Количество, стаканы</td>
+<td>8</td>
+<td>1</td>
+</tr>
+<tr>
+<td>💊 Витамины</td>
+<td>Отметка</td>
+<td>1 раз</td>
+<td>1</td>
+</tr>
+<tr>
+<td>🚶 Шаги</td>
+<td>Количество, шаги</td>
+<td>10 000</td>
+<td>ввод числа</td>
+</tr>
+<tr>
+<td>😴 Сон</td>
+<td>Количество, часы</td>
+<td>8</td>
+<td>ввод числа</td>
+</tr>
+<tr>
+<td>📖 Чтение</td>
+<td>Длительность</td>
+<td>20 мин</td>
+<td>10 мин</td>
+</tr>
+<tr>
+<td>🍬 Без сладкого</td>
+<td>Отметка</td>
+<td>1 раз</td>
+<td>1</td>
+</tr>
+</tbody></table>
+<p><strong>Как выбрать, что отметить — от самого быстрого:</strong></p>
+<ol>
+<li><strong>Кнопка на главном экране (1 нажатие).</strong> «👁 Глаза» сразу записывает шаг. Ответ: «👁 Зарядка для глаз — 2/3» с кнопками «Отменить», «+ ещё», «Другое значение», «📅 На вчера».</li>
+<li><strong>Список «Привычки» (2 нажатия).</strong> Невыполненные сверху, выполненные ниже с ✅. Привычки не по расписанию свёрнуты в строку. Список обновляется в том же сообщении. Если однократная привычка уже выполнена, нажатие предлагает «Снять отметку».</li>
+<li><strong>«Отметить несколько».</strong> Ставишь галочки ☑️ и нажимаешь «Записать (3)». Удобно вечером и за прошедший день.</li>
+</ol>
+<p><strong>Обратная связь:</strong> при выполнении цели — «✅ Глаза 3/3 · серия 5 дней».</p>
+<h3>3.7 Дата записи и прошедшие дни (MVP)</h3>
+<p><strong>По умолчанию</strong> запись попадает в текущий день с учётом границы суток 04:00: всё, что внесено с 00:00 до 03:59, относится к предыдущему дню (раздел 4). Перед обычной записью день не выбирается.</p>
+<p><strong>Запись в прошедший день — три способа:</strong></p>
+<ol>
+<li><strong>Режим «Другой день».</strong><ol>
+<li>«Ещё» → «📅 Другой день» → кнопки с датой в формате (дд.мм):<pre><code>[Вчера (24.10)]  [Позавчера (23.10)]
+[Чт (22.10)]     [Ср (21.10)]
+[Вт (20.10)]     [Пн (19.10)]
+[🗓 Выбрать дату] [✕ Отмена]
+</code></pre>
+ «Выбрать дату» показывает календарь месяца кнопками с переключением месяцев и принимает ввод «20.10» или «20.10.2026».</li>
+<li>Бот подтверждает: «Записываю за 23.10. Всё, что добавите, попадёт в этот день». Первая кнопка клавиатуры становится «📅 23.10 ✕ Вернуться к сегодня».</li>
+<li>Дальше всё как обычно. Каждая карточка начинается с даты («23.10, пт»), итоги считаются по цели, которая действовала в эту дату.</li>
+<li>Режим заканчивается кнопкой «Вернуться к сегодня» или через 15 минут бездействия — вместе со всем незаконченным вводом (раздел 3, «Сброс через 15 минут бездействия»).</li>
+</ol>
+</li>
+<li><strong>Перенос записи.</strong> Под карточкой каждой новой записи — «📅 На вчера»; в «Записях дня» — «Перенести на дату». После переноса бот показывает итоги обоих дней.</li>
+<li><strong>Из итогов.</strong> «Итоги» → «◀» до нужной даты → «Добавить в этот день».</li>
+</ol>
+<p><strong>Выход на любом шаге.</strong> Из режима «Другой день» можно выйти в любой момент, если пользователь передумал:</p>
+<ul>
+<li>На экране выбора даты и в календаре есть «✕ Отмена»: режим не включается, ничего не записано.</li>
+<li>Внутри режима кнопка «📅 23.10 ✕ Вернуться к сегодня» всегда есть в клавиатуре, даже в середине ввода (выбор граммов, черновик зарядки, ход тренировки).<ul>
+<li>Если ввод не завершён, бот спрашивает: «Ввод не сохранён. Выйти без сохранения?» «Да» / «Продолжить ввод».</li>
+<li>Уже сохранённые записи остаются.</li>
+</ul>
+</li>
+<li>Слово «отмена» и команда /cancel работают так же.</li>
+</ul>
+<p><strong>Как ведут себя разделы в прошедшем дне:</strong></p>
+<ul>
+<li><strong>Еда</strong> — как обычно.</li>
+<li><strong>Зарядка</strong> — «Как в прошлый раз» берёт последнюю зарядку <strong>до</strong> выбранной даты, номер в дне — следующий в этом дне.</li>
+<li><strong>Тренировка</strong> — показываются результаты предыдущей тренировки до этой даты, вводится факт. Рекомендации на будущее строятся по датам, поэтому внесённая задним числом тренировка учитывается.</li>
+<li><strong>Привычки</strong> — список за выбранную дату; удобнее всего «Отметить несколько».</li>
+<li><strong>Выходной</strong> можно отметить и для прошедшего дня.</li>
+</ul>
+<p><strong>Ограничения:</strong> будущие даты недоступны; дата старше 30 дней требует подтверждения («Это 45 дней назад, всё верно?»).</p>
+<h3>3.8 Статистика (MVP — день и обзор периода, v2 — подробные графики)</h3>
+<p>Вся графика строится программой (matplotlib / Pillow) по данным из БД. ИИ для статистики не используется.</p>
+<h4>3.8.1 День — по выбранной привычке</h4>
+<p>«Итоги» → ряд кнопок привычек дня (те, где есть записи, отмечены точкой) → картинка по выбранной. Бот запоминает последний выбор. Кнопки «◀ / ▶» листают дни, «Текстом» присылает ту же таблицу моноширинным блоком.</p>
+<table>
+<thead>
+<tr>
+<th>Привычка</th>
+<th>Что на картинке</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>🍽 Еда</td>
+<td>4 полосы прогресса (ккал, Б, Ж, У) — факт / цель, % и цвет светофора; таблица блюд (блюдо, ккал, Б, Ж, У); сумма ₽</td>
+</tr>
+<tr>
+<td>🤸 Зарядка</td>
+<td>Таблица «упражнение × зарядка 1 / 2» с изменением к прошлому дню ▲▼; полоса прогресса личной цели</td>
+</tr>
+<tr>
+<td>🏋️ Тренировка</td>
+<td>Таблица «упражнение / подходы / вес», тоннаж, рекорды 🏆, сравнение с прошлой ▲▼</td>
+</tr>
+<tr>
+<td>🏃 Бег</td>
+<td>Дистанция, время, темп, скорость, сравнение с прошлым забегом</td>
+</tr>
+<tr>
+<td>Своя привычка</td>
+<td>Кольцо факт / цель, отметки по времени дня, серия</td>
+</tr>
+</tbody></table>
+<p>Пример для еды:</p>
+<pre><code>Еда · 22.10 (чт)
+Ккал   ██████████▌ 105%  2 947 / 2 800  🟢
+Белки  ████████████ 118%   189 / 160    🟢
+Жиры   ████████████ 140%   112 / 80     🔴
+Углев  ████████░░░   80%   289 / 360    🟡
+Расход: 760 ₽ · 3 блюда без цены
+</code></pre>
+<h4>3.8.2 Неделя, месяц, 3 месяца — по всем целям</h4>
+<p>«Итоги» → «Неделя» / «Месяц» / «3 месяца», кнопки «◀ / ▶» сдвигают период. Минимум текста — одна строка подписи.</p>
+<ol>
+<li><strong>Обзор-светофор (MVP).</strong> Одна картинка. Строки — цели (калории, белки, зарядка, тренировки, каждая своя привычка, вес). Показываются только привычки, которые у пользователя включены и по которым есть данные за период; столбцы — дни; клетка — цвет и значок (🟢 ● / 🟡 ▲ / 🔴 ✕ / серый — нет данных или выходной). Справа — % зелёных дней и текущая серия.</li>
+<li><strong>Подробные графики (v2)</strong> — кнопками под обзором:<ul>
+<li>Еда — калории по дням с линией цели, средние Б/Ж/У против цели, расходы.</li>
+<li>Вес — точки, скользящее среднее за 7 дней, линия целевого веса.</li>
+<li>Зарядка — личные цели по дням с линией цели.</li>
+<li>Тренировки — число в неделю против цели, тоннаж, расчётный максимум (e1RM) по главным упражнениям.</li>
+<li>Бег — км в неделю, темп по забегам.</li>
+<li>Свои привычки — % выполнения по неделям, серии.</li>
+</ul>
+</li>
+</ol>
+<p>Правила цвета светофора — раздел 4.</p>
+<h3>3.9 Уведомления (v2 — свои и готовые на данных бота, v3 — погода, праздники, пожелания и совет дня)</h3>
+<p>Уведомления заменяют напоминания и бывают двух видов. Общие настройки:</p>
+<ul>
+<li><strong>тихие часы</strong> (по умолчанию 23:00–07:00, в это время ничего не приходит);</li>
+<li><strong>«Пауза на … дней»</strong> — для отпуска;</li>
+<li>лимит — 20 своих уведомлений на пользователя.</li>
+</ul>
+<h4>3.9.1 Свои уведомления</h4>
+<p>Настраиваются кнопками; текст вводится только для «Своего текста».</p>
+<pre><code>1. Что напоминать?   [👁 Глаза] [💧 Вода] [🍽 Еда] [🤸 Зарядка] [🏋️ Тренировка] [✍️ Свой текст]
+2. В какие дни?      [Каждый день] [Будни] [Выходные] [Выбрать дни → Пн Вт Ср Чт Пт Сб Вс]
+3. Во сколько?       [06] [07] [08] … [23]  →  [:00] [:15] [:30] [:45]
+                     [+ ещё время]  [Каждые 2 / 3 / 4 ч с … до …]
+4. Если уже сделано? [Не напоминать] [Напоминать всё равно]
+5. Проверка:         «👁 Глаза — каждый день в 10:00, 13:00, 16:00, если не сделано»  [💾 Сохранить] [✏️ Изменить]
+</code></pre>
+<ul>
+<li><strong>Быстрые варианты.</strong> Если у привычки цель «3 раза в день», бот сразу предлагает «3 раза: 10:00 / 13:00 / 16:00» — 1 нажатие. Под карточкой привычки есть «🔔 Напоминать», и мастер открывается с уже выбранной привычкой.</li>
+<li><strong>Кнопки в уведомлении:</strong> «✅ Отметить», «⏰ +15 мин», «⏰ +1 ч», «Пропустить сегодня».</li>
+<li>Уведомление можно создать и текстом: «напоминай про глаза каждый день в 12:00» (раздел 3.10).</li>
+<li>Список уведомлений: включить или выключить, изменить, удалить.</li>
+</ul>
+<h4>3.9.2 Готовые уведомления</h4>
+<p>Каталог уведомлений, которые программируются при разработке и потом расширяются: на них можно подписаться и настроить время кнопками. Каждое готовое уведомление — отдельный модуль (источник данных → формирование текста или картинки → расписание), поэтому новый тип добавляется без изменения остального кода.</p>
+<table>
+<thead>
+<tr>
+<th>Уведомление</th>
+<th>По умолчанию</th>
+<th>Источник</th>
+<th>Что приходит</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>🌤 Погода на сегодня</td>
+<td>07:00</td>
+<td>Open-Meteo (бесплатно для некоммерческого использования, без ключа)</td>
+<td>Мин/макс температура, осадки по часам, ветер; «Возьми зонт»; при жаре — «Пей больше воды»</td>
+</tr>
+<tr>
+<td>☀️ Пожелание хорошего дня</td>
+<td>07:30</td>
+<td>Языковая модель (раздел 7)</td>
+<td>Короткое тёплое сообщение, никогда не повторяется (раздел 4)</td>
+</tr>
+<tr>
+<td>📋 План на день</td>
+<td>07:00</td>
+<td>Данные бота</td>
+<td>Привычки на сегодня, тренировка по плану, вчерашний день светофором</td>
+</tr>
+<tr>
+<td>🍽 Вечерний остаток</td>
+<td>21:30</td>
+<td>Данные бота</td>
+<td>Остаток КБЖУ и 1–3 своих рецепта, которые его закрывают (подбор без ИИ)</td>
+</tr>
+<tr>
+<td>🔥 Серия под угрозой</td>
+<td>20:00</td>
+<td>Данные бота</td>
+<td>«👁 Глаза 0/3, серия 12 дней — не прерви» с кнопкой «Отметить»</td>
+</tr>
+<tr>
+<td>⚖️ Взвешивание</td>
+<td>Пн и Чт 07:30</td>
+<td>Данные бота</td>
+<td>Кнопки быстрого ввода веса («как в прошлый раз ±0,1 / 0,2 / 0,5»)</td>
+</tr>
+<tr>
+<td>📊 Итоги недели</td>
+<td>Вс 20:00</td>
+<td>Данные бота</td>
+<td>Картинка-светофор за неделю</td>
+</tr>
+<tr>
+<td>💤 Давно не было тренировки</td>
+<td>Если &gt; 7 дней</td>
+<td>Данные бота</td>
+<td>«Последняя тренировка 9 дней назад» + «Собрать тренировку»</td>
+</tr>
+<tr>
+<td>🏆 Рекорды и серии</td>
+<td>Сразу после события</td>
+<td>Данные бота</td>
+<td>«Новый рекорд: присед 115 кг»</td>
+</tr>
+<tr>
+<td>💡 Совет дня</td>
+<td>12:00</td>
+<td>Своя база ~200 советов о питании и тренировках</td>
+<td>Совет без ИИ, не повторяется, пока не пройдена вся база</td>
+</tr>
+<tr>
+<td>📅 Праздники и короткие дни</td>
+<td>Накануне</td>
+<td>isdayoff.ru (производственный календарь РФ)</td>
+<td>«Завтра выходной — сдвинуть тренировку?»</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>Город</strong> для погоды берётся из профиля пользователя (анкета или «Настройки» → «Профиль» → «Город»). Если город не указан, при подписке на погоду бот сначала просит его выбрать.</li>
+<li><strong>Внешние данные.</strong> Где есть официальное API, используется оно; разбор HTML-страниц — только если API нет и сайт это разрешает. У каждого источника таймаут 5 с, кэш на 1 час и запасной вариант: если источник недоступен, уведомление приходит без этого блока.</li>
+</ul>
+<h3>3.10 Команды обычным текстом через ИИ (MVP)</h3>
+<p>Если правок много и кнопками неудобно, пользователь пишет обычным сообщением. Языковая модель разбирает его в набор действий, бот показывает их, ждёт подтверждения и только потом выполняет.</p>
+<p><strong>Когда срабатывает:</strong> любой текст, который не является ожидаемым ответом в текущем диалоге (например, число граммов), или текст после кнопки «Ещё» → «✍️ Текстом». Голосовые сообщения — v3.</p>
+<p><strong>Примеры:</strong></p>
+<ul>
+<li>«вчера на обед было 2 бедра и пакет гречи, а коктейль сегодня удали»</li>
+<li>«планку сегодня во 2-й зарядке делал 6:15, а не 6:00»</li>
+<li>«глаза сделал 2 раза, воды 5 стаканов»</li>
+<li>«пробежал 5,2 км за 28:40»</li>
+<li>«перенеси творог ужин на вчера»</li>
+<li>«напоминай про глаза каждый день в 12:00»</li>
+</ul>
+<p><strong>Как работает:</strong></p>
+<ol>
+<li>Бот отправляет модели текст, текущую дату и время с учётом границы суток, названия рецептов, продуктов, привычек и упражнений пользователя и записи упомянутых дней (только нужное, без профиля).</li>
+<li>Модель возвращает <strong>только структурированный список действий</strong> из закрытого набора:<ul>
+<li>еда: добавить, изменить количество, удалить, перенести;</li>
+<li>зарядка: добавить, изменить значение;</li>
+<li>привычка: отметить, добавить значение;</li>
+<li>тренировка: добавить подход;</li>
+<li>бег: добавить забег;</li>
+<li>день: отметить выходной;</li>
+<li>вес: записать;</li>
+<li>уведомление: создать (v2);</li>
+<li><strong>для заполнения</strong> (раздел 3.12):<ul>
+<li>рецепт или продукт: создать, изменить;</li>
+<li>своя привычка: создать;</li>
+<li>цель КБЖУ: задать с датой начала;</li>
+<li>личная цель по упражнению: задать;</li>
+<li>набор зарядки: задать упражнения и шаги;</li>
+<li>план тренировки: создать (v2).</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Бот проверяет каждое действие: объект существует и принадлежит пользователю, значения в допустимых пределах, дата не в будущем. В базу модель ничего не пишет.</li>
+<li><strong>Карточка подтверждения:</strong><pre><code>Понял так:
+1. ➕ 24.10 Еда: Куриное бедро × 2 — 500 ккал
+2. ➕ 24.10 Еда: Пакет гречи — 288,8 ккал
+3. 🗑 25.10 Еда: Коктейль (09:12)
+[✅ Выполнить всё] [✏️ Исправить] [Убрать: 1 2 3] [✕ Отмена]
+</code></pre>
+<ul>
+<li>«Исправить» — пользователь пишет уточнение, и разбор повторяется с учётом предыдущего.</li>
+<li>«Убрать: N» исключает пункт.</li>
+</ul>
+</li>
+<li><strong>После выполнения</strong> — итог и кнопка «↩️ Отменить всё», которая работает 10 минут.</li>
+<li><strong>Неясности</strong> — модель задаёт вопрос с вариантами, бот показывает их кнопками: «Какой творог? [Творог ужин] [Творог 5%, на вес]».</li>
+<li><strong>Неизвестное блюдо</strong> — оценка КБЖУ с пометкой «≈ приблизительно» и кнопкой «Сохранить как рецепт».</li>
+<li><strong>Без подтверждения ничего не выполняется.</strong></li>
+</ol>
+<p><strong>Ограничения:</strong> до 1000 символов в сообщении (в режиме заполнения — до 4000, предел Telegram); до 50 разборов на пользователя в сутки; общий лимит расходов на API в месяц. Если API недоступен или лимит исчерпан — «Не получилось разобрать, попробуйте кнопками», данные не меняются.</p>
+<h3>3.11 Настройки (MVP)</h3>
+<ul>
+<li><strong>Профиль и цели</strong> (раздел 3.0); история целей списком.</li>
+<li><strong>Цели привычек:</strong><ul>
+<li>зарядок в день (по умолчанию 2);</li>
+<li>тренировок в неделю (по умолчанию 3);</li>
+<li>цели своих привычек;</li>
+<li>личные цели по упражнениям.</li>
+</ul>
+</li>
+<li><strong>Главный экран:</strong> кнопки и их порядок.</li>
+<li><strong>Привычки:</strong> создать, изменить, порядок, архив.</li>
+<li><strong>Рецепты и продукты</strong>, <strong>набор зарядки и шаги</strong>.</li>
+<li><strong>Тренировки</strong> (v2): планы, резинки, «Показывать все упражнения», «Спрашивать самочувствие».</li>
+<li><strong>Уведомления</strong> (v2 / v3), тихие часы, пауза.</li>
+<li><strong>Данные:</strong> экспорт, удаление аккаунта.</li>
+</ul>
+<h3>3.12 Хранение, первоначальное заполнение и экспорт (MVP)</h3>
+<p><strong>Хранение.</strong> Все данные пользователей, справочники, настройки и состояния хранятся <strong>только в базе данных</strong>. Бот не загружает, не читает и не пишет файлы с данными. Импорта файлов нет.</p>
+<p><strong>Первоначальное заполнение через ИИ.</strong> После регистрации бот предлагает «✍️ Заполнить с помощью ИИ» (то же доступно в «Ещё» → «✍️ Текстом»). Пользователь пишет или вставляет обычным текстом то, что у него уже есть.</p>
+<ul>
+<li><strong>Что можно внести:</strong> свои рецепты и продукты с КБЖУ и ценой; набор зарядки и последние результаты; цели КБЖУ с датами; личные цели; свои привычки; последние результаты в зале; при желании — записи за прошлые дни.</li>
+<li><strong>Пример:</strong> «Мои рецепты: Коктейль — молоко 200 мл, банан, протеин 23 г, 322 ккал, Б 26, Ж 9, У 39, 140 ₽; Творог ужин — 421 ккал, Б 52,4, Ж 15,6, У 17,8, 250 ₽».</li>
+<li><strong>Порядок работы:</strong><ul>
+<li>Работает так же, как команды текстом (раздел 3.10): разбор → карточка «Понял так» → подтверждение.</li>
+<li>Сообщение может быть длинным — до 4000 символов.</li>
+<li>Карточка до 50 действий, сгруппированных по видам («Рецепты: 4», «Цели: 2», «Зарядка: 1»), с постраничным просмотром. Каждую группу можно подтвердить или убрать целиком.</li>
+</ul>
+</li>
+<li><strong>Повторы.</strong> Если рецепт или продукт с таким названием уже есть, бот предлагает «Обновить» или «Пропустить», дубль не создаётся.</li>
+<li><strong>Удобный путь для владельца:</strong> попросить Claude (или другую нейросеть) по файлам health_log.md и training_plan.md составить текст для бота и вставить его частями.</li>
+<li><strong>Расход:</strong> заполнение одного пользователя — 5–15 разборов, меньше 0,05 $.</li>
+</ul>
+<p><strong>Экспорт</strong> — только свои данные, за выбранный период («Неделя», «Месяц», «3 месяца», «Всё время», «Выбрать даты»):</p>
+<ol>
+<li><strong>Формат — CSV</strong>, удобный для чтения нейросетями и таблицами:<ul>
+<li>кодировка UTF-8 с BOM (корректно открывается в Excel);</li>
+<li>разделитель — запятая;</li>
+<li><strong>десятичная точка</strong> (для машинного чтения, в отличие от интерфейса);</li>
+<li>даты ISO <code>ГГГГ-ММ-ДД</code>, время <code>ЧЧ:ММ</code>;</li>
+<li>одна строка — одна запись, первая строка — заголовки на английском в <code>snake_case</code>;</li>
+<li>без объединённых ячеек и итоговых строк внутри таблиц.</li>
+</ul>
+</li>
+<li><strong>Состав выгрузки</strong> — пользователь отмечает галочками нужные таблицы, по умолчанию отмечены все:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Файл</th>
+<th>Строка =</th>
+<th>Основные колонки</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>daily_summary.csv</code></td>
+<td>один день</td>
+<td>date, day_status, kcal, protein, fat, carbs, kcal_goal, protein_goal, fat_goal, carbs_goal, kcal_left, cost_rub, warmups_done, warmups_goal, workouts, run_km, body_weight</td>
+</tr>
+<tr>
+<td><code>food.csv</code></td>
+<td>одна запись еды</td>
+<td>date, time, name, quantity, unit, kcal, protein, fat, carbs, cost_rub, source</td>
+</tr>
+<tr>
+<td><code>warmups.csv</code></td>
+<td>одно упражнение в зарядке</td>
+<td>date, session_no, exercise, value, unit (reps / sec)</td>
+</tr>
+<tr>
+<td><code>workouts.csv</code></td>
+<td>один подход</td>
+<td>date, workout_type, exercise, set_no, weight_kg, band, reps, seconds, feeling, duration_min</td>
+</tr>
+<tr>
+<td><code>runs.csv</code></td>
+<td>один забег</td>
+<td>date, time, distance_km, duration_sec, pace_sec_per_km, speed_kmh</td>
+</tr>
+<tr>
+<td><code>habits.csv</code></td>
+<td>одна запись привычки</td>
+<td>date, time, habit, type, value, unit, daily_goal</td>
+</tr>
+<tr>
+<td><code>body_weight.csv</code></td>
+<td>одно взвешивание</td>
+<td>date, weight_kg</td>
+</tr>
+<tr>
+<td><code>goals.csv</code></td>
+<td>одна цель КБЖУ</td>
+<td>start_date, mode, kcal, protein, fat, carbs, target_weight, source</td>
+</tr>
+<tr>
+<td><code>profile.csv</code></td>
+<td>одна строка</td>
+<td>sex, age, height_cm, weight_kg, activity, goal, target_weight, experience, city</td>
+</tr>
+<tr>
+<td><code>README.csv</code></td>
+<td>одна колонка одного файла</td>
+<td>file, column, description, unit — словарь колонок для нейросети</td>
+</tr>
+</tbody></table>
+<ol start="3">
+<li><strong>Доставка.</strong> Файлы приходят в чат отдельными документами (Telegram позволяет до 10 в одной группе). Есть и кнопка «Одним архивом» — ZIP с теми же файлами.</li>
+<li><strong>Без лишнего.</strong> В экспорте нет имени, Telegram-ID и данных других пользователей.</li>
+</ol>
+<h3>3.13 Администрирование (MVP)</h3>
+<ul>
+<li><strong>Приглашения:</strong> создать (одноразовое или на N использований, со сроком), список, отозвать.</li>
+<li><strong>Пользователи:</strong> имя, дата регистрации, последняя активность, число записей; блокировка; удаление.</li>
+<li><strong>Общий каталог:</strong> продукты, упражнения, шаблоны планов и привычек. Изменения не трогают уже скопированное пользователями.</li>
+<li><strong>Бэкапы:</strong> файл БД раз в 2 дня; кнопка «Бэкап сейчас» для внепланового.</li>
+<li><strong>Расходы на ИИ:</strong> сумма за месяц и по пользователям (без текстов запросов).</li>
+<li>Рассылка всем — v2.</li>
+</ul>
+<h2>4. Бизнес-правила и расчёты</h2>
+<p>Все расчёты детерминированы и покрыты тестами. Числа округляются до 2 знаков и показываются с запятой; на вход принимаются точка и запятая.</p>
+<h3>4.1 Цели КБЖУ</h3>
+<ol>
+<li><strong>Базовый обмен (Миффлин — Сан Жеор):</strong><ul>
+<li>мужчины: 10 × вес + 6,25 × рост − 5 × возраст + 5;</li>
+<li>женщины: 10 × вес + 6,25 × рост − 5 × возраст − 161.</li>
+</ul>
+</li>
+<li><strong>Расход</strong> = базовый обмен × коэффициент активности:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Уровень</th>
+<th>Описание</th>
+<th>Коэффициент</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Минимальная</td>
+<td>Сидячая работа, почти без спорта</td>
+<td>1,2</td>
+</tr>
+<tr>
+<td>Лёгкая</td>
+<td>1–3 тренировки в неделю или много ходьбы</td>
+<td>1,375</td>
+</tr>
+<tr>
+<td>Средняя</td>
+<td>3–5 тренировок в неделю</td>
+<td>1,55</td>
+</tr>
+<tr>
+<td>Высокая</td>
+<td>6–7 тренировок в неделю</td>
+<td>1,725</td>
+</tr>
+<tr>
+<td>Очень высокая</td>
+<td>Физическая работа + тренировки</td>
+<td>1,9</td>
+</tr>
+</tbody></table>
+<ol start="3">
+<li><strong>Калории по цели:</strong><ul>
+<li>набор — расход + 400 ккал;</li>
+<li>поддержание — расход;</li>
+<li>снижение — расход − 500 ккал, но не ниже базового обмена и не ниже 1500 (мужчины) / 1200 (женщины) ккал; если ограничение срабатывает — предупреждение.
+ Итог округляется до 50 ккал.</li>
+</ul>
+</li>
+<li><strong>Белки, жиры, углеводы:</strong></li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Цель</th>
+<th>Белки, г/кг</th>
+<th>Жиры, г/кг</th>
+<th>Углеводы</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Набор</td>
+<td>2,1</td>
+<td>1,05</td>
+<td>остаток калорий / 4</td>
+</tr>
+<tr>
+<td>Поддержание</td>
+<td>1,8</td>
+<td>0,95</td>
+<td>остаток калорий / 4</td>
+</tr>
+<tr>
+<td>Снижение</td>
+<td>2,2</td>
+<td>0,9</td>
+<td>остаток калорий / 4</td>
+</tr>
+</tbody></table>
+<pre><code>Б, Ж, У округляются до 5 г. Если углеводов меньше 100 г — предупреждение.
+</code></pre>
+<ol start="5">
+<li><strong>Проверка на владельце:</strong> мужчина, 23 года, 178 см, 75 кг, лёгкая активность → базовый обмен 1752,5, расход 2409,69 → набор: 2800 ккал / Б 160 / Ж 80 / У 360. Совпадает с текущей целью.</li>
+<li><strong>Пересчёт предлагается</strong> при изменении веса, роста, пола, даты рождения, активности или цели, а также (v2) при изменении среднего веса на 3 кг от веса, по которому считались цели.</li>
+</ol>
+<h3>4.2 Питание</h3>
+<ul>
+<li>Рецепт = КБЖУ порции × множитель; продукт на вес = значение на 100 г × граммы / 100; в штуках = значение на 1 шт × штуки.</li>
+<li>Итог дня = сумма записей; Остаток = Цель − Факт (отрицательный — превышение).</li>
+<li>Цена записи = цена единицы × количество; нет цены — 0 и пометка «без цены».</li>
+<li>День считается по цели, действовавшей в эту дату; для дней раньше первой цели — по первой.</li>
+<li>Запись хранит копию КБЖУ и цены на момент создания.</li>
+</ul>
+<h3>4.3 Дата записи и граница суток</h3>
+<ul>
+<li>Время для всех — Europe/Moscow. Часовой пояс берётся из профиля пользователя; в MVP у всех он один.</li>
+<li><strong>Граница суток — 04:00:</strong> записи с 00:00 до 03:59 относятся к предыдущему дню. «Сегодня», «Вчера», «Позавчера» на кнопках считаются от этого логического дня.</li>
+<li><strong>Дата берётся по началу ввода</strong> — по времени первого сообщения или нажатия из Telegram, а не по моменту обработки. В будущих каналах (приложение, веб) — по времени начала действия, которое передаёт клиент. Ввод, начатый в 03:58 и законченный в 04:02, остаётся в предыдущем дне. Если бот был недоступен, записи не съезжают.</li>
+<li>В режиме «Другой день» дата записи = выбранная дата; режим сбрасывается кнопкой, отменой или через 15 минут бездействия.</li>
+<li><strong>Таймер бездействия:</strong> 15 минут от последнего сообщения или нажатия пользователя. По истечении все незавершённые состояния ввода удаляются, кроме идущей тренировки (3 часа) и анкеты. Проверка выполняется и по таймеру, и при следующем действии пользователя, поэтому сброс срабатывает и после перезапуска бота.</li>
+<li>Будущие даты запрещены.</li>
+</ul>
+<h3>4.4 Изоляция данных</h3>
+<ul>
+<li>Каждая запись, рецепт, продукт, привычка, упражнение, план, цель и уведомление принадлежат одному пользователю. Любой запрос фильтруется по <code>user_id</code>.</li>
+<li>Элементы каталога (<code>user_id</code> пустой) только читаются и копируются.</li>
+<li>При нажатии кнопки бот проверяет, что объект из callback-данных принадлежит нажавшему.</li>
+<li>Проверка владельца встроена в общую логику, а не только в обработчики Telegram. Поэтому будущие каналы (приложение, веб) получают ту же защиту без доработок.</li>
+</ul>
+<h3>4.5 Зарядка</h3>
+<ul>
+<li>«Как в прошлый раз» копирует последнюю зарядку до даты записи.</li>
+<li>«+шаг» прибавляет шаг упражнения к черновику. Шаг по умолчанию: время — 15 сек, повторы — 5. Настраивается по каждому упражнению.</li>
+<li><strong>Личная цель:</strong><ul>
+<li>нужный темп = (цель − лучший результат) / дни до даты;</li>
+<li>фактический темп — за 14 дней;</li>
+<li>контрольная линия — от результата на дату постановки до цели;</li>
+<li>отставание больше 5% от цели — предупреждение.</li>
+</ul>
+</li>
+</ul>
+<h3>4.6 Свои привычки</h3>
+<ul>
+<li>Выполнение за день = сумма записей за дату (для отметки — число отметок).</li>
+<li>Цель выполнена, если выполнение ≥ цели; без цели — при любой записи.</li>
+<li>Серия = дни подряд по расписанию с выполненной целью, считая назад от сегодня. Невыполненный сегодняшний день серию не обрывает, а дни не по расписанию и «Выходные» пропускаются.</li>
+</ul>
+<h3>4.7 Сборка тренировки (v2)</h3>
+<ol>
+<li><strong>Отбор кандидатов</strong> из базы:<ul>
+<li>место и доступное оборудование (минус «Чего нет»);</li>
+<li>резинка — только если «с собой»;</li>
+<li>на улице — без «лёжа на земле» и без отягощения;</li>
+<li>пол — если не включено «Показывать все»;</li>
+<li>сложность ≤ опыта пользователя (продвинутым доступны все).</li>
+</ul>
+</li>
+<li><strong>Число упражнений:</strong> 45 мин — 4–5, 60 мин — 5–6, 75 мин — 6–7.</li>
+<li><strong>Структура:</strong><ul>
+<li>1–2 многосуставных упражнения по фокусу в начале;</li>
+<li>пара «жим + тяга» (горизонтальные или вертикальные);</li>
+<li>второе упражнение на ноги;</li>
+<li>1–2 изолирующих или на кор (на улице кор — в висе или стоя).
+ Для «Всё тело» обязательно есть присед или выпад, тяга бедром, жим и тяга.</li>
+</ul>
+</li>
+<li><strong>Восстановление:</strong> мышечная группа, получившая тяжёлую нагрузку меньше 48 часов назад, не ставится основной.</li>
+<li><strong>Стабильность:</strong> собранный план повторяется до конца цикла, упражнения меняются только при плато или по кнопке «Заменить».</li>
+</ol>
+<h3>4.8 Рекомендация веса и нагрузки (v2)</h3>
+<p>Рекомендация считается для каждого упражнения по шагам ниже. В карточке показываются итог и причина. Пользователь всегда может выбрать другой вариант.</p>
+<p><strong>Шаг 1. Тип сессии.</strong> Первое подходящее правило:</p>
+<table>
+<thead>
+<tr>
+<th>Условие</th>
+<th>Тип</th>
+<th>Что значит</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>6-я неделя цикла от даты начала, или досрочная разгрузка (шаг 4)</td>
+<td>Разгрузка</td>
+<td>−1 подход, −10% веса, без прогрессии</td>
+</tr>
+<tr>
+<td>Самочувствие «Устал или плохо спал»</td>
+<td>Лёгкая</td>
+<td>Вес прошлой тренировки −10%, −1 подход, без отказа</td>
+</tr>
+<tr>
+<td>Те же основные мышцы тяжело нагружались &lt; 48 ч назад</td>
+<td>Лёгкая</td>
+<td>Как выше</td>
+</tr>
+<tr>
+<td>Пауза по типу тренировки &gt; 14 дней</td>
+<td>Возвращение</td>
+<td>Правила шага 2, без прогрессии</td>
+</tr>
+<tr>
+<td>Иначе</td>
+<td>Обычная</td>
+<td>Прогрессия разрешена (шаг 3)</td>
+</tr>
+</tbody></table>
+<p>Если самочувствие «Отлично» и прошлая сессия была обычной без оценки «Тяжело», в карточке пишется «можно попробовать на повтор больше».</p>
+<p><strong>Шаг 2. Пауза по упражнению</strong> (дней с последнего выполнения этого упражнения):</p>
+<table>
+<thead>
+<tr>
+<th>Пауза</th>
+<th>Вес</th>
+<th>Повторы</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>≤ 10 дней</td>
+<td>По шагу 3</td>
+<td>По шагу 3</td>
+</tr>
+<tr>
+<td>11–21 день</td>
+<td>Прошлый вес, без прибавки</td>
+<td>Нижняя граница диапазона</td>
+</tr>
+<tr>
+<td>22–42 дня</td>
+<td>−10%</td>
+<td>Середина диапазона</td>
+</tr>
+<tr>
+<td>&gt; 42 дней</td>
+<td>−20%</td>
+<td>Середина диапазона; 2 тренировки «вкатывания», затем обычная прогрессия</td>
+</tr>
+</tbody></table>
+<p>Все проценты округляются до ближайшего шага веса упражнения.</p>
+<p><strong>Шаг 3. Двойная прогрессия по прошлому результату</strong> (обычная сессия):</p>
+<ul>
+<li>Все подходы на верхней границе повторов и нет оценки «Тяжело» → вес + шаг. Шаги: штанга — 2,5 кг; гантели — следующая гантель (по умолчанию +2 кг до 10 кг, +2,5 кг дальше); тренажёр — шаг плиты (по умолчанию 5 кг). Все шаги настраиваются для упражнения.</li>
+<li>Верхняя граница достигнута, но с оценкой «Тяжело» → тот же вес, закрепить.</li>
+<li>Повторы внутри диапазона → тот же вес, цель +1 повтор в одном или двух подходах.</li>
+<li>Ниже нижней границы → тот же вес один раз; второй раз подряд → −10%.</li>
+</ul>
+<p><strong>Шаг 4. Плато и медленная прогрессия.</strong></p>
+<ul>
+<li><strong>Расчётный максимум (e1RM, формула Эпли):</strong> вес × (1 + повторы / 30) по лучшему подходу сессии. Лёгкие сессии и разгрузки не учитываются.</li>
+<li><strong>Плато:</strong> e1RM не вырос больше чем на 1% за последние 4 сессии упражнения.</li>
+<li><strong>Медленная прогрессия включается</strong>, если плато, или две прибавки подряд закончились недобором нижней границы, или опыт «Продвинутый». В этом режиме:<ul>
+<li>вес растёт только после верхней границы в <strong>2 сессиях подряд</strong>;</li>
+<li>если есть блины по 1,25 кг (настройка), шаг уменьшается вдвое;</li>
+<li>иначе прогресс идёт повторами.</li>
+</ul>
+</li>
+<li><strong>Если плато сохраняется ещё 3 сессии</strong>, бот по очереди предлагает (каждое — кнопкой «Принять» / «Оставить как есть»):<ol>
+<li>сменить диапазон повторов на 3–4 недели (например, 6–8 → 8–12);</li>
+<li>заменить упражнение вариантом на те же мышцы;</li>
+<li>досрочную разгрузочную неделю.</li>
+</ol>
+</li>
+<li><strong>Досрочная разгрузка</strong> предлагается, если плато одновременно у 2 и больше упражнений и у последних 2 тренировок есть оценки «Тяжело».</li>
+</ul>
+<p><strong>Шаг 5. Упражнения с собственным весом (площадка):</strong></p>
+<ul>
+<li><strong>Лестницы вариантов</strong> по ссылкам «проще / сложнее»:<ul>
+<li>вис → негативные подтягивания → подтягивания с резинкой → подтягивания → подтягивания узким / широким хватом → с паузой вверху;</li>
+<li>упор на брусьях → негативы → отжимания на брусьях → с паузой внизу → медленный темп 3-1-1;</li>
+<li>отжимания от лавки → от земли → ноги на лавке → узкие;</li>
+<li>австралийские на высокой → на низкой перекладине → ноги на возвышении;</li>
+<li>приседания → с паузой → болгарские сплит-приседы → пистолет с опорой.</li>
+</ul>
+</li>
+<li>Верхняя граница во всех подходах 2 сессии подряд → следующий вариант лестницы (диапазон повторов — с нижней границы).</li>
+<li>Недобор нижней границы 2 раза подряд → вариант проще.</li>
+<li>Упражнения на время (вис, упор) → +5 сек, когда все подходы ≥ цели.</li>
+<li><strong>Резинка:</strong> верхняя граница → следующая резинка по жёсткости. Если тяжелее нет — медленный темп и +повторы до 20.</li>
+<li>Паузы (шаг 2) применяются к повторам: 22–42 дня — −20% повторов; больше 42 дней — вариант на ступень проще.</li>
+</ul>
+<p><strong>Шаг 6. Новое упражнение без истории:</strong></p>
+<ul>
+<li><strong>с весом</strong> — бот просит пробный подход на 10 повторов «с запасом 2–3 повтора» и предлагает рабочий вес = вес пробного подхода;</li>
+<li><strong>с собственным весом</strong> — вариант лестницы по опыту пользователя.</li>
+</ul>
+<p><strong>Тоннаж и рекорды:</strong></p>
+<ul>
+<li>Тоннаж = Σ вес × повторы (гантели с признаком «вес каждой» — × 2).</li>
+<li>Рекорд — новый максимум рабочего веса, повторов при том же весе или e1RM.</li>
+</ul>
+<h3>4.9 Бег (MVP)</h3>
+<ul>
+<li><strong>Время</strong> вводится как «мм:сс», «мм.сс», «ч:мм:сс» или целое число минут.</li>
+<li><strong>Темп</strong> = время / дистанция, округление до секунды; показывается «м:сс мин/км».</li>
+<li><strong>Скорость</strong> = дистанция / время в часах, 2 знака.</li>
+<li><strong>Пример:</strong> 5,2 км за 28:40 → темп 5:31 мин/км, скорость 10,88 км/ч.</li>
+<li><strong>Сравнение</strong> — с прошлым забегом в той же группе дистанций (до 5 / 5–10 / 10+ км).</li>
+</ul>
+<h3>4.10 Светофор статистики</h3>
+<table>
+<thead>
+<tr>
+<th>Цель</th>
+<th>🟢</th>
+<th>🟡</th>
+<th>🔴</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Калории</td>
+<td>отклонение от цели ≤ 10%</td>
+<td>10–20%</td>
+<td>&gt; 20%</td>
+</tr>
+<tr>
+<td>Белки</td>
+<td>≥ 90% цели</td>
+<td>75–90%</td>
+<td>&lt; 75%</td>
+</tr>
+<tr>
+<td>Жиры, углеводы</td>
+<td>отклонение ≤ 15%</td>
+<td>15–30%</td>
+<td>&gt; 30%</td>
+</tr>
+<tr>
+<td>Зарядка</td>
+<td>выполнено ≥ цели в день</td>
+<td>хотя бы одна</td>
+<td>ни одной</td>
+</tr>
+<tr>
+<td>Тренировки (неделя)</td>
+<td>≥ цели в неделю</td>
+<td>≥ половины</td>
+<td>&lt; половины</td>
+</tr>
+<tr>
+<td>Своя привычка</td>
+<td>≥ цели</td>
+<td>≥ 50% цели</td>
+<td>&lt; 50%</td>
+</tr>
+<tr>
+<td>Вес (неделя)</td>
+<td>движется в сторону цели</td>
+<td>стоит на месте (±0,2 кг)</td>
+<td>движется против цели</td>
+</tr>
+</tbody></table>
+<p>Серая клетка — нет данных, не по расписанию или «Выходной».</p>
+<h3>4.11 Вес тела (v2)</h3>
+<p>Сравнивается средний вес за неделю с предыдущей. Пороги — внутренние ориентиры, пользователь их не задаёт:</p>
+<ul>
+<li><strong>набор:</strong> прирост за 2 недели &lt; 0,2 кг — совет +150 ккал; прирост &gt; 0,75 кг в неделю — совет −150 ккал;</li>
+<li><strong>снижение:</strong> зеркально; снижение быстрее 1% массы тела в неделю две недели подряд — совет +150 ккал;</li>
+<li><strong>поддержание:</strong> изменение &gt; 0,5 кг за 2 недели — совет в обратную сторону.</li>
+</ul>
+<h3>4.12 Распознавание города</h3>
+<ol>
+<li><strong>Кнопки:</strong> «Москва», «Санкт-Петербург», «Череповец» — координаты зашиты в программу.</li>
+<li><strong>Ввод текстом («Другой»)</strong> нормализуется: регистр не важен, ё = е, лишние пробелы, точки и кавычки убираются, дефис = пробел. «МОСКВА», «москва», « Москва » → Москва; «ростов-на-дону» = «Ростов на Дону».</li>
+<li><strong>Синонимы</strong> — небольшой словарь: «питер», «спб», «санкт петербург» → Санкт-Петербург; «мск» → Москва; «нск» → Новосибирск; «екб» → Екатеринбург.</li>
+<li><strong>Поиск.</strong> Нормализованное название ищется через Open-Meteo Geocoding API на русском языке, страны по умолчанию — Россия и соседние.<ul>
+<li>Одно совпадение — сохраняется сразу.</li>
+<li>Несколько (например, «Кировск») — кнопки с регионом: «Кировск, Мурманская обл.» / «Кировск, Ленинградская обл.».</li>
+<li>Нет совпадений — «Не нашёл такой город, проверьте написание» и до 3 похожих вариантов кнопками (по похожести написания).</li>
+</ul>
+</li>
+<li><strong>Сохраняются</strong> название, регион и координаты — по ним запрашивается погода.</li>
+</ol>
+<h3>4.13 Уникальность пожеланий (v3)</h3>
+<ol>
+<li><strong>Контекст для модели:</strong> день недели, погода, праздник, имя, серии и успехи пользователя, случайно выбранный стиль из списка (шутливое, вдохновляющее, интересный факт, мини-история и т. п.) и 30 последних пожеланий этого пользователя. Цитаты реальных людей не используются.</li>
+<li><strong>Проверка перед отправкой:</strong> нормализованный текст сравнивается со <strong>всеми</strong> прошлыми пожеланиями пользователя — точное совпадение хэша или похожесть по триграммам ≥ 0,5 означает повтор. При повторе — до 2 перегенераций, затем запасная фраза из неиспользованных.</li>
+<li><strong>Экономия:</strong> пожелания генерируются пачкой на неделю вперёд одним запросом к недорогой модели и хранятся в очереди.</li>
+</ol>
+<h2>5. Модель данных</h2>
+<p>Пользовательские таблицы содержат <code>user_id</code>; общий каталог — <code>user_id = NULL</code>. Дата дня хранится отдельно от времени записи.</p>
+<table>
+<thead>
+<tr>
+<th>Сущность</th>
+<th>Поля</th>
+<th>Заметки</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>User</td>
+<td>id, имя, роль, статус (анкета / активен / заблокирован), шаг анкеты, кнопки главного экрана, последняя выбранная привычка в итогах, тихие часы, пауза уведомлений до, дата регистрации, последняя активность, invite_id</td>
+<td>Telegram-ID — в <code>Identity</code>; режим «Другой день» и время последнего действия — в <code>DialogState</code></td>
+</tr>
+<tr>
+<td>Identity</td>
+<td>user_id, способ входа (<code>telegram</code>; позже — приложение и веб), внешний ID (для Telegram — Telegram-ID), создано</td>
+<td>Способы входа в один аккаунт. Пара «способ + внешний ID» уникальна. Администратор определяется по <code>ADMIN_TG_IDS</code> через Identity типа telegram</td>
+</tr>
+<tr>
+<td>Profile</td>
+<td>user_id, пол, дата рождения, рост, вес, активность, цель, целевой вес, опыт, город (название, регион, широта, долгота), резинки (список), есть блины 1,25 кг, показывать все упражнения, спрашивать самочувствие, часовой пояс (по умолчанию Europe/Moscow)</td>
+<td>Текущее состояние</td>
+</tr>
+<tr>
+<td>Goal</td>
+<td>user_id, дата начала, ккал, Б, Ж, У, режим, целевой вес, источник (расчёт / вручную), снимок входных данных</td>
+<td>История целей КБЖУ</td>
+</tr>
+<tr>
+<td>Invite</td>
+<td>код, создал, лимит, использовано, срок, отозван</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Habit</td>
+<td>user_id, вид (еда / зарядка / тренировка / своя), название, эмодзи, тип (отметка / количество / длительность), единица, цель (в день или в неделю), шаг, быстрые значения, дни недели, на главном экране, порядок, статус</td>
+<td>Встроенные привычки — тоже строки этой таблицы</td>
+</tr>
+<tr>
+<td>HabitEntry</td>
+<td>user_id, habit_id, дата дня, время, значение, источник (кнопка / список / несколько / текст)</td>
+<td>Записи своих привычек</td>
+</tr>
+<tr>
+<td>FoodItem</td>
+<td>user_id, название, тип (рецепт / продукт), состав, единица, ккал, Б, Ж, У, цена, активен, source_catalog_id</td>
+<td>—</td>
+</tr>
+<tr>
+<td>FoodEntry</td>
+<td>user_id, дата дня, время, food_item_id, название, количество, ккал, Б, Ж, У, цена, источник</td>
+<td>Значения скопированы</td>
+</tr>
+<tr>
+<td>Exercise</td>
+<td>user_id, название, место, оборудование, основная группа, вторичные группы, движение, базовое / изолирующее, сложность, измерение, лёжа на земле, предлагать (всем / М / Ж), отягощение, проще_id, сложнее_id, шаг веса, диапазон повторов, вес каждой гантели</td>
+<td>База упражнений</td>
+</tr>
+<tr>
+<td>WarmupTemplate</td>
+<td>user_id, exercise_id, порядок, шаг</td>
+<td>Набор зарядки</td>
+</tr>
+<tr>
+<td>ExerciseGoal</td>
+<td>user_id, exercise_id, значение, дата цели, стартовое значение, дата постановки, активна</td>
+<td>Личные цели</td>
+</tr>
+<tr>
+<td>WarmupSession / WarmupItem</td>
+<td>user_id, дата дня, номер, время / session_id, exercise_id, значение</td>
+<td>Зарядка</td>
+</tr>
+<tr>
+<td>Plan / PlanItem</td>
+<td>user_id, название, место, фокус, дата начала цикла, источник (вручную / собран / шаблон) / exercise_id, порядок, подходы, повторы от–до, стартовый вес, отдых</td>
+<td>Планы</td>
+</tr>
+<tr>
+<td>WorkoutSession</td>
+<td>user_id, дата дня, тип (зал / площадка / свободная), plan_id, тип сессии (тяжёлая / обычная / лёгкая / разгрузка / возвращение), самочувствие, резинка с собой, исключённое оборудование, длительность, тоннаж, заметка</td>
+<td>Тренировка</td>
+</tr>
+<tr>
+<td>WorkoutSet</td>
+<td>session_id, exercise_id, номер подхода, вес, резинка, повторы или секунды, оценка (легко / норм / тяжело), рекомендовано (вес, повторы, причина)</td>
+<td>Подход</td>
+</tr>
+<tr>
+<td>ExerciseState</td>
+<td>user_id, exercise_id, режим (обычная / медленная), текущий диапазон, неудачных прибавок подряд, лучший e1RM, сессий без роста, текущий вариант лестницы</td>
+<td>Состояние прогрессии; пересчитывается из истории</td>
+</tr>
+<tr>
+<td>RunEntry</td>
+<td>user_id, дата дня, время, дистанция км, длительность сек, темп сек/км, заметка</td>
+<td>Бег; считается тренировкой для цели «тренировок в неделю»</td>
+</tr>
+<tr>
+<td>DayStatus</td>
+<td>user_id, дата, статус, заметка</td>
+<td>Выходные</td>
+</tr>
+<tr>
+<td>BodyWeight</td>
+<td>user_id, дата, вес</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Notification</td>
+<td>user_id, вид (своё / готовое), habit_id или текст, тип готового, дни недели, времена или интервал, условие «если не сделано», параметры, включено</td>
+<td>Уведомления</td>
+</tr>
+<tr>
+<td>NotificationLog</td>
+<td>notification_id, отправлено, действие (отметил / отложил / пропустил)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>GreetingHistory</td>
+<td>user_id, текст, хэш, триграммы, создано, отправлено</td>
+<td>Пожелания</td>
+</tr>
+<tr>
+<td>AiCommand</td>
+<td>user_id, создано, текст, действия (JSON), статус (ожидает / выполнено / отменено / ошибка), токены, стоимость</td>
+<td>Разборы текста; хранятся 30 дней, нужны для «Отменить всё»</td>
+</tr>
+<tr>
+<td>SourceCache</td>
+<td>источник, ключ, данные, получено</td>
+<td>Кэш погоды, календаря и поиска городов</td>
+</tr>
+<tr>
+<td>Tip / TipShown</td>
+<td>текст, тема / user_id, tip_id, показан</td>
+<td>База советов дня и что уже показано</td>
+</tr>
+<tr>
+<td>ExportJob</td>
+<td>user_id, период, таблицы, создано, статус</td>
+<td>Журнал выгрузок (сами файлы не хранятся)</td>
+</tr>
+<tr>
+<td>DialogState</td>
+<td>user_id, область (диалог, «Другой день», тренировка, анкета), состояние, данные (JSON), дата «Другого дня», время последнего действия, версия</td>
+<td>Незаконченный ввод в Telegram-боте; нужен для сброса через 15 минут и устаревания кнопок. Сами записи сюда не попадают</td>
+</tr>
+<tr>
+<td>IdempotencyKey</td>
+<td>user_id, ключ запроса, результат, создано</td>
+<td>Защита от повторов (раздел 7); хранится 24 часа</td>
+</tr>
+</tbody></table>
+<p><strong>Общие служебные поля</strong> — нужны, чтобы к тем же данным потом подключились приложение и веб:</p>
+<ul>
+<li>у всех пользовательских таблиц: <code>public_id</code> (UUID — внешний ID для кнопок и будущего API вместо порядкового номера), <code>created_at</code>, <code>updated_at</code>;</li>
+<li>у записей (еда, зарядка, подходы, бег, свои привычки, вес, выходные): <code>deleted_at</code>. Удалённая запись не видна в боте и в итогах, но 30 дней хранится как отметка для синхронизации приложений, потом стирается;</li>
+<li>у редактируемых сущностей (профиль, рецепт или продукт, привычка, набор зарядки, план, уведомление, личная цель): <code>version</code>. Если объект успел измениться в другом месте, бот покажет актуальные данные вместо молчаливой перезаписи.</li>
+</ul>
+<p>Удаление аккаунта каскадно удаляет все строки пользователя сразу, включая Identity и отметки удалённых записей. В User остаётся обезличенная отметка.</p>
+<h2>6. Начальные данные</h2>
+<p>Данные ниже собраны из health_log.md и training_plan.md на 22.10.2026.</p>
+<ul>
+<li><strong>Общий каталог (6.1)</strong> — часть программы: загружается в БД при развёртывании вместе со схемой. В репозитории он хранится как фикстуры кода: продукты, база упражнений, советы дня, шаблоны.</li>
+<li><strong>Данные владельца (6.2)</strong> в бот заранее не загружаются. Владелец вносит их сам после регистрации через «Заполнить с помощью ИИ» (раздел 3.12). Таблицы ниже — эталон для проверки, что заполнение прошло правильно.</li>
+</ul>
+<h3>6.1 Общий каталог</h3>
+<p><strong>Продукты (на единицу, без цен):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Продукт</th>
+<th>Единица</th>
+<th>Ккал</th>
+<th>Б</th>
+<th>Ж</th>
+<th>У</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Куриное бедро</td>
+<td>1 шт</td>
+<td>250</td>
+<td>23</td>
+<td>17</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Курица готовая</td>
+<td>100 г</td>
+<td>220</td>
+<td>28</td>
+<td>11</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Макароны отварные</td>
+<td>100 г</td>
+<td>158</td>
+<td>5,8</td>
+<td>0,9</td>
+<td>30,9</td>
+</tr>
+<tr>
+<td>Гречка сухая (пакет 80 г)</td>
+<td>1 шт</td>
+<td>288,8</td>
+<td>9,6</td>
+<td>2,72</td>
+<td>51,36</td>
+</tr>
+<tr>
+<td>Банан</td>
+<td>1 шт</td>
+<td>105</td>
+<td>1,3</td>
+<td>0,4</td>
+<td>27</td>
+</tr>
+<tr>
+<td>Протеин</td>
+<td>30 г</td>
+<td>111</td>
+<td>23,5</td>
+<td>2</td>
+<td>2,6</td>
+</tr>
+<tr>
+<td>Чикенбургер Новый (Ростикс)</td>
+<td>1 шт</td>
+<td>335</td>
+<td>10,9</td>
+<td>15,9</td>
+<td>37,1</td>
+</tr>
+<tr>
+<td>Шеф Баскет (Ростикс)</td>
+<td>1 шт</td>
+<td>731</td>
+<td>56,5</td>
+<td>43,4</td>
+<td>28,6</td>
+</tr>
+<tr>
+<td>Наггетсы (Вкусно и точка)</td>
+<td>4 шт</td>
+<td>179</td>
+<td>11</td>
+<td>9</td>
+<td>12</td>
+</tr>
+<tr>
+<td>Тост с ветчиной (Вкусно и точка)</td>
+<td>1 шт</td>
+<td>265</td>
+<td>14</td>
+<td>11</td>
+<td>28</td>
+</tr>
+<tr>
+<td>Фреш Маффин (Вкусно и точка)</td>
+<td>1 шт</td>
+<td>368</td>
+<td>18</td>
+<td>20</td>
+<td>28</td>
+</tr>
+<tr>
+<td>Пельмени</td>
+<td>100 г</td>
+<td>260</td>
+<td>11</td>
+<td>12</td>
+<td>28</td>
+</tr>
+</tbody></table>
+<p><strong>Зарядка по умолчанию:</strong> отжимания (шаг +5), ягодичный мостик (+5), планка (+15 сек), спина (+5).</p>
+<p><strong>Шаблоны привычек:</strong> раздел 3.6.</p>
+<p><strong>База упражнений</strong> — минимальный состав по группам. Полный список с полями из 3.4.1 готовится при разработке и проверяется по критериям раздела 9.</p>
+<table>
+<thead>
+<tr>
+<th>Место</th>
+<th>Группа</th>
+<th>Примеры (не полный список)</th>
+<th>Минимум</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Зал</td>
+<td>Ноги</td>
+<td>присед со штангой, фронтальный присед, жим ногами, гакк-присед, выпады с гантелями, болгарские сплит-приседы, разгибания и сгибания ног в тренажёре, подъёмы на носки, отведение и сведение бедра в тренажёре</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Зал</td>
+<td>Тяга бедром</td>
+<td>румынская тяга, становая тяга, ягодичный мост со штангой, гиперэкстензия, тяга с гирей (свинг)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>Зал</td>
+<td>Грудь, жимы</td>
+<td>жим лёжа, жим на наклонной (штанга, гантели), жим гантелей лёжа, отжимания на брусьях, сведения в кроссовере, бабочка</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Зал</td>
+<td>Спина, тяги</td>
+<td>тяга штанги в наклоне, тяга гантели одной рукой, тяга верхнего и нижнего блока, подтягивания, пуловер в блоке, шраги</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Зал</td>
+<td>Плечи</td>
+<td>жим стоя, жим гантелей сидя, махи в стороны, махи в наклоне, тяга к лицу, тяга штанги к подбородку</td>
+<td>7</td>
+</tr>
+<tr>
+<td>Зал</td>
+<td>Руки</td>
+<td>сгибания (штанга, гантели, молот, Скотт, блок), разгибания (блок, французский жим, над головой), предплечья</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Зал</td>
+<td>Кор</td>
+<td>подъём ног в висе, скручивания в блоке, планка, «колесо», паллоф-пресс</td>
+<td>6</td>
+</tr>
+<tr>
+<td>Площадка</td>
+<td>Турник и перекладина</td>
+<td>вис, негативные подтягивания, подтягивания прямым / обратным / узким / широким хватом, австралийские подтягивания, подъём коленей и ног в висе, рукоход</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Площадка</td>
+<td>Брусья</td>
+<td>упор, негативы, отжимания на брусьях, подъём коленей в упоре</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Площадка</td>
+<td>Лавка и шведская стенка</td>
+<td>отжимания от лавки, отжимания с ногами на лавке, обратные отжимания от лавки, болгарские сплит-приседы, зашагивания, подъём ног на шведской стенке</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Площадка</td>
+<td>Стоя, без инвентаря</td>
+<td>приседания, выпады шагами, выпады назад, приседания с паузой, пистолет с опорой, подъёмы на носки на ступеньке, прыжки</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Площадка</td>
+<td>С резинкой</td>
+<td>подтягивания с резинкой, тяга резины к лицу, тяга к поясу, тяга сверху вниз, махи, сгибания, разгибания над головой, отжимания с резинкой, паллоф-пресс, отведение ноги стоя</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Зарядка</td>
+<td>Дом</td>
+<td>отжимания, ягодичный мостик, планка, спина (гиперэкстензия лёжа)</td>
+<td>4</td>
+</tr>
+</tbody></table>
+<p>Упражнения с полом животом или спиной на земле (планка, скручивания, ягодичный мост на полу) отмечаются «лёжа на земле» и на улице не предлагаются.</p>
+<p><strong>Шаблон плана «Зал — всё тело»</strong> (из training_plan.md): присед 4×6–8, жим лёжа 4×6–8, румынская тяга 3×8–10, тяга штанги в наклоне 3×8–10, жим ногами 3×10–12, махи 3×12–15. Стартовые веса пустые. Планы для площадки собираются кнопкой «Собрать тренировку».</p>
+<p><strong>Совет дня:</strong> база около 200 коротких советов о питании, сне и тренировках. Готовится при разработке, без ИИ при отправке.</p>
+<h3>6.2 Данные владельца</h3>
+<p><strong>Профиль:</strong> мужчина, 23 года, 178 см, 75 кг, лёгкая активность, набор массы, целевой вес 85 кг, опыт «Средний», город Москва. Резинки: лёгкая, средняя, тяжёлая. Владелец — обычный пользователь: дату рождения и остальные поля профиля он вводит сам при регистрации или в настройках, в коде они не задаются.</p>
+<p><strong>Зал владельца:</strong> гантели с шагом 1 кг — шаг прибавки для гантелей +1 кг; есть блины по 1,25 кг — настройка «есть блины 1,25 кг» включена, в медленной прогрессии шаг штанги +1,25 кг (раздел 4.8).</p>
+<p><strong>История целей</strong></p>
+<table>
+<thead>
+<tr>
+<th>С даты</th>
+<th>Ккал</th>
+<th>Белки, г</th>
+<th>Жиры, г</th>
+<th>Углеводы, г</th>
+<th>Режим</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>09.10.2026</td>
+<td>2800</td>
+<td>160</td>
+<td>80</td>
+<td>360</td>
+<td>Набор массы</td>
+</tr>
+<tr>
+<td>22.09.2026</td>
+<td>2410</td>
+<td>140</td>
+<td>70</td>
+<td>305</td>
+<td>Поддержание</td>
+</tr>
+</tbody></table>
+<p><strong>Цели привычек:</strong> зарядка 2 раза в день, тренировки 3 раза в неделю, «👁 Зарядка для глаз» 3 раза в день на главном экране, планка 11:00 к 03.12.2026.</p>
+<p><strong>Рецепты (на 1 порцию)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Название</th>
+<th>Состав</th>
+<th>Ккал</th>
+<th>Б</th>
+<th>Ж</th>
+<th>У</th>
+<th>Цена, ₽</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Обед</td>
+<td>Усреднённый комплексный обед в столовой</td>
+<td>701,6</td>
+<td>40,04</td>
+<td>32,22</td>
+<td>61,5</td>
+<td>330</td>
+</tr>
+<tr>
+<td>Коктейль</td>
+<td>Молоко 200 мл, банан, протеин 23 г</td>
+<td>322</td>
+<td>26</td>
+<td>9</td>
+<td>39</td>
+<td>140</td>
+</tr>
+<tr>
+<td>Творог ужин</td>
+<td>Творог 5% 200 г, йогурт 280 г</td>
+<td>421,04</td>
+<td>52,4</td>
+<td>15,6</td>
+<td>17,76</td>
+<td>250</td>
+</tr>
+<tr>
+<td>Пакет гречи</td>
+<td>Гречка 80 г</td>
+<td>288,8</td>
+<td>9,6</td>
+<td>2,72</td>
+<td>51,36</td>
+<td>20</td>
+</tr>
+</tbody></table>
+<p>Рецепты «Своя шаурма», «Творог на массу», «Обед кускус» и «Обед фасоль» пока не вносятся — владелец добавит их позже вместе с ценами.</p>
+<p><strong>Личные продукты:</strong> все продукты каталога. Цена куриного бедра (филе): 600 ₽/кг при среднем весе одного сырого филе бедра без кожи и кости <strong>≈ 120 г</strong> — это <strong>72 ₽ за 1 шт</strong>. Это оценка: в упаковке на 1 кг обычно 7–9 филе. Владелец может поправить вес или цену в настройках продукта.</p>
+<p><strong>Зарядка (последний результат, 22.10):</strong> отжимания 50, ягодичный мостик 50, планка 5:45, спина 25.</p>
+<p><strong>План «Зал»:</strong> шаблон из 6.1 со стартовыми весами (присед 100 кг, жим лёжа 90 кг, жим ногами 70 кг, махи 15 кг), дата начала цикла 10.10.2026.</p>
+<p><strong>Зал (последние результаты)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Упражнение</th>
+<th>Вес</th>
+<th>Подходы × повторы</th>
+<th>Дата</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Присед со штангой</td>
+<td>110 кг</td>
+<td>4×8</td>
+<td>22.10</td>
+</tr>
+<tr>
+<td>Жим гантелей на наклонной</td>
+<td>35 кг каждая</td>
+<td>4×7</td>
+<td>22.10</td>
+</tr>
+<tr>
+<td>Румынская тяга</td>
+<td>70 кг</td>
+<td>4×10</td>
+<td>22.10</td>
+</tr>
+<tr>
+<td>Тяга штанги в наклоне</td>
+<td>60 кг</td>
+<td>4×8</td>
+<td>22.10</td>
+</tr>
+<tr>
+<td>Махи гантелей</td>
+<td>15 кг каждая</td>
+<td>4×8</td>
+<td>22.10</td>
+</tr>
+<tr>
+<td>Жим ногами</td>
+<td>100 кг</td>
+<td>4×8</td>
+<td>13.10</td>
+</tr>
+<tr>
+<td>Бицепс на скамье Скотта</td>
+<td>27 кг / 22 кг</td>
+<td>2×8 / 2×10</td>
+<td>13.10</td>
+</tr>
+<tr>
+<td>Жим лёжа</td>
+<td>100 кг</td>
+<td>5×5</td>
+<td>23.09</td>
+</tr>
+</tbody></table>
+<h2>7. Нефункциональные требования</h2>
+<p>Рекомендуемый стек — Python 3.12, aiogram 3 и SQLite в Docker на недорогом VPS за пределами РФ.</p>
+<table>
+<thead>
+<tr>
+<th>Требование</th>
+<th>Значение</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Платформа</td>
+<td>Telegram Bot API, long polling (webhook — по желанию)</td>
+</tr>
+<tr>
+<td>Архитектура</td>
+<td>Модульный монолит: один процесс и одна БД. Логика (сценарии и расчёты) не зависит от Telegram; Telegram-бот — первый канал, а мобильное и веб-приложение в следующих версиях подключатся к той же логике через HTTP API. Новые функции добавляются отдельными модулями. Подробно — документ «Архитектура habit-bot» в проекте (<code>claude/architecture.md</code>)</td>
+</tr>
+<tr>
+<td>Повторы запросов</td>
+<td>Каждое действие, которое меняет данные, выполняется с ключом запроса. Повтор с тем же ключом (Telegram заново прислал тот же апдейт, позже — повтор запроса из приложения при плохой сети) не создаёт дубль и возвращает прежний результат</td>
+</tr>
+<tr>
+<td>Язык и библиотеки</td>
+<td>Python 3.12, aiogram 3 (FSM), SQLAlchemy + Alembic, matplotlib и Pillow для картинок, APScheduler для уведомлений, httpx для внешних источников</td>
+</tr>
+<tr>
+<td>База данных</td>
+<td>SQLite в режиме WAL; схема совместима с PostgreSQL</td>
+</tr>
+<tr>
+<td>Хранение данных</td>
+<td>Все данные пользователей, справочники, настройки, состояния диалогов, история уведомлений и пожеланий — только в БД. На диске вне БД допускаются только: файл .env, seed-фикстуры в репозитории, файлы бэкапа, технические логи и временные файлы (картинки статистики и экспорт), которые удаляются после отправки или через 24 часа</td>
+</tr>
+<tr>
+<td>Хранение состояний</td>
+<td>Диалоги и режим «Другой день» (<code>DialogState</code>) и расписание уведомлений хранятся в БД и переживают перезапуск; у каждого состояния есть время последнего действия для сброса через 15 минут</td>
+</tr>
+<tr>
+<td>Хостинг</td>
+<td>VPS 1 vCPU / 1 ГБ за пределами РФ (раздел 7.1), Docker Compose, автоперезапуск</td>
+</tr>
+<tr>
+<td>Развёртывание</td>
+<td>Только через GitHub Actions (раздел 7.3): настройка сервера, выкладка после слияния в <code>main</code>, автоматический откат, ежечасная проверка</td>
+</tr>
+<tr>
+<td>Связь с Telegram</td>
+<td>Адрес Bot API и прокси задаются в .env; при обрывах — повтор с нарастающей паузой</td>
+</tr>
+<tr>
+<td>Доступ</td>
+<td>Регистрация по приглашению; администраторы — по секрету <code>ADMIN_TG_IDS</code> (раздел 3.0)</td>
+</tr>
+<tr>
+<td>Изоляция</td>
+<td>Все запросы фильтруются по user_id; тесты на подмену callback-данных</td>
+</tr>
+<tr>
+<td>Приватность</td>
+<td>Согласий нет — бот для личного и семейного использования. Экспорт и удаление своих данных; админ не видит чужие дневники; в ИИ отправляется только нужное для разбора</td>
+</tr>
+<tr>
+<td>Время</td>
+<td>Europe/Moscow для всех (часовой пояс хранится в профиле), граница суток 04:00</td>
+</tr>
+<tr>
+<td>Скорость</td>
+<td>Ответ на нажатие ≤ 1 с; картинка статистики ≤ 3 с; разбор текста ИИ ≤ 10 с (с сообщением «Разбираю…»); типовая запись ≤ 3 нажатий</td>
+</tr>
+<tr>
+<td>Графика</td>
+<td>Только программная генерация (matplotlib / Pillow), без ИИ; светлый фон, крупный шрифт для экрана телефона; цвет всегда дублируется значком; кэш в памяти по (пользователь, период, версия данных)</td>
+</tr>
+<tr>
+<td>Языковая модель</td>
+<td>DeepSeek V4.1 Flash (<code>deepseek-flash</code>) — раздел 7.2</td>
+</tr>
+<tr>
+<td>Внешние источники</td>
+<td>Open-Meteo (погода, поиск городов), isdayoff.ru (производственный календарь); таймаут 5 с, кэш 1 ч, работа без источника</td>
+</tr>
+<tr>
+<td>Уведомления</td>
+<td>Отправка с точностью ±1 мин; не больше 1 сообщения в секунду на пользователя (лимиты Telegram); тихие часы соблюдаются</td>
+</tr>
+<tr>
+<td>Интерфейс</td>
+<td>Русский язык; числа с запятой; ввод с точкой или запятой (одна общая функция разбора)</td>
+</tr>
+<tr>
+<td>Секреты</td>
+<td>Токен бота, ключ API языковой модели и пароль бэкапов хранятся в GitHub Secrets; на сервере из них при выкладке создаётся .env (права 600); в репозитории секретов нет</td>
+</tr>
+<tr>
+<td>Бэкапы</td>
+<td>Раз в 2 дня файл БД администратору в Telegram, шифрование паролем. На сервере хранится <strong>только последняя копия</strong>: новая записывается во временный файл и заменяет старую только после проверки, что копия целая, поэтому одна рабочая копия есть всегда. История копий — в чате администратора в Telegram</td>
+</tr>
+<tr>
+<td>Место на диске</td>
+<td>На сервере лежат только текущий и предыдущий Docker-образ бота (предыдущий — для быстрого отката; более старые версии при откате скачиваются из ghcr.io). Логи — 14 дней и не больше 50 МБ. Временные файлы удаляются после отправки или через 24 часа. «Бот жив?» раз в час проверяет место; если диск занят больше чем на 80%, сам удаляет неиспользуемые образы и кэш Docker и оповещает администратора (<code>SYS-DISK</code>)</td>
+</tr>
+<tr>
+<td>Логи</td>
+<td>Структурированные (JSON): время, уровень, код ошибки, внутренний id пользователя (не Telegram-ID), обработчик, сообщение; без содержимого записей; хранятся 14 дней</td>
+</tr>
+<tr>
+<td>Ошибки</td>
+<td>Каталог ошибок с кодами, понятные тексты пользователю и администратору, читаемые отчёты CI/CD — раздел 7.4</td>
+</tr>
+<tr>
+<td>Качество кода</td>
+<td>Приватный репозиторий GitHub, изменения через pull request с обязательной проверкой (раздел 7.3), README с пошаговым запуском. Покрытие тестами: бизнес-логика — 100% строк и ветвлений, весь проект — ≥ 90%, изменённый код — ≥ 95%. pytest: расчёты раздела 4, разбор чисел и времени, граница суток и «Другой день», привычки и серии, сборка тренировки и прогрессия, светофор, изоляция, анкета, экспорт CSV, разбор текста ИИ (включая заполнение) на наборе из 30 эталонных фраз. Сценарии тестируются и без Telegram — так же их потом проверит HTTP API</td>
+</tr>
+</tbody></table>
+<h3>7.1 Где размещать сервер</h3>
+<p><strong>Вывод: сервер — за пределами РФ.</strong></p>
+<p><strong>Что известно на 23.10.2026</strong> (открытые источники, официальных заявлений нет):</p>
+<ul>
+<li>С 10.02.2026 Роскомнадзор официально замедляет Telegram; звонки заблокированы с августа 2025 года. Даты полной блокировки нет.</li>
+<li>С середины марта 2026 года у ботов на российских VPS запросы к api.telegram.org зависают или уходят в таймаут.</li>
+<li>Бот работает только через Bot API: без связи с api.telegram.org он не работает целиком.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Вариант</th>
+<th>Как работает</th>
+<th>Плюсы</th>
+<th>Минусы</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>VPS за рубежом (рекомендуется)</strong></td>
+<td>Бот целиком в Нидерландах, Германии, Финляндии или Казахстане</td>
+<td>Один сервер, прямой доступ к Telegram, Open-Meteo и API модели</td>
+<td>Нужна оплата, доступная из РФ</td>
+</tr>
+<tr>
+<td>VPS в РФ + прокси за рубежом</td>
+<td>Запросы к Telegram через прокси на зарубежном сервере</td>
+<td>Бот и БД в РФ</td>
+<td>Два сервера; прокси тоже могут заблокировать</td>
+</tr>
+<tr>
+<td>VPS в РФ без прокси</td>
+<td>—</td>
+<td>—</td>
+<td>С марта 2026 работает с перебоями или не работает</td>
+</tr>
+</tbody></table>
+<p>Расположение сервера не влияет на то, работает ли Telegram на телефонах пользователей.</p>
+<p><strong>Проверка перед покупкой:</strong> на тестовом сервере выполнить <code>curl -v https://api.telegram.org/bot&lt;TOKEN&gt;/getMe</code> несколько раз; ответ за 1–2 секунды — сервер подходит.</p>
+<h3>7.2 Языковая модель</h3>
+<p><strong>Выбор: DeepSeek V4.1 Flash</strong> (<code>deepseek-flash</code>). Она нужна для разбора команд текстом (раздел 3.10) и для пожеланий дня (v3).</p>
+<table>
+<thead>
+<tr>
+<th>Модель</th>
+<th>Вход, $ за 1 млн токенов</th>
+<th>Выход, $ за 1 млн токенов</th>
+<th>Почему да / нет</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>DeepSeek V4.1 Flash</strong></td>
+<td>0,15 (вне пика) / 0,30 (пик); из кэша 0,003</td>
+<td>0,60 / 1,20</td>
+<td><strong>Выбрана.</strong> Хорошо понимает русский, поддерживает JSON-ответ и вызов функций, кэширует повторяющуюся часть запроса почти бесплатно</td>
+</tr>
+<tr>
+<td>GPT-6 Luna (OpenAI)</td>
+<td>0,10</td>
+<td>0,50</td>
+<td>Немного дешевле, запасной вариант; OpenAI ограничивает доступ из РФ, нужна зарубежная оплата</td>
+</tr>
+<tr>
+<td>Qwen3.8 Flash (Alibaba)</td>
+<td>0,15</td>
+<td>0,47</td>
+<td>Запасной вариант</td>
+</tr>
+<tr>
+<td>GLM-4.7-Flash (Z.AI)</td>
+<td>бесплатно</td>
+<td>бесплатно</td>
+<td>Для экспериментов; бесплатные модели слабее и без гарантий доступности</td>
+</tr>
+<tr>
+<td>Gemini 3.1 Flash-Lite (Google)</td>
+<td>0,25</td>
+<td>1,50</td>
+<td>Дороже на выходе</td>
+</tr>
+</tbody></table>
+<p>Пиковые часы DeepSeek — 01:00–04:00 и 06:00–10:00 UTC по будням (04:00–07:00 и 09:00–13:00 по Москве); в остальное время цена вдвое ниже. Цены сторонних обзоров на октябрь 2026, перед запуском сверить с официальными страницами.</p>
+<p><strong>Ожидаемые расходы.</strong></p>
+<ul>
+<li>Один разбор команды: ~3 000 токенов на вход (из них ~2 000 — неизменная инструкция и схема, они берутся из кэша) и ~400 на выход ≈ 0,0004 $ вне пика, 0,0008 $ в пик.</li>
+<li>20 пользователей × 10 команд в день ≈ 6 000 разборов в месяц ≈ 2,5–5 $.</li>
+<li>Пожелания пачкой на неделю — меньше 0,1 $ в месяц на всех.</li>
+<li>Реалистично для 10 человек — 1–2 $ в месяц.</li>
+</ul>
+<p><strong>Требования к интеграции:</strong></p>
+<ul>
+<li><strong>Замена провайдера без правки кода.</strong> Подключение через OpenAI-совместимый API: адрес, модель и ключ задаются в .env (<code>LLM_BASE_URL</code>, <code>LLM_MODEL</code>, <code>LLM_API_KEY</code>). Можно указать запасного провайдера (<code>LLM_FALLBACK_*</code>), к которому бот переходит при ошибке основного.</li>
+<li><strong>Без режима рассуждения.</strong> Режим рассуждения отключён или на минимуме (<code>low</code>) — для разбора команд он не нужен и увеличивает расход.</li>
+<li><strong>Структурированный ответ.</strong> JSON-режим ответа; бот сам проверяет ответ по схеме (pydantic). При невалидном ответе — один повтор, затем «попробуйте кнопками».</li>
+<li><strong>Кэш.</strong> Неизменная часть запроса (инструкция, схема действий) стоит в начале, чтобы попадать в кэш.</li>
+<li><strong>Лимиты и учёт.</strong> Общий лимит расходов в месяц и лимит разборов на пользователя в сутки; токены и стоимость каждого запроса пишутся в AiCommand.</li>
+<li><strong>Приватность.</strong> DeepSeek — китайский провайдер. Модели отправляется только нужное для разбора: текст команды, даты, названия рецептов, привычек и упражнений, записи упомянутых дней. Имя, Telegram-ID и профиль (пол, возраст, вес) не отправляются.</li>
+<li><strong>Оплата.</strong> Российской картой DeepSeek напрямую не оплачивается: нужна зарубежная карта, PayPal / Alipay / WeChat Pay или посредник. Баланс пополняется заранее (предоплата), при нулевом балансе бот работает только на кнопках.</li>
+<li><strong>Качество</strong> проверяется на наборе из 30 эталонных фраз (раздел 9). При смене модели набор прогоняется заново.</li>
+</ul>
+<h3>7.3 Развёртывание и обновление через GitHub Actions</h3>
+<p>Код хранится в приватном репозитории владельца на GitHub. Сервер настраивается и обновляется автоматически — серверами GitHub по SSH. Разработчик (Claude) доступа к серверу не имеет, секретов не видит и вручную на сервер не заходит.</p>
+<p><strong>Роли:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Кто</th>
+<th>Что делает</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Владелец</td>
+<td>Арендует VPS, создаёт бота у @BotFather, создаёт пустой приватный репозиторий <code>habit-bot</code> и даёт к нему доступ, вносит секреты, один раз запускает настройку сервера, разрешает слияние изменений</td>
+</tr>
+<tr>
+<td>Разработчик (Claude)</td>
+<td>Пишет код, тесты, Dockerfile, сценарии GitHub Actions и README; отправляет изменения в отдельные ветки и открывает pull request с кратким описанием. <strong>Сливает в <code>main</code> сам, но только после явного разрешения владельца на этот pull request и при зелёной проверке.</strong> Без разрешения не сливает</td>
+</tr>
+<tr>
+<td>GitHub Actions</td>
+<td>Прогоняет тесты, собирает образ, настраивает сервер, выкладывает новую версию, откатывает при ошибке, проверяет, что бот жив</td>
+</tr>
+</tbody></table>
+<p><strong>Секреты</strong> (Settings → Secrets and variables → Actions). Вносит только владелец; в коде и переписке их нет.</p>
+<table>
+<thead>
+<tr>
+<th>Секрет</th>
+<th>Что это</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>SERVER_HOST</code></td>
+<td>IP-адрес VPS</td>
+</tr>
+<tr>
+<td><code>SERVER_ROOT_PASSWORD</code></td>
+<td>Пароль root — только для первой настройки, после неё удаляется</td>
+</tr>
+<tr>
+<td><code>DEPLOY_SSH_KEY</code> / <code>DEPLOY_SSH_PUBLIC_KEY</code></td>
+<td>Пара ключей для выкладки. Создаётся на компьютере владельца одной командой <code>ssh-keygen -t ed25519 -f deploy_key -N &quot;&quot;</code></td>
+</tr>
+<tr>
+<td><code>BOT_TOKEN</code></td>
+<td>Токен от @BotFather</td>
+</tr>
+<tr>
+<td><code>ADMIN_TG_IDS</code></td>
+<td>Telegram-ID администраторов через запятую; эти пользователи регистрируются без приглашения и получают роль администратора (раздел 3.0)</td>
+</tr>
+<tr>
+<td><code>LLM_BASE_URL</code>, <code>LLM_MODEL</code>, <code>LLM_API_KEY</code></td>
+<td>Языковая модель (раздел 7.2)</td>
+</tr>
+<tr>
+<td><code>BACKUP_PASSWORD</code></td>
+<td>Пароль шифрования бэкапов</td>
+</tr>
+<tr>
+<td><code>LLM_MONTHLY_BUDGET_USD</code></td>
+<td>Необязательный. Месячный лимит расходов на ИИ, по умолчанию 5</td>
+</tr>
+<tr>
+<td><code>TELEGRAM_PROXY</code></td>
+<td>Необязательный. Прокси для Telegram, если хостер начнёт блокировать (раздел 7.1)</td>
+</tr>
+</tbody></table>
+<p><strong>Сценарии (workflows):</strong></p>
+<ol>
+<li><p><strong>«Настроить сервер» (<code>bootstrap</code>)</strong> — запускается вручную один раз. По паролю root подключается к серверу и:</p>
+<ul>
+<li>обновляет систему, включает автоматические обновления безопасности;</li>
+<li>включает файрвол (открыт только SSH);</li>
+<li>добавляет подкачку на 1 ГБ;</li>
+<li>ставит Docker;</li>
+<li>создаёт пользователя <code>deploy</code> с ключом <code>DEPLOY_SSH_PUBLIC_KEY</code>;</li>
+<li>проверяет вход по ключу и только после этого отключает вход по паролю и вход под root;</li>
+<li>проверяет доступность api.telegram.org и API модели (раздел 7.1) и пишет результат в отчёт.</li>
+</ul>
+<p> После успешного запуска владелец удаляет секрет <code>SERVER_ROOT_PASSWORD</code>. Сценарий можно безопасно запускать повторно.</p>
+</li>
+<li><p><strong>«Проверка» (<code>ci</code>)</strong> — на каждый pull request и на каждый коммит в <code>main</code>. Шаги идут по порядку, ошибка на любом шаге — красная проверка:</p>
+<ol>
+<li><strong>Линтер и форматирование</strong> (ruff), проверка типов (mypy) для модулей бизнес-логики и <strong>проверка границ модулей</strong> (import-linter): логика не импортирует библиотеки Telegram, модули обращаются друг к другу только через открытый интерфейс.</li>
+<li><strong>Модульные тесты</strong> (pytest): расчёты раздела 4, разбор чисел и времени, граница суток, серии, светофор и т. д.</li>
+<li><strong>Интеграционные тесты:</strong><ul>
+<li>обработчики бота с поддельным Telegram (без сети);</li>
+<li>временная БД;</li>
+<li>языковая модель — на записанных ответах, без реальных запросов и без расходов.</li>
+</ul>
+</li>
+<li><strong>Покрытие (pytest-cov):</strong><ul>
+<li>бизнес-логика (<code>domain/</code> — расчёты, правила, разбор ввода): <strong>100% строк и ветвлений</strong>;</li>
+<li>весь проект: <strong>не ниже 90%</strong>;</li>
+<li>новый и изменённый код в pull request: <strong>не ниже 95%</strong> (diff-cover).
+ Ниже порога — красная проверка.</li>
+</ul>
+</li>
+<li><strong>Миграции:</strong> <code>alembic upgrade head</code> на пустой БД и на копии схемы предыдущей версии, затем <code>downgrade -1</code> и снова <code>upgrade</code>.</li>
+<li><strong>Сборка Docker-образа и пробный запуск (smoke test):</strong> контейнер стартует с тестовыми настройками, проверка здоровья проходит за 30 секунд.</li>
+<li><strong>Проверка на секреты</strong> (gitleaks): в коде нет токенов и ключей.</li>
+</ol>
+<p> Ветка <code>main</code>. Репозиторий приватный на бесплатном тарифе GitHub, где защита веток для приватных репозиториев недоступна, поэтому она не включается. Вместо неё:</p>
+<ul>
+<li>Claude не отправляет изменения прямо в <code>main</code> — только через pull request и сливает его только при зелёной проверке и с разрешения владельца;</li>
+<li>«Выкладка» технически зависит от «Проверки» того же коммита (<code>needs</code>), поэтому код с упавшими тестами не попадёт на сервер, даже если окажется в <code>main</code>.</li>
+</ul>
+</li>
+<li><p><strong>«Выкладка» (<code>deploy</code>)</strong> — после слияния в <code>main</code> или вручную. <strong>Выкладка запускается только после того, как «Проверка» на этом же коммите прошла полностью</strong>: зависимость <code>needs</code>. Если проверка красная, выкладка не начинается и администратор получает «❌ Тесты не прошли, выкладка отменена».</p>
+<ol>
+<li>Собирает Docker-образ из проверенного коммита и публикует его в приватный реестр GitHub (ghcr.io) с тегом версии; хранятся 3 последние версии.</li>
+<li>По ключу <code>deploy</code> заходит на сервер и записывает <code>.env</code> из секретов (права 600).</li>
+<li>Делает бэкап БД.</li>
+<li>Скачивает новый образ, останавливает бота (на 10–30 секунд, записей в это время нет), применяет миграции БД и запускает новую версию (<code>docker compose up -d</code>). После успешной проверки здоровья удаляет с сервера образы старше предыдущей версии.</li>
+<li>Проверяет здоровье за 60 секунд: контейнер запущен, БД открывается, миграции на версии кода, <code>getMe</code> к Telegram отвечает.</li>
+<li>При провале автоматически откатывается на предыдущую версию и восстанавливает БД из бэкапа.</li>
+<li>Сообщает администратору в Telegram: «✅ Версия 1.4.0 выложена» или «❌ Ошибка выкладки, вернул 1.3.2».</li>
+</ol>
+</li>
+<li><p><strong>«Откат» (<code>rollback</code>)</strong> — вручную, с выбором одной из 3 последних версий.</p>
+</li>
+<li><p><strong>«Бот жив?» (<code>healthcheck</code>)</strong> — раз в час проверяет, что бот отвечает. Если нет — пишет администратору в Telegram через Bot API, что именно не прошло (контейнер, БД, связь с Telegram, место на диске), и пробует перезапустить контейнер.</p>
+</li>
+<li><p><strong>«Очистить сервер» (<code>cleanup</code>)</strong> — вручную: удаляет старые образы и временные файлы.</p>
+</li>
+</ol>
+<p>Тексты ошибок всех сценариев и подсказки, что исправить, — раздел 7.4.</p>
+<p><strong>Данные на сервере.</strong> БД и бэкапы лежат в отдельной папке (<code>/srv/bot/data</code>, Docker volume). Выкладка и откат её не трогают, удаляется она только вручную. Бот перезапускается автоматически при падении и после перезагрузки сервера (<code>restart: unless-stopped</code>).</p>
+<p><strong>Стоимость.</strong> Укладывается в бесплатные лимиты GitHub для приватного репозитория: одна выкладка — 3–5 минут работы GitHub Actions, проверка раз в час — секунды.</p>
+<p><strong>Первый запуск — по шагам для владельца</strong> (подробно в README):</p>
+<ol>
+<li>Арендовать VPS (раздел 7.1), создать бота у @BotFather.</li>
+<li>Создать пустой приватный репозиторий на GitHub и подключить его к сессии с Claude.</li>
+<li>На своём компьютере выполнить <code>ssh-keygen -t ed25519 -f deploy_key -N &quot;&quot;</code> и внести секреты из таблицы.</li>
+<li>Actions → «Настроить сервер» → Run. Дождаться зелёного результата и удалить <code>SERVER_ROOT_PASSWORD</code>.</li>
+<li>Слить первый pull request с ботом. Выкладка запустится сама, и в Telegram придёт «✅ Версия … выложена».</li>
+<li>Написать боту <code>/start</code> без ссылки: владелец, чей ID указан в <code>ADMIN_TG_IDS</code>, проходит анкету и становится администратором (раздел 3.0). Остальных пользователей он приглашает через «Админ» → «Пригласить».</li>
+</ol>
+<h3>7.4 Ошибки: понятно, что случилось и что исправить</h3>
+<p><strong>Принцип.</strong> Любое сообщение об ошибке — пользователю, администратору или в отчёте CI/CD — отвечает на три вопроса:</p>
+<ol>
+<li><strong>Что случилось</strong> — простыми словами, без технических трассировок для пользователя.</li>
+<li><strong>Почему</strong> — если причина известна.</li>
+<li><strong>Что сделать</strong> — конкретное действие: пример правильного ввода, команда, имя секрета, раздел документа.</li>
+</ol>
+<p><strong>Каталог ошибок.</strong> Все известные ошибки собраны в одном модуле кода (<code>errors/catalog.py</code>). У каждой есть:</p>
+<ul>
+<li>код (например, <code>INPUT-NUMBER</code>, <code>LLM-402</code>, <code>TG-NET</code>, <code>CFG-ADMIN</code>);</li>
+<li>текст для пользователя;</li>
+<li>текст для администратора;</li>
+<li>подсказка «что сделать»;</li>
+<li>уровень: пользователю / администратору / в лог.</li>
+</ul>
+<p>Из этого же модуля автоматически собирается раздел README «Что делать при ошибке» — таблица всех кодов. Тест проверяет, что у каждого кода заполнены текст и подсказка, а каждый код где-то используется.</p>
+<p><strong>Целостность.</strong> При ошибке ввода диалог не сбрасывается, уже введённое сохраняется в черновике. При внутренней ошибке изменение откатывается целиком (одна транзакция): полузаписанных данных не бывает.</p>
+<h4>7.4.1 Пользователю</h4>
+<table>
+<thead>
+<tr>
+<th>Ситуация</th>
+<th>Код</th>
+<th>Сообщение (образец)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Не число</td>
+<td><code>INPUT-NUMBER</code></td>
+<td>«Не понял число „4,5,1“. Напишите, например, 4,5 или 4.5»</td>
+</tr>
+<tr>
+<td>Число вне диапазона</td>
+<td><code>INPUT-RANGE</code></td>
+<td>«Рост — от 120 до 230 см. Вы ввели 1780 — может, лишняя цифра?» (подсказка, если значение похоже на ×10 или ÷10 от допустимого)</td>
+</tr>
+<tr>
+<td>Неверное время</td>
+<td><code>INPUT-TIME</code></td>
+<td>«Время пишите как 5:45, 5.45 или в секундах: 345»</td>
+</tr>
+<tr>
+<td>Неверная дата</td>
+<td><code>INPUT-DATE</code></td>
+<td>«Дату пишите как 20.10 или 20.10.2026»</td>
+</tr>
+<tr>
+<td>Будущая дата</td>
+<td><code>INPUT-FUTURE</code></td>
+<td>«Нельзя записать на 27.10 — это будущее. Сегодня 26.10»</td>
+</tr>
+<tr>
+<td>«Другое» без нужных полей</td>
+<td><code>INPUT-FOOD-LINE</code></td>
+<td>«Не хватает: углеводы. Формат: название, ккал, белки, жиры, углеводы, [цена]. Пример: Маффин 320 4,5 15 41 90»</td>
+</tr>
+<tr>
+<td>Дубль названия</td>
+<td><code>INPUT-DUPLICATE</code></td>
+<td>«Рецепт „Коктейль“ уже есть. [Обновить] [Сохранить под другим именем]»</td>
+</tr>
+<tr>
+<td>Город не найден</td>
+<td><code>CITY-NOT-FOUND</code></td>
+<td>«Не нашёл город „Масква“. Может, [Москва]? Или напишите иначе»</td>
+</tr>
+<tr>
+<td>Сервис городов не отвечает</td>
+<td><code>CITY-SERVICE</code></td>
+<td>«Поиск городов сейчас не отвечает. Выберите кнопкой или пропустите — город можно указать позже в настройках»</td>
+</tr>
+<tr>
+<td>Устаревшее меню</td>
+<td><code>UI-STALE</code></td>
+<td>«Это меню устарело. Вот главное меню 👇»</td>
+</tr>
+<tr>
+<td>Нет приглашения</td>
+<td><code>ACCESS-NO-INVITE</code></td>
+<td>«Бот доступен по приглашению. Если у вас есть ссылка — откройте её ещё раз»</td>
+</tr>
+<tr>
+<td>Приглашение истекло или исчерпано</td>
+<td><code>ACCESS-INVITE-EXPIRED</code></td>
+<td>«Эта ссылка больше не действует (истекла 20.10). Попросите новую у того, кто её прислал»</td>
+</tr>
+<tr>
+<td>Пользователь заблокирован</td>
+<td><code>ACCESS-BLOCKED</code></td>
+<td>«Доступ к боту закрыт. Обратитесь к администратору»</td>
+</tr>
+<tr>
+<td>ИИ не понял текст</td>
+<td><code>LLM-UNCLEAR</code></td>
+<td>«Не понял, что записать. Попробуйте так: „2 бедра на обед“ или „планка 6:15“»</td>
+</tr>
+<tr>
+<td>Дневной лимит разборов</td>
+<td><code>LLM-USER-LIMIT</code></td>
+<td>«Сегодня использованы все 50 разборов текстом. Счётчик обнулится в 04:00, а пока — кнопками»</td>
+</tr>
+<tr>
+<td>Сервис ИИ не отвечает</td>
+<td><code>LLM-UNAVAILABLE</code></td>
+<td>«Разбор текстом сейчас не отвечает. Попробуйте через пару минут или кнопками. Ничего не изменено»</td>
+</tr>
+<tr>
+<td>Бюджет ИИ закончился</td>
+<td><code>LLM-BUDGET</code></td>
+<td>«Разбор текстом временно выключен. Администратор уже знает. Кнопки работают как обычно»</td>
+</tr>
+<tr>
+<td>Слишком длинный текст</td>
+<td><code>LLM-TOO-LONG</code></td>
+<td>«Текст длиннее 1000 символов (в режиме заполнения — 4000). Разбейте на части»</td>
+</tr>
+<tr>
+<td>Внутренняя ошибка</td>
+<td><code>INTERNAL</code></td>
+<td>«Что-то пошло не так, ничего не сохранено. Попробуйте ещё раз. Если повторится — код ошибки E-7F3A, администратор его уже получил»</td>
+</tr>
+</tbody></table>
+<h4>7.4.2 Администратору в Telegram</h4>
+<p>Каждое оповещение содержит:</p>
+<ul>
+<li>код и краткое описание;</li>
+<li>где случилось (раздел бота или сценарий);</li>
+<li>сколько раз за последний час;</li>
+<li><strong>что сделать</strong> — по шагам, с именами секретов, командами и ссылкой на запуск GitHub Actions.</li>
+</ul>
+<p><strong>Против спама:</strong> одинаковые ошибки за час склеиваются в одно сообщение со счётчиком.</p>
+<table>
+<thead>
+<tr>
+<th>Ситуация</th>
+<th>Код</th>
+<th>Оповещение (образец)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Внутренняя ошибка в обработчике</td>
+<td><code>INTERNAL</code></td>
+<td>«⚠️ E-7F3A · «Еда → Добавить», пользователь #3 · KeyError &#39;unit&#39; в food/service.py:142 · 1 раз за час. Данные не изменены. Передайте код Claude для исправления»</td>
+</tr>
+<tr>
+<td>Неверный ключ модели</td>
+<td><code>LLM-401</code></td>
+<td>«🔑 DeepSeek отклонил ключ. Проверьте секрет <code>LLM_API_KEY</code> в GitHub и запустите «Выкладку» вручную»</td>
+</tr>
+<tr>
+<td>Закончился баланс модели</td>
+<td><code>LLM-402</code></td>
+<td>«💸 На балансе DeepSeek 0 $. Разбор текстом выключен. Пополните баланс (раздел 7.2) — включится сам в течение 5 минут»</td>
+</tr>
+<tr>
+<td>Слишком много запросов</td>
+<td><code>LLM-429</code></td>
+<td>«⏳ DeepSeek ограничил частоту запросов. Бот повторяет с паузой; если продолжится час — проверьте лимиты аккаунта»</td>
+</tr>
+<tr>
+<td>Модель не отвечает</td>
+<td><code>LLM-DOWN</code></td>
+<td>«🛑 DeepSeek не отвечает 10 минут. Переключился на запасного провайдера / разбор выключен (если запасного нет)»</td>
+</tr>
+<tr>
+<td>Бюджет на исходе</td>
+<td><code>LLM-BUDGET-80</code> / <code>LLM-BUDGET</code></td>
+<td>«📊 Потрачено 4 $ из 5 $ на ИИ в октябре» / «Лимит 5 $ исчерпан, разбор выключен до 1-го числа. Поднять лимит: секрет <code>LLM_MONTHLY_BUDGET_USD</code>»</td>
+</tr>
+<tr>
+<td>Нет связи с Telegram</td>
+<td><code>TG-NET</code></td>
+<td>«📡 Сервер 6 минут не может достучаться до api.telegram.org — вероятно, блокировка у хостера. Проверьте: запустите «Бот жив?» вручную. Если повторяется — смените локацию VPS (раздел 7.1) или задайте прокси в секрете <code>TELEGRAM_PROXY</code>» (отправляет сценарий «Бот жив?» с серверов GitHub — у них связь с Telegram есть, даже когда у VPS нет)</td>
+</tr>
+<tr>
+<td>Бэкап не сделан</td>
+<td><code>BKP-FAIL</code></td>
+<td>«💾 Бэкап за 26.10 не создан: на диске осталось 120 МБ. Запустите «Очистить сервер» в Actions (удалит старые образы) и «Бэкап сейчас»»</td>
+</tr>
+<tr>
+<td>Мало места или памяти</td>
+<td><code>SYS-DISK</code> / <code>SYS-MEM</code></td>
+<td>«🧱 Диск занят на 87%. Запустите «Очистить сервер». Если не помогло — тариф с большим диском»</td>
+</tr>
+<tr>
+<td>Внешний источник недоступен больше суток</td>
+<td><code>SRC-DOWN</code></td>
+<td>«🌤 Open-Meteo не отвечает 24 ч, погода в уведомлениях не показывается. Ничего делать не нужно, если не дольше 3 дней»</td>
+</tr>
+</tbody></table>
+<h4>7.4.3 Ошибки запуска и настроек</h4>
+<p>При старте бот проверяет <strong>все</strong> настройки сразу и выводит <strong>полный список</strong> проблем, а не первую попавшуюся:</p>
+<pre><code>Бот не запущен — исправьте настройки (Settings → Secrets → Actions):
+1. CFG-ADMIN: ADMIN_TG_IDS пуст — добавьте свой Telegram-ID (узнать: @userinfobot).
+2. CFG-TOKEN: BOT_TOKEN не похож на токен (ожидается 123456789:AA…) — скопируйте заново у @BotFather.
+3. CFG-LLM: LLM_BASE_URL не указан — для DeepSeek: https://api.deepseek.com
+</code></pre>
+<p>Этот список попадает в лог контейнера и в отчёт «Выкладки». Отправить его в Telegram при неверном токене нельзя, поэтому отчёт GitHub — основной канал.</p>
+<h4>7.4.4 Отчёты CI/CD</h4>
+<ul>
+<li><strong>Понятные имена шагов:</strong> «1. Линтер», «2. Модульные тесты», «3. Интеграционные тесты», «4. Покрытие», «5. Миграции», «6. Пробный запуск», «7. Поиск секретов»; у выкладки — «Бэкап», «Миграции», «Проверка здоровья», «Откат».</li>
+<li><strong>Сводка запуска</strong> (Job Summary на странице запуска в GitHub) при ошибке показывает таблицу:<ul>
+<li>какой шаг упал;</li>
+<li>какие тесты не прошли — описание, «ожидалось / получено», файл и строка;</li>
+<li>для покрытия — файлы и непокрытые строки ниже порога;</li>
+<li>для миграции — какая миграция и текст ошибки базы;</li>
+<li>для поиска секретов — файл и строка (сам секрет скрыт).</li>
+</ul>
+</li>
+<li><strong>Тесты читаются как требования.</strong> У каждого теста есть строка-описание со ссылкой на критерий, например <code>&quot;&quot;&quot;Раздел 9: «Коктейль» добавляет 322 ккал и 140 ₽&quot;&quot;&quot;</code>. Проверки выводят ожидаемое и фактическое значение: «ожидалось 322 ккал, получено 0». Поэтому по сводке сразу видно, какое требование нарушено.</li>
+<li><strong>Оповещения в Telegram о CI/CD</strong> — с причиной и ссылкой на запуск:<ul>
+<li>«❌ Выкладка 1.4.0 не удалась на шаге «Миграции»: столбец habit.weekly_goal уже существует. Вернул 1.3.2, данные целы. Подробности: &lt;ссылка&gt;»;</li>
+<li>«❌ Тесты на main не прошли (2 из 418): test_food_cocktail — ожидалось 322 ккал, получено 0. Выкладка отменена. &lt;ссылка&gt;».</li>
+</ul>
+</li>
+<li><strong>«Настроить сервер» — подсказки для каждой типовой ошибки:</strong><ul>
+<li>«Не удалось войти по паролю root — проверьте <code>SERVER_ROOT_PASSWORD</code> и что сервер включён в панели хостера»;</li>
+<li>«Вход по ключу не сработал — вход по паролю <strong>не отключён</strong>, чтобы вы не потеряли доступ. Проверьте <code>DEPLOY_SSH_PUBLIC_KEY</code> (должен начинаться с ssh-ed25519)»;</li>
+<li>«api.telegram.org недоступен с этого сервера — смените локацию (раздел 7.1)»;</li>
+<li>«API модели недоступен — проверьте <code>LLM_BASE_URL</code>».</li>
+</ul>
+</li>
+<li><strong>«Очистить сервер» (<code>cleanup</code>)</strong> — вспомогательный сценарий: удаляет старые Docker-образы и временные файлы и показывает, сколько места освобождено.</li>
+</ul>
+<h2>8. Этапы</h2>
+<ol>
+<li><strong>MVP</strong> — ежедневная запись и наглядность:<ul>
+<li>приглашения, анкета, расчёт КБЖУ, профиль, цели;</li>
+<li>изоляция данных, общий каталог, стартовый набор;</li>
+<li>настраиваемое главное меню, список «Привычки», карточка дня;</li>
+<li>граница суток 04:00, режим «Другой день» с выходом на любом шаге, перенос записей;</li>
+<li>еда; зарядка с «Как в прошлый раз», «+шаг» по упражнениям и «Изменить»; свои привычки; отметка «Выходной»;</li>
+<li>база упражнений; простая запись тренировок (зал, площадка, свободная) и бега;</li>
+<li>команды текстом через ИИ с подтверждением и отменой;</li>
+<li>статистика дня по выбранной привычке (картинка); обзор-светофор за неделю и месяц;</li>
+<li>первоначальное заполнение через ИИ;</li>
+<li>админ; экспорт в CSV; бэкап раз в 2 дня;</li>
+<li>развёртывание через GitHub Actions: настройка сервера, проверка, выкладка, откат, «Бот жив?».</li>
+</ul>
+</li>
+<li><strong>v2</strong> — умные тренировки и уведомления:<ul>
+<li>планы, сборка тренировки с фильтрами (пол, резинка, «лёжа на земле»), самочувствие, тип сессии;</li>
+<li>умная прогрессия, плато, разгрузки, лестницы упражнений с собственным весом;</li>
+<li>подробные графики периодов; вес тела;</li>
+<li>свои уведомления; готовые уведомления на данных бота (план на день, вечерний остаток, серия под угрозой, взвешивание, итоги недели, давно не было тренировки, рекорды);</li>
+<li>рассылка от администратора;</li>
+<li><strong>обмен между пользователями:</strong> «Поделиться» у рецепта, продукта, плана тренировки или привычки создаёт код или ссылку; получатель видит карточку и нажимает «Добавить к себе» — у него появляется своя копия, связь с оригиналом не сохраняется;</li>
+<li><strong>привычки реже чем каждый день:</strong> цель «N раз в неделю» (например, «баня 1 раз в неделю», «бег 2 раза в неделю»); светофор и серии считаются по неделям.</li>
+</ul>
+</li>
+<li><strong>v3</strong> — внешние источники и ИИ-контент:<ul>
+<li>готовые уведомления с внешними данными: погода на сегодня, праздники; пожелания дня через ИИ; совет дня;</li>
+<li>голосовые сообщения как команды;</li>
+<li>еженедельный разбор питания и тренировок от модели; бюджет на еду за месяц; отягощение на улице.</li>
+</ul>
+</li>
+<li><strong>Следующие версии</strong> — другие каналы и функции ассистента:<ul>
+<li>HTTP API поверх той же логики для мобильного и веб-приложения; вход в приложение через привязку к Telegram; push-уведомления. Интерфейсы приложения и веба в этих требованиях не проектируются — они описываются отдельно, когда до них дойдёт очередь;</li>
+<li>новые функции цифрового ассистента, например краткое резюме выбранных чатов, — отдельными модулями. Ограничения Telegram и условия для резюме чатов описаны в документе архитектуры.</li>
+</ul>
+</li>
+</ol>
+<h3>8.1 План разработки MVP по частям</h3>
+<p>MVP делается за 10 частей. Каждая часть — отдельный pull request (или несколько), который проходит «Проверку», выкладывается на сервер и сразу работает в Telegram. Следующая часть начинается, когда предыдущая принята владельцем. Все части ведутся в одной сессии с Claude по очереди: каждая — отдельным запросом после приёмки предыдущей. После каждой части Claude записывает в проект короткий отчёт: что сделано, что принято и какие решения приняты, — и выгружает обновлённые документы проекта в папку <code>docs/</code> репозитория.</p>
+<p><strong>Готовность части (Definition of Done)</strong> — часть принята, только если выполнено всё:</p>
+<ol>
+<li>Код и тесты в pull request; «Проверка» зелёная (раздел 7.3).</li>
+<li><strong>Покрытие тестами:</strong><ul>
+<li>бизнес-логика части — 100% строк и ветвлений;</li>
+<li>новый код — не ниже 95%;</li>
+<li>весь проект — не ниже 90%.</li>
+</ul>
+</li>
+<li><strong>Для каждого критерия раздела 9, относящегося к части, есть автоматический тест</strong> с тем же примером (числа, даты, тексты кнопок).</li>
+<li>Тесты всех предыдущих частей зелёные — регрессий нет.</li>
+<li>Миграция БД (если есть) проверена на подъём и откат.</li>
+<li>Часть выложена на сервер через «Выкладку», администратору пришло «✅».</li>
+<li>Владелец проверил части в Telegram по чек-листу из описания pull request.</li>
+<li>Ошибки части описаны в каталоге (раздел 7.4) и покрыты тестами: для каждого кода — тест, что в нужной ситуации пользователь или администратор получает именно этот текст.</li>
+<li>README (включая таблицу «Что делать при ошибке») и CHANGELOG обновлены.</li>
+<li><strong>Документы проекта обновлены и выгружены в репозиторий</strong> (папка <code>docs/</code>): бизнес-требования, архитектура и диаграммы классов, диаграмма развертывания, отчёт о ходе разработки — каждый в актуальном виде после этой части. Порядок описан в <code>CLAUDE.md</code> репозитория.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>№</th>
+<th>Часть</th>
+<th>Что входит</th>
+<th>Тесты (кроме общих требований)</th>
+<th>Результат для владельца</th>
+<th>Объём, млн токенов</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>Каркас, CI/CD, ошибки и первый администратор</strong></td>
+<td>Структура проекта, конфиг из .env с проверкой всех полей сразу, БД и Alembic, структурированные логи; <strong>каталог ошибок, коды E-xxxx, оповещения администратору со склейкой за час, сводки CI/CD</strong>; Dockerfile и docker-compose; сценарии <code>bootstrap</code>, <code>ci</code>, <code>deploy</code>, <code>rollback</code>, <code>healthcheck</code>, <code>cleanup</code>; <code>/start</code> и регистрация администратора по <code>ADMIN_TG_IDS</code> (пока без анкеты); реестр модулей и каналов, User и Identity, ключи запросов, проверка границ модулей в CI</td>
+<td>Конфиг: полный список проблем (<code>CFG-*</code>); роль по списку; каталог (у каждого кода есть текст и подсказка); склейка оповещений; миграции вверх и вниз; smoke-тест; CI краснеет при падающем тесте и низком покрытии, а сводка показывает тест и «ожидалось / получено»</td>
+<td>Сервер настроен, бот отвечает владельцу «Привет, администратор», остальным — «по приглашению»; выкладка и откат работают</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Общий каркас диалогов</strong></td>
+<td>Разбор чисел (точка и запятая), времени («5:45», «28.40»), дат с сообщениями <code>INPUT-*</code> из раздела 7.4.1; «Отмена» и /cancel; сброс через 15 минут с исключениями; устаревание кнопок; состояния диалогов в <code>DialogState</code>; проверка владельца callback-данных; главное меню и «Ещё» (пустые разделы)</td>
+<td>Все форматы чисел и времени, включая ошибочные; сброс по таймеру и после перезапуска; «Это меню устарело»; подмена callback</td>
+<td>Меню видно, кнопки отвечают «скоро»; отмена и сброс работают</td>
+<td>2–3</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Регистрация и профиль</strong></td>
+<td>Приглашения (создать, отозвать, лимит, срок), анкета из 12 шагов с «Назад», город (кнопки, нормализация, синонимы, Open-Meteo Geocoding), расчёт КБЖУ, цели с датой начала и историей, профиль в настройках с пересчётом, удаление аккаунта, изоляция данных</td>
+<td>Формулы раздела 4.1 (примеры владельца и женщины), ограничения снижения, проверка ручных КБЖУ, город (регистр, «питер», «Кировск», «Масква» — на записанных ответах геокодера), изоляция A/B</td>
+<td>Владелец регистрируется, получает 2800 / 160 / 80 / 360, может пригласить близких</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Дата записи и дни</strong></td>
+<td>Граница 04:00, логический «сегодня», «Другой день» (кнопки «Вчера (дд.мм)», календарь, выход на любом шаге), перенос «📅 На вчера» / на дату, «🛌 Выходной», настройка главного экрана, карточка дня (каркас)</td>
+<td>00:20 → вчера, 04:05 → сегодня, 03:58–04:02; подписи кнопок в 02:00; отмена на каждом шаге; запрет будущих дат; подтверждение старше 30 дней</td>
+<td>Можно выбрать прошедший день и выйти из режима; главный экран настраивается</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Еда</strong></td>
+<td>Каталог (seed), свои рецепты и продукты, «Добавить к себе», запись порции, вес и штуки, множитель, «Другое» и «Сохранить как рецепт», записи дня (изменить, удалить, перенести), цена, цели по дате, карточка дня с КБЖУ</td>
+<td>«Коктейль» → 322 / 26 / 9 / 39 и 140 ₽; «2 бедра» → 500 / 46 / 34 / 0; «Маффин» с точкой и запятой; копия КБЖУ при правке рецепта; цель на 01.10 и 22.10</td>
+<td>Ежедневный учёт еды целиком в боте</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Зарядка</strong></td>
+<td>Набор и шаги по упражнениям, черновик, «Как в прошлый раз», «+шаг», «Изменить» (− / + / число), номер в дне, первая зарядка, личные цели и строка прогресса</td>
+<td>50 / 50 / 5:45 / 25 → «Планка +15 сек» → 6:00; «Отжимания +5» ×2; шаг 10; номер 2; «как в прошлый раз» до даты в режиме «Другой день»; темп к цели</td>
+<td>Зарядка за 1–2 нажатия, прогресс планки</td>
+<td>2–3</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Свои привычки</strong></td>
+<td>Шаблоны и свои, три типа, быстрые значения, расписание, кнопки на главном экране, список «Привычки» (сортировка, обновление в том же сообщении), «Отметить несколько», серии, архив</td>
+<td>Серия с выходными и днями не по расписанию; 3/3 → ✅; «Вода» +1,5; «Отметить несколько» до «Записать» и в прошедший день; изоляция</td>
+<td>«👁 Глаза» за 1 нажатие, серии</td>
+<td>2–3</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Тренировки и бег (простая запись)</strong></td>
+<td>База упражнений (seed ≥ 120 с полями 3.4.1), запись зал / площадка / свободная, «Как в прошлый раз», подходы, тоннаж, длительность; бег с темпом, скоростью, рекордами; учёт в цели «тренировок в неделю»</td>
+<td>Тоннаж 110 × 8 × 4 = 3520, «вес каждой» × 2; темп 5,2 км / 28:40 → 5:31 и 10,88; проверка нереального темпа; валидация полей базы упражнений</td>
+<td>Записываешь зал и бег, история копится для умных рекомендаций v2</td>
+<td>3–4</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Команды текстом и заполнение через ИИ</strong></td>
+<td>Клиент LLM (OpenAI-совместимый, DeepSeek, запасной провайдер), схема действий и проверка, карточка «Понял так» с «Исправить» и «Убрать», «Отменить всё» 10 минут, уточняющие вопросы, режим заполнения (до 4000 символов, группы, постранично, «Обновить / Пропустить»), лимиты и учёт расходов</td>
+<td>30 эталонных фраз на записанных ответах (в CI) + ручной прогон на реальной модели (не меньше 27 из 30); чужие и несуществующие объекты отбрасываются; API недоступен → «попробуйте кнопками»; лимит исчерпан</td>
+<td>Правки одной фразой; владелец заполняет свои рецепты, цели и результаты</td>
+<td>4–5</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Статистика, админ, экспорт, бэкап и приёмка MVP</strong></td>
+<td>Картинки дня по выбранной привычке, обзор-светофор неделя / месяц / 3 месяца, «Текстом»; админ (пользователи, блокировка, каталог, расходы на ИИ); экспорт CSV с README.csv и «Одним архивом»; бэкап раз в 2 дня и «Бэкап сейчас»; полный прогон критериев MVP раздела 9</td>
+<td>Цвета светофора по 4.10 на примере 22.10; ни одного запроса к ИИ при построении картинок; CSV — точка, ISO-даты, BOM, «4×8» → 4 строки; нет имени и ID в экспорте; бэкап по расписанию</td>
+<td>MVP готов целиком</td>
+<td>4–5</td>
+</tr>
+</tbody></table>
+<p><strong>Итого:</strong> около 30–40 млн токенов. Одна часть занимает 2–5 млн.</p>
+<p><strong>Порядок и зависимости.</strong></p>
+<ul>
+<li>Части 1 → 2 → 3 → 4 идут строго по очереди: на них опирается всё остальное.</li>
+<li>Части 5, 6, 7, 8 независимы друг от друга, их порядок можно менять.</li>
+<li>Часть 9 — после 5–8, потому что ИИ должен уметь записывать всё.</li>
+<li>Часть 10 — последней.</li>
+</ul>
+<p><strong>Минимальный рабочий прототип</strong> — части 1–5: бот на сервере, регистрация, дни и еда. Это около 40% объёма MVP, им уже можно пользоваться каждый день.</p>
+<h2>9. Критерии приёмки</h2>
+<h3>MVP</h3>
+<p><strong>Регистрация и профиль</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Пользователь с ID из <code>ADMIN_TG_IDS</code> пишет <code>/start</code> без ссылки → анкета → роль «Администратор», в «Ещё» есть «Админ».</li>
+<li><input disabled="" type="checkbox"> Другой ID без приглашения — «Бот доступен по приглашению»; отозванный или исчерпанный код не работает.</li>
+<li><input disabled="" type="checkbox"> ID убран из <code>ADMIN_TG_IDS</code> → после перезапуска роль снята, данные на месте; пустой <code>ADMIN_TG_IDS</code> — бот не стартует с понятной ошибкой.</li>
+<li><input disabled="" type="checkbox"> Администратора нельзя заблокировать или удалить через бота.</li>
+<li><input disabled="" type="checkbox"> Анкета не спрашивает часовой пояс и темп; дата рождения в будущем — ошибка ввода.</li>
+<li><input disabled="" type="checkbox"> «Мужчина, 23 года, 178 см, 75 кг, лёгкая активность, набор» → 2800 ккал / Б 160 / Ж 80 / У 360.</li>
+<li><input disabled="" type="checkbox"> «Женщина, 30 лет, 165 см, 60 кг, средняя активность, поддержание» → 2050 ккал / Б 110 / Ж 55 / У 280.</li>
+<li><input disabled="" type="checkbox"> Вес «77.5» и «77,5» сохраняются одинаково.</li>
+<li><input disabled="" type="checkbox"> Изменение веса предлагает пересчёт; новая цель действует с сегодня, прошлые итоги не меняются.</li>
+</ul>
+<p><strong>Изоляция</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Пользователь B не видит рецептов, записей, привычек и уведомлений A; подменённый callback получает отказ.</li>
+<li><input disabled="" type="checkbox"> Удаление аккаунта стирает все данные; экспорт содержит только свои данные.</li>
+</ul>
+<p><strong>Еда и зарядка (аккаунт владельца)</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> «Еда» → «Коктейль»: 322 ккал / Б 26 / Ж 9 / У 39 и 140 ₽ за 2 нажатия.</li>
+<li><input disabled="" type="checkbox"> «Куриные бёдра» → «2 шт»: 500 ккал / Б 46 / Ж 34 / У 0.</li>
+<li><input disabled="" type="checkbox"> «Маффин 320 4.5 15 41» и «Маффин 320 4,5 15 41» дают одинаковую запись; «4,5,1» — подсказка без сброса.</li>
+<li><input disabled="" type="checkbox"> Правка рецепта не меняет прошлые записи.</li>
+<li><input disabled="" type="checkbox"> После зарядки 50 / 50 / 5:45 / 25: «Как в прошлый раз» одним нажатием записывает 50 / 50 / 5:45 / 25.</li>
+<li><input disabled="" type="checkbox"> «Планка +15 сек» → «Записать» записывает 50 / 50 / 6:00 / 25.</li>
+<li><input disabled="" type="checkbox"> «Отжимания +5» дважды → 60.</li>
+<li><input disabled="" type="checkbox"> Вторая зарядка за день получает номер 2.</li>
+<li><input disabled="" type="checkbox"> Шаг отжиманий изменён на 10 → кнопка показывает «Отжимания +10».</li>
+<li><input disabled="" type="checkbox"> «Изменить» показывает «−» и «+» для каждого упражнения.</li>
+<li><input disabled="" type="checkbox"> Остаток по цели на дату: 01.10 — от 2410 ккал, 22.10 — от 2800.</li>
+</ul>
+<p><strong>Дата записи и прошедшие дни</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Запись 25.10 в 00:20 попадает в 24.10; запись в 04:05 — в 25.10; ввод с 03:58 по 04:02 — в 24.10.</li>
+<li><input disabled="" type="checkbox"> 25.10 в 02:00 кнопка «Вчера» показывает «Вчера (23.10)», так как логический сегодняшний день — 24.10.</li>
+<li><input disabled="" type="checkbox"> Экран «Другой день» 25.10 днём показывает «Вчера (24.10)», «Позавчера (23.10)» и далее даты в формате (дд.мм).</li>
+<li><input disabled="" type="checkbox"> «✕ Отмена» на экране выбора даты и в календаре — режим не включается, записей нет.</li>
+<li><input disabled="" type="checkbox"> В режиме 20.10 при вводе граммов «Вернуться к сегодня» → «Выйти без сохранения?» → «Да»: незавершённая запись не создана, режим выключен.</li>
+<li><input disabled="" type="checkbox"> В режиме 20.10 «Коктейль» попадает в 20.10, остаток считается от 2800; после 15 минут бездействия следующая запись — в сегодня с кнопкой «📅 Нет, за 20.10».</li>
+<li><input disabled="" type="checkbox"> Будущую дату выбрать нельзя; дата старше 30 дней требует подтверждения.</li>
+<li><input disabled="" type="checkbox"> «📅 На вчера» переносит запись, итоги обоих дней пересчитаны; кнопка работает и через час после записи.</li>
+<li><input disabled="" type="checkbox"> «🛌 Выходной» 24.10: в светофоре день серый, серия привычки не прерывается.</li>
+</ul>
+<p><strong>Сброс незаконченного ввода</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> «Другой день» → «Вчера» → «Записи дня» → «Еда» → «Изменить количество», 15 минут без действий: количество не изменено, режим выключен, бот ничего не прислал; нажатие старой кнопки → «Это меню устарело» и главное меню.</li>
+<li><input disabled="" type="checkbox"> Черновик зарядки «Планка +15 сек» без «Записать», 15 минут без действий: зарядка не записана, следующий экран зарядки снова начинается со значений прошлой зарядки.</li>
+<li><input disabled="" type="checkbox"> Неподтверждённая карточка команды текстом через 15 минут не выполняется по старой кнопке «Выполнить всё».</li>
+<li><input disabled="" type="checkbox"> Идущая тренировка с паузой 20 минут не сбрасывается; через 3 часа без действий завершается с записанными подходами.</li>
+<li><input disabled="" type="checkbox"> Сброс срабатывает и после перезапуска бота.</li>
+</ul>
+<p><strong>Город</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> В анкете и настройках есть кнопки «Москва», «Санкт-Петербург», «Череповец» и «Другой».</li>
+<li><input disabled="" type="checkbox"> «МОСКВА», «москва» и « Москва » распознаются как Москва; «питер» и «СПб» — как Санкт-Петербург; «ростов-на-дону» и «Ростов на Дону» — один город.</li>
+<li><input disabled="" type="checkbox"> «Кировск» показывает выбор с регионами; «Масква» — «Не нашёл» и вариант «Москва» кнопкой.</li>
+</ul>
+<p><strong>Тренировки и бег (простая запись)</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> «Тренировка» → «Зал» → «Присед со штангой» → «Как в прошлый раз (110 кг 4×8)» → «Завершить» → «70 мин»: записаны 4 подхода, тоннаж 3520 кг.</li>
+<li><input disabled="" type="checkbox"> Бег 5,2 км за 28:40 → темп 5:31 мин/км, 10,88 км/ч; «28.40» и «28:40» равнозначны.</li>
+<li><input disabled="" type="checkbox"> Бег засчитывается в цель «тренировок в неделю».</li>
+</ul>
+<p><strong>Привычки</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Шаблон «Зарядка для глаз» с «На главном экране» добавляет кнопку «👁 Глаза»; одно нажатие → 1/3; «Отменить» удаляет.</li>
+<li><input disabled="" type="checkbox"> Цель 3/3 → «✅» и серия; при выполненной цели 23.10 и 24.10 серия 25.10 — 3 дня.</li>
+<li><input disabled="" type="checkbox"> «Вода»: нажатие +1, «Другое значение» → «1.5» даёт +1,5.</li>
+<li><input disabled="" type="checkbox"> «Отметить несколько» ничего не пишет до «Записать»; в режиме «Другой день» пишет в выбранную дату.</li>
+</ul>
+<p><strong>Команды текстом</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> «вчера на обед было 2 бедра и пакет гречи, а коктейль сегодня удали» → карточка с 3 действиями, данные не меняются до «Выполнить всё».</li>
+<li><input disabled="" type="checkbox"> «Убрать: 3» исключает пункт; после выполнения «Отменить всё» возвращает данные как было.</li>
+<li><input disabled="" type="checkbox"> Неоднозначное «творог» → вопрос с кнопками рецептов.</li>
+<li><input disabled="" type="checkbox"> Действие с чужим или несуществующим объектом отбрасывается при проверке.</li>
+<li><input disabled="" type="checkbox"> API недоступен → сообщение «попробуйте кнопками», данные не меняются.</li>
+<li><input disabled="" type="checkbox"> На наборе из 30 эталонных фраз разбор верен не меньше чем в 27.</li>
+</ul>
+<p><strong>Статистика</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> «Итоги» → «Еда» присылает картинку с 4 полосами и таблицей блюд; за 22.10 жиры 112 / 80 окрашены красным (140%), углеводы 289 / 360 — жёлтым (80%), расход 760 ₽, 3 блюда без цены.</li>
+<li><input disabled="" type="checkbox"> Бот помнит последнюю выбранную привычку; «Текстом» даёт ту же таблицу моноширинным блоком.</li>
+<li><input disabled="" type="checkbox"> «Неделя» присылает одну картинку-светофор по всем целям; клетки «Выходных» серые.</li>
+<li><input disabled="" type="checkbox"> При построении статистики нет ни одного запроса к ИИ (проверяется тестом).</li>
+</ul>
+<p><strong>Администрирование</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Админ создаёт приглашение, видит пользователя без содержимого дневника, блокирует его.</li>
+<li><input disabled="" type="checkbox"> Бэкап приходит раз в 2 дня; «Бэкап сейчас» присылает файл сразу.</li>
+<li><input disabled="" type="checkbox"> После нескольких бэкапов и выкладок на сервере лежит одна копия БД и не больше двух образов бота; если новый бэкап не удался, предыдущая копия остаётся на месте.</li>
+</ul>
+<p><strong>Развёртывание</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> «Настроить сервер» на чистом Ubuntu 24.04 завершается зелёным: Docker установлен, вход по паролю и под root отключён, вход <code>deploy</code> по ключу работает, Telegram и API модели доступны.</li>
+<li><input disabled="" type="checkbox"> Повторный запуск «Настроить сервер» ничего не ломает.</li>
+<li><input disabled="" type="checkbox"> Pull request с падающим тестом, с покрытием ниже порога, с неработающей миграцией или с найденным секретом получает красную «Проверку», и Claude его не сливает.</li>
+<li><input disabled="" type="checkbox"> Все изменения попадают в <code>main</code> через pull request: каждый коммит в <code>main</code> — слияние PR.</li>
+<li><input disabled="" type="checkbox"> Если «Проверка» на коммите в <code>main</code> красная, «Выкладка» не запускается, администратору приходит «❌ Тесты не прошли».</li>
+<li><input disabled="" type="checkbox"> В CI нет ни одного реального запроса к языковой модели и Telegram.</li>
+<li><input disabled="" type="checkbox"> Слияние в <code>main</code> выкладывает новую версию без ручных действий; администратору приходит «✅ Версия … выложена»; данные пользователей сохранены.</li>
+<li><input disabled="" type="checkbox"> Версия, которая не проходит проверку здоровья, автоматически откатывается на предыдущую, администратору приходит «❌».</li>
+<li><input disabled="" type="checkbox"> «Откат» возвращает выбранную версию.</li>
+<li><input disabled="" type="checkbox"> Остановленный вручную контейнер «Бот жив?» обнаруживает в течение часа, сообщает администратору и перезапускает.</li>
+<li><input disabled="" type="checkbox"> После перезагрузки сервера бот поднимается сам.</li>
+<li><input disabled="" type="checkbox"> В репозитории и логах Actions нет токенов, ключей и паролей.</li>
+</ul>
+<p><strong>Архитектура</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Логика (сценарии и расчёты) не импортирует aiogram — это проверяет линтер в CI.</li>
+<li><input disabled="" type="checkbox"> Сценарии записи еды, зарядки и привычек покрыты тестами без Telegram и дают тот же результат, что и через кнопки.</li>
+<li><input disabled="" type="checkbox"> Повторно доставленный апдейт Telegram (тот же <code>update_id</code>) не создаёт вторую запись.</li>
+<li><input disabled="" type="checkbox"> Telegram-ID пользователя хранится только в <code>Identity</code>; удаление аккаунта стирает и её.</li>
+<li><input disabled="" type="checkbox"> Удалённая запись не видна в боте и в итогах, а через 30 дней стирается совсем.</li>
+</ul>
+<p><strong>Понятные ошибки</strong></p>
+<ul>
+<li><p><input disabled="" type="checkbox"> 
+Ввод «4,5,1» в поле веса → «Не понял число „4,5,1“. Напишите, например, 4,5 или 4.5», черновик сохранён.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Рост «1780» → подсказка «может, лишняя цифра?».</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+«Маффин 320 4,5 15» → «Не хватает: углеводы» с примером.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Внутренняя ошибка: пользователь видит код E-xxxx, администратор получает оповещение с тем же кодом, разделом и файлом; данные не изменены; 5 одинаковых ошибок за час — одно оповещение со счётчиком.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Ответ DeepSeek 402 → пользователю <code>LLM-BUDGET</code>, администратору «💸 … пополните баланс»; 401 → подсказка про <code>LLM_API_KEY</code>.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Пустой <code>ADMIN_TG_IDS</code> и неверный <code>BOT_TOKEN</code> одновременно → в отчёте «Выкладки» оба пункта с подсказками.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Падающий тест в CI → в сводке запуска имя шага, описание теста со ссылкой на критерий и «ожидалось / получено»; администратору — «❌ Тесты не прошли» со ссылкой.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Ошибка миграции при выкладке → откат и сообщение с названием шага и текстом ошибки базы.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+У каждого кода в каталоге есть текст и подсказка; таблица в README совпадает с каталогом.
+<strong>Первоначальное заполнение</strong></p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Сообщение со всеми 4 рецептами владельца из раздела 6.2 → карточка «Рецепты: 4»; после подтверждения КБЖУ и цены совпадают с таблицей 6.2.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Сообщение «цели: с 22.09.2026 2410/140/70/305, с 09.10.2026 2800/160/80/360» создаёт обе цели; остаток за 01.10 считается от 2410, за 22.10 — от 2800.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Повторная отправка тех же рецептов предлагает «Обновить / Пропустить», дублей нет.</p>
+</li>
+<li><p><input disabled="" type="checkbox"> 
+Сообщение длиной 3500 символов разбирается; карточка листается по страницам.</p>
+</li>
+</ul>
+<p><strong>Хранение и экспорт</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> В боте нет функции загрузки файлов; ни одна функция не читает и не пишет файлы с данными пользователей.</li>
+<li><input disabled="" type="checkbox"> Экспорт за период присылает CSV-файлы из раздела 3.12 и README.csv со словарём колонок.</li>
+<li><input disabled="" type="checkbox"> Для дня с записями из примера 22.10 в <code>daily_summary.csv</code>: <code>kcal = 2947.24</code>, <code>kcal_goal = 2800</code>, <code>cost_rub = 760</code> — с десятичной точкой; файл открывается в Excel без «кракозябр».</li>
+<li><input disabled="" type="checkbox"> В <code>workouts.csv</code> подход «4×8» развёрнут в 4 строки.</li>
+<li><input disabled="" type="checkbox"> В экспорте нет имени и Telegram-ID; временные файлы удаляются после отправки.</li>
+<li><input disabled="" type="checkbox"> «Одним архивом» присылает ZIP с теми же файлами.</li>
+</ul>
+<h3>v2</h3>
+<p><strong>Умные тренировки</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Площадка, «Резинка с собой? — Нет»: в собранной тренировке нет упражнений с резинкой, с отягощением и «лёжа на земле».</li>
+<li><input disabled="" type="checkbox"> Для женщины в автоподборе нет шраг; для мужчины — нет отведения бедра в тренажёре; при «Показывать все» они доступны.</li>
+<li><input disabled="" type="checkbox"> «Всё тело, 60 мин» в зале: 5–6 упражнений, есть присед или выпад, тяга бедром, жим и тяга.</li>
+<li><input disabled="" type="checkbox"> Присед 110 кг 4×8 (диапазон 6–8), пауза 7 дней, обычная сессия → 112,5 кг, причина «все подходы 8/8».</li>
+<li><input disabled="" type="checkbox"> То же с паузой 16 дней → 110 кг без прибавки; с паузой 35 дней → 100 кг (−10% = 99, округлено до шага 2,5); с паузой 50 дней → 87,5 кг (−20% = 88) и пометка «вкатывание».</li>
+<li><input disabled="" type="checkbox"> Самочувствие «Устал» → лёгкая сессия: присед 100 кг (110 − 10% = 99, округлено до шага), 3 подхода вместо 4.</li>
+<li><input disabled="" type="checkbox"> 6-я неделя от 10.10.2026 (14–20.11) — разгрузка.</li>
+<li><input disabled="" type="checkbox"> e1RM без роста &gt; 1% за 4 сессии → медленная прогрессия, вес растёт только после 2 сессий подряд на верхней границе.</li>
+<li><input disabled="" type="checkbox"> Подтягивания 4×10 при диапазоне 6–10 две сессии подряд → предлагается следующий вариант лестницы.</li>
+</ul>
+<p><strong>Уведомления</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Уведомление «👁 Глаза, каждый день, 10:00 / 13:00 / 16:00, если не сделано» создаётся не больше чем за 6 нажатий без ввода текста.</li>
+<li><input disabled="" type="checkbox"> Если глаза уже 3/3, уведомления в этот день не приходят; «⏰ +15 мин» повторяет через 15 минут.</li>
+<li><input disabled="" type="checkbox"> В тихие часы уведомления не приходят.</li>
+</ul>
+<h3>v3</h3>
+<ul>
+<li><input disabled="" type="checkbox"> Погода приходит в 07:00 по городу из профиля пользователя; у двух пользователей из разных городов — разная погода. Если Open-Meteo недоступен, «План на день» приходит без блока погоды.</li>
+<li><input disabled="" type="checkbox"> 100 сгенерированных пожеланий одного пользователя не содержат совпадений и пар с похожестью ≥ 0,5.</li>
+</ul>
+<h2>10. Открытые вопросы</h2>
+<p><strong>Решено</strong></p>
+<ul>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Город владельца — Москва.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Лимит расходов на API модели — 5 $ в месяц на всех; при исчерпании — только кнопки.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Команды текстом — в MVP.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Зал владельца: гантели с шагом 1 кг, есть блины по 1,25 кг (учтено в 6.2).</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Готовые уведомления — текущий набор из раздела 3.9.2, в порядке этапов раздела 8.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Доступ — только по приглашению.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Цель «Снижение веса» нужна, с ограничениями раздела 4.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Админ не видит чужие дневники.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Обмен рецептами, продуктами, планами и привычками между пользователями — в v2.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Дата рождения владельца в коде не задаётся: владелец — обычный пользователь и вводит её сам.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Хостер — HOSTKEY, vm.pico в Нидерландах (1 vCPU / 1 ГБ / 40 ГБ, ~490 ₽/мес, оплата картой «Мир»).</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Репозиторий — приватный <code>habit-bot</code>.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Слияние pull request — Claude сливает сам после явного разрешения владельца и зелёной проверки.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Куриное бедро (филе) — ≈ 120 г за 1 шт, 72 ₽ за 1 шт при 600 ₽/кг; можно поправить в настройках.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Рецепты «Своя шаурма», «Творог на массу», «Обед кускус», «Обед фасоль» — убраны, владелец внесёт позже.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Привычки с целью «N раз в неделю» — в v2.</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Логика не зависит от Telegram; мобильное и веб-приложение — в следующих версиях, их интерфейсы пока не проектируются (раздел 8).</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Все части MVP разрабатываются в одной сессии по очереди, после приёмки предыдущей (раздел 8.1).</p>
+</li>
+<li><p><input checked="" disabled="" type="checkbox"> 
+Репозиторий остаётся приватным, защита ветки <code>main</code> не включается; от выкладки непроверенного кода защищает зависимость «Выкладки» от «Проверки» (раздел 7.3).</p>
+</li>
+</ul>
+<p><strong>Открытые</strong></p>
+<ul>
+<li><input disabled="" type="checkbox"> Как пополнять баланс DeepSeek — российской картой напрямую нельзя. (владелец разберётся позже; варианты — раздел 7.2: зарубежная карта, посредник или российский агрегатор с оплатой в рублях; предоплата 5–10 $)</li>
+</ul>
+<p><strong>Как начать разработку:</strong> создайте пустой приватный репозиторий <code>habit-bot</code>, подключите его к сессии с Claude и попросите сделать <strong>часть 1</strong> из раздела 8.1. Следующие части — в той же сессии, по очереди после приёмки предыдущей.</p>
+</section>
+</article>
+
+</body></html>

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media print{pre{white-space:pre-wrap!important;word-break:break-word}.tbl,table{overflow:visible!important} table{min-width:0!important;display:table!important;width:100%!important}.diagram{overflow:visible!important;break-inside:avoid} .diagram pre.mermaid{min-width:0!important}.diagram svg{max-width:100%!important;height:auto!important}}</style></head>
+<body>
+<title>Развертывание habit-bot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: одна колонка-паспорт системы; две схемы как чертежи, под ними спецификация узлов */
+:root{
+  --bg:#f3f5f4; --paper:#ffffff; --fg:#17201e; --mute:#5c6966; --line:#cdd6d3;
+  --accent:#0f6e86; --accent-soft:#dcedf1;
+  --node:#ffffff; --node-side:#d9e1de; --env:#eef2f1; --ctr:#f8faf9; --ext:#f6f1e7; --ext-side:#e2d8c4;
+  --vol:#eaf1ee; --fw:#fbeeee; --fw-line:#d9a3a3;
+  --display:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111716; --paper:#18201f; --fg:#e3eae8; --mute:#93a29e; --line:#2f3b39;
+  --accent:#5cc0d8; --accent-soft:#163a43;
+  --node:#1d2726; --node-side:#2c3836; --env:#1a2322; --ctr:#202b2a; --ext:#262219; --ext-side:#3a3426;
+  --vol:#1b2a26; --fw:#2b1c1c; --fw-line:#7a4545; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111716; --paper:#18201f; --fg:#e3eae8; --mute:#93a29e; --line:#2f3b39;
+  --accent:#5cc0d8; --accent-soft:#163a43;
+  --node:#1d2726; --node-side:#2c3836; --env:#1a2322; --ctr:#202b2a; --ext:#262219; --ext-side:#3a3426;
+  --vol:#1b2a26; --fw:#2b1c1c; --fw-line:#7a4545; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px;display:flex;flex-direction:column;gap:32px}
+header{display:flex;flex-direction:column;gap:8px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:700;font-size:clamp(26px,6vw,36px);line-height:1.15;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:600;margin:0;text-wrap:balance}
+.lead{margin:0;color:var(--mute);max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:12px;color:var(--mute)}
+section{display:flex;flex-direction:column;gap:14px}
+section>p{margin:0;max-width:65ch}
+figure{margin:0;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px 12px 14px;display:flex;flex-direction:column;align-items:center;gap:12px}
+figure svg{width:100%;max-width:520px;height:auto;color:var(--fg);font-family:var(--mono)}
+figcaption{font-size:13px;color:var(--mute);max-width:60ch;align-self:stretch}
+/* svg parts */
+svg .side{fill:var(--node-side);stroke:currentColor;stroke-width:.8;stroke-linejoin:round}
+svg .face{fill:var(--node);stroke:currentColor;stroke-width:1}
+svg .ext .face{fill:var(--ext)} svg .ext .side{fill:var(--ext-side)}
+svg .vps .face{fill:var(--paper);stroke-width:1.4}
+svg .gh .face{fill:var(--paper);stroke-width:1.2}
+svg .env>.face{fill:var(--env);stroke-dasharray:5 3}
+svg .ctr>.face{fill:var(--ctr);stroke:var(--accent);stroke-width:1.5}
+svg .cell .face{fill:var(--node);stroke-width:.8}
+svg .cell .tab{fill:none;stroke:currentColor;stroke-width:.8}
+svg .envf .face{fill:var(--accent-soft);stroke:none}
+svg .vol .face{fill:var(--vol)}
+svg .fw .face{fill:var(--fw);stroke:var(--fw-line)}
+svg .who .face{fill:var(--accent-soft);stroke:none}
+svg .cmp .face{fill:var(--node)}
+svg .chip .face{fill:var(--node);stroke-width:.8}
+svg .chip.acc .face{fill:var(--accent-soft);stroke:var(--accent)}
+svg text{fill:currentColor}
+svg .st{font-size:9.5px;fill:var(--mute)}
+svg .tt{font-family:var(--body);font-weight:600}
+svg .sb,svg .sbr{font-size:10.5px;fill:var(--mute)}
+svg .lb{font-size:10px}
+svg .lb.mute{fill:var(--mute);font-style:italic}
+svg .accT{fill:var(--accent);font-weight:600}
+svg .cx{font-size:10.5px}
+svg .ln{stroke:currentColor;stroke-width:1.1;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.8;color:var(--accent)}
+/* table */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:13.5px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+th{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);background:var(--env)}
+td:first-child{font-weight:600;white-space:nowrap}
+code{font-family:var(--mono);font-size:.88em;background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.dec{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.dec div{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.dec b{font-size:14px} .dec span{font-size:13.5px;color:var(--mute)}
+details{background:var(--paper);border:1px solid var(--line);border-radius:10px}
+summary{cursor:pointer;padding:12px 14px;font-weight:600;list-style-position:inside}
+summary:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.src{padding:0 14px 14px;display:flex;flex-direction:column;gap:8px}
+pre{margin:0;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.5;background:var(--env);padding:12px;border-radius:8px}
+button{align-self:flex-start;font:inherit;font-size:13px;padding:6px 12px;border-radius:6px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--fg);cursor:pointer}
+.src p{margin:0;font-size:13px;color:var(--mute)}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">UML · диаграмма развертывания</div>
+  <h1>Дневник привычек: где и как работает бот</h1>
+  <p class="lead">Собрано по бизнес-требованиям, редакция 9 от 26.10.2026, разделы 7.1–7.4. Первая схема показывает, как бот работает каждый день. Вторая — как новая версия попадает на сервер.</p>
+  <div class="meta"><span>MVP</span><span>1 VPS · 1 контейнер</span><span>Europe/Moscow, граница суток 04:00</span></div>
+</header>
+
+<section>
+  <h2>1. Работа бота</h2>
+  <figure>
+    <svg viewBox="0 0 400 822" role="img" aria-label="Схема работы: смартфоны пользователей общаются с ботом через Telegram Bot API; бот на VPS вне РФ сам опрашивает Telegram по HTTPS, работает в одном Docker-контейнере, хранит данные в SQLite на томе /srv/bot/data и обращается к DeepSeek, Open-Meteo и isdayoff.ru"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="currentColor"/></marker><marker id="ahs" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,1 L1,5 L10,9 z" fill="currentColor"/></marker></defs><g class="dev"><polygon class="side" points="8,16 14,10 192,10 186,16"/><polygon class="side" points="186,16 192,10 192,68 186,74"/><rect class="face" x="8" y="16" width="178" height="58"/><text class="st" x="18" y="31">«device»</text><text class="tt" x="18" y="46" font-size="12">Смартфон пользователя</text><text class="sb" x="18" y="60">Telegram · до ~20 человек</text></g><g class="dev"><polygon class="side" points="210,16 216,10 394,10 388,16"/><polygon class="side" points="388,16 394,10 394,68 388,74"/><rect class="face" x="210" y="16" width="178" height="58"/><text class="st" x="220" y="31">«device»</text><text class="tt" x="220" y="46" font-size="12">Смартфон админа</text><text class="sb" x="220" y="60">алерты, бэкап раз в 2 дня</text></g><line class="ln" x1="97" y1="74" x2="140" y2="116" marker-end="url(#ah)" marker-start="url(#ahs)"/><line class="ln" x1="299" y1="74" x2="256" y2="116" marker-end="url(#ah)" marker-start="url(#ahs)"/><text class="lb" x="198" y="102" text-anchor="middle">переписка с ботом</text><g class="ext"><polygon class="side" points="58,124 64,118 344,118 338,124"/><polygon class="side" points="338,124 344,118 344,168 338,174"/><rect class="face" x="58" y="124" width="280" height="50"/><text class="st" x="68" y="139">«external system» · Telegram</text><text class="tt" x="68" y="154" font-size="12">Telegram Bot API</text></g><text class="sbr" x="328" y="154" text-anchor="end">api.telegram.org</text><g class="vps"><polygon class="side" points="8,232 14,226 394,226 388,232"/><polygon class="side" points="388,232 394,226 394,694 388,700"/><rect class="face" x="8" y="232" width="380" height="468"/><text class="st" x="18" y="247">«device» VPS вне РФ: NL · DE · FI · KZ</text><text class="tt" x="18" y="262" font-size="12">Ubuntu · 1 vCPU · 1 ГБ RAM + 1 ГБ swap</text></g><line class="ln acc" x1="198" y1="226" x2="198" y2="176" marker-end="url(#ah)"/><text class="lb accT" x="206" y="193" text-anchor="start">исходящий HTTPS :443</text><text class="lb" x="206" y="206" text-anchor="start">long polling getUpdates</text><text class="lb mute" x="190" y="206" text-anchor="end">прокси — по необх.</text><g class="fw"><rect class="face" x="20" y="276" width="356" height="24" rx="4"/></g><text class="lb" x="30" y="292" text-anchor="start">ufw: входящий только SSH :22 (deploy, по ключу)</text><g class="env"><rect class="face" x="20" y="312" width="356" height="376" rx="4"/><text class="st" x="30" y="327">«execution environment»</text><text class="tt" x="30" y="342">Docker Engine + Compose</text><text class="st" x="366" y="342" text-anchor="end">restart: unless-stopped</text></g><g class="ctr"><rect class="face" x="32" y="356" width="332" height="196" rx="4"/><text class="st" x="42" y="371">«container»</text><text class="tt" x="42" y="386">habit-bot:&lt;версия&gt; · Python 3.12</text></g><g class="cell"><rect class="face" x="44" y="398" width="150" height="34" rx="3"/><text class="tt" x="52" y="412" font-size="11">aiogram 3</text><text class="sb" x="52" y="425" font-size="9.5">обработчики, FSM</text></g><g class="cell"><rect class="face" x="202" y="398" width="150" height="34" rx="3"/><text class="tt" x="210" y="412" font-size="11">APScheduler</text><text class="sb" x="210" y="425" font-size="9.5">уведомления, бэкап</text></g><g class="cell"><rect class="face" x="44" y="438" width="150" height="34" rx="3"/><text class="tt" x="52" y="452" font-size="11">SQLAlchemy + Alembic</text><text class="sb" x="52" y="465" font-size="9.5">ORM, миграции</text></g><g class="cell"><rect class="face" x="202" y="438" width="150" height="34" rx="3"/><text class="tt" x="210" y="452" font-size="11">matplotlib + Pillow</text><text class="sb" x="210" y="465" font-size="9.5">картинки статистики</text></g><g class="cell"><rect class="face" x="44" y="478" width="150" height="34" rx="3"/><text class="tt" x="52" y="492" font-size="11">httpx</text><text class="sb" x="52" y="505" font-size="9.5">погода, календарь</text></g><g class="cell"><rect class="face" x="202" y="478" width="150" height="34" rx="3"/><text class="tt" x="210" y="492" font-size="11">LLM-клиент</text><text class="sb" x="210" y="505" font-size="9.5">OpenAI-совм., pydantic</text></g><g class="envf"><rect class="face" x="44" y="520" width="308" height="24" rx="4"/></g><text class="lb" x="54" y="536" text-anchor="start">.env (права 600) — создаётся из GitHub Secrets</text><line class="ln" x1="198" y1="552" x2="198" y2="578" marker-end="url(#ah)" marker-start="url(#ahs)"/><text class="lb" x="206" y="569" text-anchor="start">чтение / запись</text><g class="vol"><rect class="face" x="32" y="580" width="332" height="84" rx="4"/><text class="st" x="42" y="595">«volume» Docker</text><text class="tt" x="42" y="610">/srv/bot/data — не трогается выкладкой</text><text class="sb" x="42" y="624">bot.db — SQLite, WAL: все данные</text><text class="sb" x="42" y="638">backup — 1 последняя копия, зашифрована</text><text class="sb" x="42" y="652">logs/ — 14 дн, ≤ 50 МБ · tmp/ — до 24 ч</text></g><g class="ext"><polygon class="side" points="8,752 14,746 130,746 124,752"/><polygon class="side" points="124,752 130,746 130,806 124,812"/><rect class="face" x="8" y="752" width="116" height="60"/><text class="st" x="18" y="767">«external»</text><text class="tt" x="18" y="782" font-size="12">DeepSeek API</text><text class="sb" x="18" y="796">+ запасной LLM</text></g><line class="ln" x1="66" y1="700" x2="66" y2="744" marker-end="url(#ah)"/><text class="lb" x="72" y="726" text-anchor="start">JSON, без ПДн</text><g class="ext"><polygon class="side" points="142,752 148,746 264,746 258,752"/><polygon class="side" points="258,752 264,746 264,806 258,812"/><rect class="face" x="142" y="752" width="116" height="60"/><text class="st" x="152" y="767">«external»</text><text class="tt" x="152" y="782" font-size="12">Open-Meteo</text><text class="sb" x="152" y="796">погода, города</text></g><line class="ln" x1="200" y1="700" x2="200" y2="744" marker-end="url(#ah)"/><text class="lb" x="206" y="726" text-anchor="start">таймаут 5 с</text><g class="ext"><polygon class="side" points="276,752 282,746 398,746 392,752"/><polygon class="side" points="392,752 398,746 398,806 392,812"/><rect class="face" x="276" y="752" width="116" height="60"/><text class="st" x="286" y="767">«external»</text><text class="tt" x="286" y="782" font-size="12">isdayoff.ru</text><text class="sb" x="286" y="796">календарь</text></g><line class="ln" x1="334" y1="700" x2="334" y2="744" marker-end="url(#ah)"/><text class="lb" x="340" y="726" text-anchor="start">кэш 1 ч</text></svg>
+    <figcaption>Сервер сам опрашивает Telegram, поэтому входящих портов, кроме SSH, нет. Все данные живут в одном файле SQLite на томе, который выкладка и откат не трогают. DeepSeek получает только текст команды и нужные записи, без имени, Telegram-ID и профиля.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>2. Выкладка новой версии</h2>
+  <figure>
+    <svg viewBox="0 0 400 586" role="img" aria-label="Схема выкладки: Claude отправляет изменения в приватный репозиторий habit-bot, владелец одобряет слияние и вносит секреты; GitHub Actions проверяет код, публикует образ в ghcr.io, по SSH выкладывает его на VPS и шлёт оповещения через Telegram Bot API"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,1 L9,5 L0,9 z" fill="currentColor"/></marker><marker id="ahs" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,1 L1,5 L10,9 z" fill="currentColor"/></marker></defs><g class="who"><rect class="face" x="8" y="16" width="178" height="58" rx="4"/><text class="st" x="18" y="31">«actor»</text><text class="tt" x="18" y="46">Разработчик (Claude)</text><text class="sb" x="18" y="60">код, тесты, README</text></g><g class="who"><rect class="face" x="210" y="16" width="178" height="58" rx="4"/><text class="st" x="220" y="31">«actor»</text><text class="tt" x="220" y="46">Владелец</text><text class="sb" x="220" y="60">секреты, OK на слияние</text></g><g class="gh"><polygon class="side" points="8,124 14,118 394,118 388,124"/><polygon class="side" points="388,124 394,118 394,350 388,356"/><rect class="face" x="8" y="124" width="380" height="232"/><text class="st" x="18" y="139">«cloud»</text><text class="tt" x="18" y="154" font-size="12">GitHub</text></g><g class="cmp"><rect class="face" x="20" y="168" width="172" height="48" rx="4"/><text class="tt" x="30" y="183">habit-bot</text><text class="sb" x="30" y="197">приватный, main защищён</text></g><g class="cmp"><rect class="face" x="204" y="168" width="172" height="48" rx="4"/><text class="tt" x="214" y="183">Secrets</text><text class="sb" x="214" y="197">BOT_TOKEN, LLM_*, …</text></g><line class="ln" x1="97" y1="74" x2="104" y2="166" marker-end="url(#ah)"/><text class="lb" x="94" y="110" text-anchor="end">push, PR</text><line class="ln" x1="258" y1="74" x2="170" y2="166" marker-end="url(#ah)"/><text class="lb" x="196" y="108" text-anchor="end">одобряет PR</text><line class="ln" x1="322" y1="74" x2="300" y2="166" marker-end="url(#ah)"/><text class="lb" x="318" y="112" text-anchor="start">вносит</text><g class="env"><rect class="face" x="20" y="236" width="356" height="108" rx="4"/><text class="st" x="30" y="251">«execution environment»</text><text class="tt" x="30" y="266">GitHub Actions runner</text></g><line class="ln" x1="106" y1="216" x2="106" y2="234" marker-end="url(#ah)"/><line class="ln" x1="290" y1="216" x2="290" y2="234" marker-end="url(#ah)"/><g class="chip acc"><rect class="face" x="32" y="278" width="108" height="24" rx="12"/><text class="cx" x="86.0" y="293.5" text-anchor="middle">ci</text></g><g class="chip acc"><rect class="face" x="146" y="278" width="108" height="24" rx="12"/><text class="cx" x="200.0" y="293.5" text-anchor="middle">deploy</text></g><g class="chip"><rect class="face" x="260" y="278" width="108" height="24" rx="12"/><text class="cx" x="314.0" y="293.5" text-anchor="middle">rollback</text></g><g class="chip"><rect class="face" x="32" y="310" width="108" height="24" rx="12"/><text class="cx" x="86.0" y="325.5" text-anchor="middle">bootstrap</text></g><g class="chip"><rect class="face" x="146" y="310" width="108" height="24" rx="12"/><text class="cx" x="200.0" y="325.5" text-anchor="middle">healthcheck 1/ч</text></g><g class="chip"><rect class="face" x="260" y="310" width="108" height="24" rx="12"/><text class="cx" x="314.0" y="325.5" text-anchor="middle">cleanup</text></g><g class="ext"><polygon class="side" points="8,410 14,404 174,404 168,410"/><polygon class="side" points="168,410 174,404 174,454 168,460"/><rect class="face" x="8" y="410" width="160" height="50"/><text class="st" x="18" y="425">«registry»</text><text class="tt" x="18" y="440" font-size="12">ghcr.io</text><text class="sb" x="18" y="454">3 последние версии</text></g><g class="ext"><polygon class="side" points="232,410 238,404 394,404 388,410"/><polygon class="side" points="388,410 394,404 394,454 388,460"/><rect class="face" x="232" y="410" width="156" height="50"/><text class="st" x="242" y="425">«external»</text><text class="tt" x="242" y="440" font-size="12">Telegram Bot API</text><text class="sb" x="242" y="454">алерт админу</text></g><line class="ln" x1="88" y1="344" x2="88" y2="402" marker-end="url(#ah)"/><text class="lb" x="94" y="384" text-anchor="start">push образа</text><line class="ln" x1="310" y1="344" x2="310" y2="402" marker-end="url(#ah)"/><text class="lb" x="316" y="384" text-anchor="start">сбой, итог</text><line class="ln acc" x1="198" y1="344" x2="198" y2="508" marker-end="url(#ah)"/><text class="lb accT" x="204" y="484" text-anchor="start">SSH :22, ключ deploy</text><text class="lb" x="204" y="497" text-anchor="start">выкладка, откат</text><line class="ln" x1="110" y1="460" x2="140" y2="508" marker-end="url(#ah)"/><text class="lb" x="118" y="498" text-anchor="end">docker pull</text><g class="vps"><polygon class="side" points="60,516 66,510 342,510 336,516"/><polygon class="side" points="336,516 342,510 342,568 336,574"/><rect class="face" x="60" y="516" width="276" height="58"/><text class="st" x="70" y="531">«device» VPS</text><text class="tt" x="70" y="546" font-size="12">habit-bot в Docker</text><text class="sb" x="70" y="560">бэкап → миграции → up -d → проверка 60 с</text></g></svg>
+    <figcaption>Выкладка стартует только после зелёной проверки ci на том же коммите. Разработчик не заходит на сервер и не видит секреты: всё делает GitHub Actions по ключу deploy. При провале проверки здоровья версия и БД откатываются автоматически.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Узлы и что на них развернуто</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Узел</th><th>Что развернуто</th><th>Связи</th></tr></thead>
+    <tbody>
+      <tr><td>Смартфоны</td><td>Telegram-клиент пользователей и администратора</td><td>Только через Telegram, сервер бота им не виден</td></tr>
+      <tr><td>Telegram Bot API</td><td>Облако Telegram, <code>api.telegram.org</code></td><td>Бот ходит сам: <code>getUpdates</code>, <code>sendMessage</code>, <code>sendPhoto</code>, <code>sendDocument</code>; повтор с нарастающей паузой</td></tr>
+      <tr><td>VPS</td><td>Ubuntu, 1 vCPU, 1 ГБ RAM, swap 1 ГБ, Docker, ufw, автообновления безопасности; на диске только текущий и предыдущий образ бота</td><td>Расположение вне РФ; перед покупкой проверить <code>getMe</code> за 1–2 с</td></tr>
+      <tr><td>Контейнер habit-bot</td><td>Python 3.12, aiogram 3, APScheduler, SQLAlchemy + Alembic, matplotlib, Pillow, httpx</td><td><code>restart: unless-stopped</code>; настройки из <code>.env</code></td></tr>
+      <tr><td>Том /srv/bot/data</td><td><code>bot.db</code> (SQLite WAL), одна последняя копия бэкапа, логи JSON за 14 дней (не больше 50 МБ), временные файлы до 24 ч</td><td>Бэкап раз в 2 дня уходит администратору в Telegram, зашифрован; история копий — в чате, на сервере только последняя</td></tr>
+      <tr><td>DeepSeek API</td><td>DeepSeek V4.1 Flash, OpenAI-совместимый API; запасной провайдер через <code>LLM_FALLBACK_*</code></td><td>HTTPS, JSON-ответ, месячный лимит расходов и дневной лимит на пользователя</td></tr>
+      <tr><td>Open-Meteo, isdayoff.ru</td><td>Погода и поиск городов; производственный календарь</td><td>Таймаут 5 с, кэш 1 ч, бот работает и без них</td></tr>
+      <tr><td>GitHub</td><td>Приватный репозиторий <code>habit-bot</code>, Secrets, Actions: ci, deploy, rollback, bootstrap, healthcheck, cleanup</td><td>SSH на VPS под пользователем deploy; healthcheck раз в час</td></tr>
+      <tr><td>ghcr.io</td><td>Docker-образы с тегом версии, хранятся 3 последние</td><td>VPS скачивает образ при выкладке и откате</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Решения, которые задают схему</h2>
+  <div class="dec">
+    <div><b>Long polling, а не webhook</b><span>Не нужны домен, сертификат и открытый порт 443. Webhook можно включить позже.</span></div>
+    <div><b>Один контейнер и SQLite</b><span>Хватает 1 ГБ памяти на ~20 человек. Схема БД совместима с PostgreSQL, переход не потребует переписывать код.</span></div>
+    <div><b>Сервер вне РФ</b><span>С марта 2026 запросы к Telegram с российских VPS зависают. Резерв — прокси в <code>TELEGRAM_PROXY</code>.</span></div>
+    <div><b>Простой при выкладке 10–30 с</b><span>Бот останавливается на время миграций. Записи в это время не принимаются.</span></div>
+  </div>
+</section>
+
+<details>
+  <summary>Исходник для PlantUML</summary>
+  <div class="src">
+    <p>Можно вставить в PlantUML, draw.io или Confluence, чтобы править схему дальше.</p>
+    <button type="button" id="copy-puml">Скопировать</button>
+<pre id="puml">@startuml habit-bot-deployment
+skinparam componentStyle rectangle
+title Дневник привычек — диаграмма развертывания (MVP)
+
+node "Смартфон пользователя" &lt;&lt;device&gt;&gt; as phone
+node "Смартфон администратора" &lt;&lt;device&gt;&gt; as admin
+cloud "Telegram Bot API\napi.telegram.org" as tg
+
+node "VPS вне РФ (NL/DE/FI/KZ)\nUbuntu, 1 vCPU, 1 ГБ RAM + 1 ГБ swap\nufw: только SSH :22" &lt;&lt;device&gt;&gt; as vps {
+  node "Docker Engine + Compose" &lt;&lt;execution environment&gt;&gt; {
+    node "habit-bot:&lt;версия&gt;\nPython 3.12" &lt;&lt;container&gt;&gt; as bot {
+      component "aiogram 3 (FSM)" as aiogram
+      component "APScheduler" as sched
+      component "SQLAlchemy + Alembic" as orm
+      component "matplotlib + Pillow" as img
+      component "httpx" as http
+      component "LLM-клиент (pydantic)" as llm
+      artifact ".env (600)" as env
+    }
+    database "/srv/bot/data\nbot.db (SQLite WAL)\nbackup ×1, logs/ 14 дн ≤ 50 МБ" &lt;&lt;volume&gt;&gt; as vol
+  }
+}
+
+cloud "DeepSeek API\n+ запасной провайдер" as ds
+cloud "Open-Meteo" as om
+cloud "isdayoff.ru" as ido
+
+cloud "GitHub" {
+  artifact "habit-bot (private)" as repo
+  artifact "Secrets" as secrets
+  node "GitHub Actions\nci · deploy · rollback\nbootstrap · healthcheck · cleanup" &lt;&lt;execution environment&gt;&gt; as gha
+}
+database "ghcr.io\n3 последние версии" as ghcr
+actor "Разработчик (Claude)" as dev
+actor "Владелец" as owner
+
+phone --&gt; tg : переписка с ботом
+admin --&gt; tg : алерты, бэкапы
+bot --&gt; tg : HTTPS :443, long polling
+orm --&gt; vol : чтение / запись
+llm --&gt; ds : HTTPS, JSON, без ПДн
+http --&gt; om : таймаут 5 с, кэш 1 ч
+http --&gt; ido : таймаут 5 с, кэш 1 ч
+
+dev --&gt; repo : push, PR
+owner --&gt; repo : одобряет слияние
+owner --&gt; secrets : вносит секреты
+repo --&gt; gha : PR / push в main
+secrets --&gt; gha
+gha --&gt; ghcr : push образа
+gha --&gt; vps : SSH :22 (deploy), выкладка / откат
+vps --&gt; ghcr : docker pull
+gha --&gt; tg : healthcheck-алерты
+@enduml</pre>
+  </div>
+</details>
+</div>
+<script>
+document.getElementById('copy-puml').addEventListener('click',function(){
+  var b=this,t=document.getElementById('puml').textContent;
+  function sel(){var r=document.createRange();r.selectNodeContents(document.getElementById('puml'));var s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Выделено — скопируйте';}
+  try{navigator.clipboard.writeText(t).then(function(){b.textContent='Скопировано';},sel);}catch(e){sel();}
+});
+</script>
+
+</body></html>
