@@ -109,7 +109,7 @@ flowchart TB
 
 ### Что это меняет в требованиях
 
-Внесено в требования, редакция 10 от 03.11.2026.
+Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2 (04.11.2026).
 
 - **Раздел 5, User:** `tg_id` переезжает в новую сущность `Identity(user_id, provider, external_id)`. Поле «дата режима «Другой день»» переезжает в состояние диалога Telegram-канала.
 - **Раздел 5, пользовательские таблицы:** добавить `public_id`, `updated_at`, `deleted_at`, а у редактируемых — `version`.
@@ -132,7 +132,8 @@ habit_bot/
     clock.py               Clock, DayClock (часовой пояс пользователя, граница 04:00)
     db.py                  Base, UnitOfWork, UserScopedRepository, IdempotencyStore
     errors/catalog.py      ErrorCode, AppError — каталог раздела 7.4
-    domain/                общие чистые функции: числа, время, даты
+    domain/                общие чистые функции: разбор и формат чисел, времени, дат
+    jobs.py                JobSpec — фоновые задачи по расписанию
   platform/                общие сервисы без привязки к каналу
     habits/                HabitKind, HabitRegistry, Progress, серии, светофор
     ai/                    LlmGateway, LlmRouter, BudgetGuard, AiActionRegistry, CommandService
@@ -145,8 +146,8 @@ habit_bot/
   channels/
     telegram/              всё, что знает про aiogram
       channel.py           TelegramChannel: Dispatcher, polling, middlewares
-      dialogs/             DbFsmStorage, черновики, сброс 15 мин, «Другой день»
-      ui/                  MenuRegistry, Screen, OwnedCallback, формат чисел и дат
+      dialogs/             DialogState, DialogStore, DbFsmStorage, сброс 15 мин, «Другой день», /check
+      ui/                  MenuRegistry, Screens, данные кнопок (o, t), проверка кнопок
       render/              карточка дня, картинки статистики, карточка «Понял так»
       delivery.py          TelegramDelivery(DeliveryChannel)
     http/                  позже: FastAPI, токены, OpenAPI. Сейчас пакета нет
@@ -566,7 +567,7 @@ classDiagram
 
 ### 7.5 Telegram-канал: диалоги и интерфейс
 
-Всё на этой диаграмме существует только в Telegram. Приложению и вебу оно не понадобится: у них состояние формы хранится на устройстве, а сценарий получает уже готовые данные.
+Всё на этой диаграмме существует только в Telegram. Приложению и вебу оно не понадобится: у них состояние формы хранится на устройстве, а сценарий получает уже готовые данные. Построено в части 2.
 
 ```mermaid
 classDiagram
@@ -581,16 +582,25 @@ classDiagram
     +sign_in(tg_id) Actor
   }
   class ActivityMiddleware {
-    +reset_if_idle(state: DialogState) None
+    +locks: UserLocks
+    +expire_and_touch(actor) None
   }
-  class TgSession {
-    +actor: Actor
-    +started_at: datetime
-    +other_day: Optional~date~
+  class CallbackGuardMiddleware {
+    +check(o, t) ok | ACCESS-FOREIGN | UI-STALE
+  }
+  class DialogStore {
+    +get(user_id, scope) DialogSnapshot
+    +set_state(user_id, scope, state) None
+    +set_data(user_id, scope, data) None
+    +expire(now, user_id) list
+    +touch(user_id, now) None
+    +active_tokens(user_id) set
   }
   class DbFsmStorage {
+    <<aiogram BaseStorage>>
     +get_state(key) str
     +set_data(key, data) None
+    +token(key) int
   }
   class DialogState {
     +user_id: int
@@ -598,6 +608,7 @@ classDiagram
     +state: str
     +data: json
     +other_day: Optional~date~
+    +token: int
     +last_action_at: datetime
     +version: int
   }
@@ -605,17 +616,19 @@ classDiagram
     +ttl_for(scope: str) timedelta
   }
   class OwnedCallback {
-    +owner_id: int
-    +state_version: int
-    +is_stale(s: TgSession) bool
+    <<данные кнопки>>
+    +o: int  владелец
+    +t: int  номер ввода, 0 — не устаревает
   }
   class MenuRegistry {
     +add(entry: MenuEntry) None
-    +home_keyboard(user_id: int) Keyboard
+    +mark_ready(key) None
+    +home_keyboard(actor) Keyboard
+    +more_keyboard(actor) Keyboard
   }
-  class TgFormat {
-    +number(d: Decimal) str
-    +day_label(d: date) str
+  class Screens {
+    +home(chat, actor, text) None
+    +refuse_button(query, code) None
   }
   class DayCardView {
     +render(data: DayCardData) Screen
@@ -624,15 +637,28 @@ classDiagram
   BaseMiddleware <|-- ErrorMiddleware
   BaseMiddleware <|-- AuthMiddleware
   BaseMiddleware <|-- ActivityMiddleware
-  AuthMiddleware ..> TgSession : создаёт
+  BaseMiddleware <|-- CallbackGuardMiddleware
   ActivityMiddleware --> DbFsmStorage
-  ActivityMiddleware --> InactivityPolicy : 15 мин, тренировка 3 ч, анкета без сброса
-  DbFsmStorage --> DialogState
-  OwnedCallback ..> DialogState : сверяет версию
-  DayCardView --> TgFormat : «77,5», «23.10, пт»
+  DbFsmStorage --> DialogStore
+  DialogStore --> DialogState
+  DialogStore --> InactivityPolicy : 15 мин, тренировка 3 ч, анкета без сброса
+  CallbackGuardMiddleware ..> OwnedCallback : сверяет владельца и номер ввода
+  CallbackGuardMiddleware --> Screens
+  Screens --> MenuRegistry
+  DayCardView ..> MenuRegistry
 ```
 
-Порядок middleware: ошибки → вход → сброс по бездействию. `TgSession.started_at` берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в `DialogState`, и канал передаёт выбранную дату в сценарий явным параметром `day`.
+Как это работает:
+
+- **Порядок.** Внешние middleware апдейта: ошибки → вход (модуль `users`) → бездействие. `ActivityMiddleware` сначала молча удаляет просроченный ввод пользователя, затем продлевает оставшийся и кладёт в обработчик `state` (FSMContext aiogram). Апдейты одного пользователя обрабатываются по очереди (`UserLocks`), поэтому два быстрых нажатия не перепишут ввод друг другу.
+- **Хранилище.** Встроенное хранилище aiogram выключено (`Dispatcher(disable_fsm=True)`). Ключ `DbFsmStorage` строится по `user_id` бота, а не по Telegram-ID: Telegram-ID хранится только в `Identity`. `destiny` ключа — область ввода: `default` → `dialog`, остальные — `other_day`, `workout`, `onboarding`.
+- **Сброс.** `InactivityPolicy` задаёт срок по области. Сброс идёт при каждом действии пользователя и фоновой задачей раз в минуту (`JobSpec` в `ModuleContext.jobs`), а также сразу при старте бота — поэтому срабатывает и после перезапуска. Для `workout` (часть 8) к сбросу добавится «завершить с записанными подходами», для `other_day` (часть 4) — отметка для «📅 Нет, за 24.10».
+- **Устаревание кнопок.** Новая строка `DialogState` получает случайный `token`; кнопки ввода несут его в поле `t`. После отмены, сброса или нового ввода (`start_dialog`) строки с этим номером нет, и `CallbackGuardMiddleware` отвечает `UI-STALE` с главным меню. Кнопки сохранённых записей (часть 5) несут `t = 0` и не устаревают.
+- **Владелец.** Поле `o` сверяется с нажавшим; при расхождении — `ACCESS-FOREIGN`, ничего не меняется. Это дополнительная защита канала: сценарии всё равно читают данные через `UserScopedRepository`.
+- **Меню.** `MenuRegistry` хранит пункты главного меню и «Ещё». Пока раздела нет, ядро отвечает «скоро» с номером части плана. Модуль, подключая раздел, вызывает `mark_ready(key)` и обрабатывает кнопку своим роутером. Переход в раздел меню закрывает незаконченный ввод.
+- **Разбор ввода** — чистые функции `kernel/domain/parsing.py` и `formatting.py` (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.
+
+`TgSession.started_at` (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в `DialogState`, и канал передаёт выбранную дату в сценарий явным параметром `day`.
 
 ### 7.6 ИИ: задачи, действия, бюджет
 
@@ -1051,7 +1077,7 @@ sequenceDiagram
 | Часть | Что строится из архитектуры |
 |---|---|
 | 1. Каркас | `kernel/`: Settings, ModuleRegistry, ChannelRegistry, UnitOfWork, IdempotencyStore, User и Identity, ErrorCatalog, AdminAlerter, логи; `channels/telegram/channel.py`; регистрация администратора через `Identity` |
-| 2. Диалоги | `channels/telegram/dialogs` и `ui`: middleware, DbFsmStorage, сброс 15 минут, OwnedCallback, MenuRegistry, TgFormat; `kernel/domain` — разбор чисел, времени и дат |
+| 2. Диалоги ✅ | `channels/telegram/dialogs` и `ui`: ActivityMiddleware, DialogStore + DbFsmStorage, сброс 15 минут, CallbackGuardMiddleware, MenuRegistry, Screens; `kernel/domain` — разбор и формат чисел, времени и дат; `kernel/jobs` — фоновые задачи |
 | 3. Регистрация | Модуль `users`: AccessService, приглашения, анкета, цели, профиль с часовым поясом; `sources/OpenMeteo` для поиска городов |
 | 4. Дни | `DayClock`, модуль `days`, `DayCardData` и `DayCardView` на `HabitRegistry` |
 | 5–8 | Модули `food`, `warmup`, `custom_habits`, `workouts` и `runs`. Каждый пишет сценарии с DTO, `HabitKind`, `StatsProvider`, экспорт и папку `telegram/`, а также сразу готовит `ai_actions.py` |
