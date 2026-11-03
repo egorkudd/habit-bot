@@ -10,7 +10,7 @@ set -uo pipefail
 APP=/srv/bot/app
 DATA=/srv/bot/data
 REPO_IMAGE=ghcr.io/egorkudd/habit-bot
-cd "$APP"
+cd "$APP" || exit 1
 
 export APP_UID APP_GID
 APP_UID=$(id -u)
@@ -48,7 +48,8 @@ login_ghcr() {
 
 prune_images() {
   # На сервере остаются только текущий и предыдущий образ (раздел 7, «Место на диске»).
-  local keep=" $(current_image) $(previous_image) "
+  local keep
+  keep=" $(current_image) $(previous_image) "
   docker image ls "$REPO_IMAGE" --format '{{.Repository}}:{{.Tag}}' | while read -r ref; do
     case "$keep" in *" $ref "*) ;; *) docker image rm "$ref" >/dev/null 2>&1 || true ;; esac
   done
@@ -60,7 +61,7 @@ restore_and_restart() {
   local image="$1"
   compose logs --no-color --tail 60 bot 2>/dev/null || true
   compose down --timeout 20 >/dev/null 2>&1 || true
-  [ -f "$DATA/backup/bot.db.bak" ] && run_ops restore || true
+  if [ -f "$DATA/backup/bot.db.bak" ]; then run_ops restore || true; fi
   [ -f "$APP/.env.prev" ] && mv -f "$APP/.env.prev" "$APP/.env"
   if [ -n "$image" ]; then
     use_image "$image"

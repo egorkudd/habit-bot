@@ -19,7 +19,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Поддельный токен собирается здесь, чтобы поиск секретов не принял его за настоящий.
-token="123456789:$(printf 'A%.0s' $(seq 35))"
+token="123456789:$(printf 'A%.0s' {1..35})"
 common=(--network host --user "$(id -u):$(id -g)" -v "$data:/data" -e DATA_DIR=/data)
 
 docker run --rm "${common[@]}" "$image" python -m habit_bot.ops migrate
