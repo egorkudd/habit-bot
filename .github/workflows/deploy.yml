@@ -32,7 +32,7 @@ jobs:
       BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: «Проверка» на этом коммите прошла
         if: github.event_name == 'workflow_dispatch'

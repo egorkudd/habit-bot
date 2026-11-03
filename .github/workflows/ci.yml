@@ -22,11 +22,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
@@ -71,7 +71,7 @@ jobs:
           python scripts/coverage_gate.py coverage.json --summary "$GITHUB_STEP_SUMMARY" || status=1
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             if ! diff-cover coverage.xml --compare-branch="origin/$BASE_REF" --fail-under=95 \
-                 --format "markdown:diff-cover.md"; then
+                 --markdown-report diff-cover.md; then
               status=1
               { echo "### 4. Покрытие нового и изменённого кода ниже 95%"; cat diff-cover.md; } >> "$GITHUB_STEP_SUMMARY"
             fi
@@ -102,7 +102,7 @@ jobs:
     if: failure() && github.event_name == 'push'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Текст
         id: text
         env:

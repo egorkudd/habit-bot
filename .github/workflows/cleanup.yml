@@ -23,7 +23,7 @@ jobs:
       SERVER_HOST: ${{ secrets.SERVER_HOST }}
       DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Секреты
         run: bash scripts/require_secrets.sh SERVER_HOST DEPLOY_SSH_KEY

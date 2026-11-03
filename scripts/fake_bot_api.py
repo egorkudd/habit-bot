@@ -12,16 +12,17 @@ from typing import Any
 
 from aiohttp import web
 
+CALLS: web.AppKey[list[str]] = web.AppKey("calls", list)
 BOT_USER = {"id": 1000001, "is_bot": True, "first_name": "Habit Test", "username": "habit_test_bot"}
 
 
 def create_app(poll_delay: float = 0.5) -> web.Application:
     app = web.Application()
-    app["calls"] = []
+    app[CALLS] = []
 
     async def handle(request: web.Request) -> web.Response:
         method = request.match_info["method"]
-        app["calls"].append(method)
+        app[CALLS].append(method)
         payload: dict[str, Any] = {}
         if request.can_read_body:
             payload = dict(await request.post())
@@ -33,7 +34,7 @@ def create_app(poll_delay: float = 0.5) -> web.Application:
             result = []
         elif method == "sendMessage":
             result = {
-                "message_id": len(app["calls"]),
+                "message_id": len(app[CALLS]),
                 "date": int(time.time()),
                 "chat": {"id": int(payload.get("chat_id", 0)), "type": "private"},
                 "text": payload.get("text", ""),
