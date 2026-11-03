@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="ru" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media print{pre{white-space:pre-wrap!important;word-break:break-word}.tbl,table{overflow:visible!important} table{min-width:0!important;display:table!important;width:100%!important}.diagram{overflow:visible!important;break-inside:avoid} .diagram pre.mermaid{min-width:0!important}.diagram svg{max-width:100%!important;height:auto!important}}</style></head>
+<body>
+<title>Архитектура habit-bot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: инженерный документ в одну колонку, оглавление-чипы сверху, широкие схемы в своих прокручиваемых рамках */
+:root{
+  --bg:#f3f5f4; --paper:#ffffff; --fg:#17201e; --mute:#5c6966; --line:#cdd6d3;
+  --accent:#0f6e86; --accent-soft:#dcedf1; --code:#eef2f1;
+  --body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111716; --paper:#18201f; --fg:#e3eae8; --mute:#93a29e; --line:#2f3b39;
+  --accent:#5cc0d8; --accent-soft:#163a43; --code:#1d2726; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111716; --paper:#18201f; --fg:#e3eae8; --mute:#93a29e; --line:#2f3b39;
+  --accent:#5cc0d8; --accent-soft:#163a43; --code:#1d2726; color-scheme:dark}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:820px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-direction:column;gap:8px;padding-bottom:4px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+h1{font-weight:700;font-size:clamp(26px,6vw,36px);line-height:1.15;margin:0;text-wrap:balance}
+.lead{margin:0;color:var(--mute);max-width:64ch}
+nav{display:flex;flex-wrap:wrap;gap:6px}
+nav a{font-size:12.5px;color:var(--fg);text-decoration:none;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 11px}
+nav a:hover{border-color:var(--accent);color:var(--accent)}
+nav a:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{display:flex;flex-direction:column;gap:14px;min-width:0}
+main h2{font-size:22px;font-weight:700;margin:26px 0 0;padding-top:18px;border-top:1px solid var(--line);text-wrap:balance;scroll-margin-top:16px}
+main h3{font-size:17px;font-weight:600;margin:14px 0 0;text-wrap:balance}
+main p,main li{max-width:68ch}
+main p{margin:0}
+main ul,main ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+main strong{font-weight:600}
+code{font-family:var(--mono);font-size:.86em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+pre{margin:0;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--code);border:1px solid var(--line);padding:14px;border-radius:8px}
+pre code{background:none;padding:0;font-size:inherit;overflow-wrap:normal}
+.diagram{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+.diagram pre.mermaid{background:transparent;border:0;padding:0;font-family:var(--body);min-width:640px;text-align:center}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:13.5px;line-height:1.5}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:none}
+th{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);background:var(--code)}
+td:first-child{font-weight:600}
+footer{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding-top:14px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">habit-bot · архитектура и классы</div>
+  <h1>Архитектура habit-bot</h1>
+  <p class="lead">Модульный монолит с расчётом на рост. Новые функции, например резюме чатов, добавляются модулями, а новые каналы — мобильное и веб-приложение — подключатся к тем же сценариям без правки ядра. По бизнес-требованиям, редакция 9 от 26.10.2026; редакция архитектуры 2 от 29.10.2026.</p>
+</header>
+<nav aria-label="Разделы"><a href="#s1">1. Главная идея</a><a href="#s2">2. Слои</a><a href="#s3">3. Каналы: что общее, а что у каждого своё</a><a href="#s4">4. Что закладываем сейчас, чтобы потом не переделывать</a><a href="#s5">5. Структура репозитория</a><a href="#s6">6. Точки расширения</a><a href="#s7">7. Диаграммы классов</a><a href="#s8">8. Ключевые потоки</a><a href="#s9">9. Резюме чатов: что нужно решить заранее</a><a href="#s10">10. Когда появятся приложение и веб</a><a href="#s11">11. Правила, которые держат архитектуру</a><a href="#s12">12. Как это ложится на план MVP (раздел 8.1)</a></nav>
+<main>
+
+<p>Редакция 2 (29.10.2026): ядро и модули отвязаны от Telegram. Ту же логику смогут использовать мобильное и веб-приложение. Сами интерфейсы приложения и веба — в следующих версиях.</p>
+<h2 id="s1">1. Главная идея</h2>
+<p>Бот строится как <strong>модульный монолит</strong>. Это один процесс, один контейнер и одна база, но код разделён по двум направлениям.</p>
+<p><strong>Модули — что умеет продукт.</strong> Еда, зарядка, привычки, команды текстом, уведомления, а позже резюме чатов. Модуль описывает сценарии (use cases), правила и данные. Он не знает, нажал пользователь кнопку в Telegram или кнопку в приложении.</p>
+<p><strong>Каналы — через что с продуктом работают.</strong> Сейчас канал один: Telegram-бот. Позже появится HTTP API, которым будут пользоваться мобильное и веб-приложение. Канал принимает действие пользователя, вызывает сценарий модуля и показывает результат на своём языке: сообщением с кнопками, экраном приложения или страницей.</p>
+<div class="diagram"><pre class="mermaid">flowchart LR
+  subgraph IN[&quot;Каналы входа&quot;]
+    TGC[&quot;Telegram-бот · сейчас&quot;]
+    API[&quot;HTTP API · позже&quot;]
+  end
+  MOB[&quot;Мобильное приложение · позже&quot;] -.-&gt; API
+  WEB[&quot;Веб-приложение · позже&quot;] -.-&gt; API
+  subgraph CORE[&quot;Ядро и модули · общие для всех каналов&quot;]
+    UC[&quot;Сценарии модулей: LogFood, MarkHabit, ParseCommand, SummarizeChat …&quot;]
+    DOM[&quot;Правила: КБЖУ, граница суток, серии, светофор, прогрессия&quot;]
+    UC --&gt; DOM
+  end
+  TGC --&gt; UC
+  API -.-&gt; UC
+  subgraph OUT[&quot;Каналы доставки уведомлений&quot;]
+    TGD[&quot;Telegram · сейчас&quot;]
+    PUSH[&quot;Push и Web Push · позже&quot;]
+  end
+  CORE --&gt; TGD
+  CORE -.-&gt; PUSH
+</pre></div>
+<p>Новая функция — это новый пакет в <code>modules/</code> и одна строка в <code>ENABLED_MODULES</code>. Новый канал — это новый пакет в <code>channels/</code>. Ядро и уже написанные модули при этом не меняются.</p>
+<p>Почему не микросервисы: у нас 1 vCPU и 1 ГБ памяти, до 20 пользователей и одна SQLite. Границы модулей и каналов проводим в коде, а линтер импортов проверяет, что их никто не нарушает. Если позже модуль или API понадобится вынести в отдельный процесс, граница для этого уже будет.</p>
+<h2 id="s2">2. Слои</h2>
+<div class="diagram"><pre class="mermaid">flowchart TB
+  subgraph CH[&quot;Каналы · channels/&quot;]
+    T1[&quot;telegram: aiogram, middlewares, клавиатуры, черновики, картинки&quot;]
+    T2[&quot;http: FastAPI, токены, OpenAPI · позже&quot;]
+  end
+  CH --&gt; A
+  subgraph A[&quot;Сценарии · modules/*/usecases.py&quot;]
+    SV[&quot;Вход и выход — pydantic DTO, ошибки — коды AppError&quot;]
+  end
+  A --&gt; D
+  subgraph D[&quot;Домен · чистые функции&quot;]
+    DM[&quot;КБЖУ, граница суток, разбор чисел, серии, светофор, прогрессия, темп&quot;]
+  end
+  A --&gt; P
+  subgraph P[&quot;Порты · Protocol&quot;]
+    PT[&quot;Repository, LlmGateway, ExternalSource, DeliveryChannel, ChatSource&quot;]
+  end
+  I[&quot;Инфраструктура: SQLAlchemy, OpenAI-совместимый клиент, Open-Meteo, isdayoff, APScheduler&quot;] -. реализует .-&gt; P
+  K[&quot;Ядро: Settings, ModuleRegistry, EventBus, Clock, UnitOfWork, ErrorCatalog&quot;] -. доступно всем .- A
+</pre></div>
+<p>Правила слоёв:</p>
+<ul>
+<li><strong>Домен</strong> не делает ввода-вывода и не импортирует aiogram и SQLAlchemy. Текущее время он получает аргументом, поэтому граница 04:00 тестируется без моков. По требованию 7.3 этот слой покрывается тестами на 100%.</li>
+<li><strong>Сценарии</strong> принимают <code>Actor</code> (кто действует) и DTO. Возвращают они тоже DTO или <code>AppError</code> с кодом. Сценарий не принимает <code>Update</code> из Telegram, не возвращает текст для пользователя, клавиатуру или картинку.</li>
+<li><strong>Каналы</strong> переводят действие пользователя в вызов сценария, а результат — в свой формат. Всё, что существует только в Telegram, живёт в канале: черновики, сброс через 15 минут, устаревшие кнопки, режим «Другой день», числа с запятой, картинки статистики.</li>
+<li><strong>Модули</strong> обращаются друг к другу только через <code>public.py</code> или события. import-linter на шаге «1. Линтер» проверяет и это правило, и то, что <code>usecases.py</code> не импортирует aiogram.</li>
+</ul>
+<h2 id="s3">3. Каналы: что общее, а что у каждого своё</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Что</th>
+<th>Ядро, общее для всех каналов</th>
+<th>Telegram, сейчас</th>
+<th>Приложение и веб, позже</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Кто пользователь</td>
+<td><code>User</code> и его <code>Identity</code> (способы входа)</td>
+<td><code>Identity</code> типа telegram по Telegram-ID, вход по приглашению</td>
+<td>Вход через привязку к Telegram, затем токены сессии</td>
+</tr>
+<tr>
+<td>Действие</td>
+<td>Сценарий с DTO: <code>LogFood(day, item_id, qty, request_id)</code></td>
+<td>Кнопки, диалог по шагам, callback</td>
+<td>HTTP-запрос с тем же DTO</td>
+</tr>
+<tr>
+<td>Дата записи</td>
+<td><code>DayClock.record_date(started_at)</code> или явная дата</td>
+<td>Режим «Другой день», кнопки «Вчера (24.10)»</td>
+<td>Выбор даты на экране</td>
+</tr>
+<tr>
+<td>Незаконченный ввод</td>
+<td>Нет: сценарий выполняется целиком или не выполняется</td>
+<td>Черновики, сброс через 15 минут, устаревание кнопок</td>
+<td>Состояние формы на устройстве</td>
+</tr>
+<tr>
+<td>Ответ</td>
+<td>DTO результата, например <code>DayCardData</code></td>
+<td>Текст моноширинным блоком и кнопки</td>
+<td>JSON, клиент рисует экран</td>
+</tr>
+<tr>
+<td>Ошибки</td>
+<td><code>AppError(code, params)</code> из каталога 7.4</td>
+<td>Текст из каталога</td>
+<td><code>{code, params, message}</code></td>
+</tr>
+<tr>
+<td>Статистика</td>
+<td><code>StatsData</code>: ряды, клетки светофора, итоги</td>
+<td>Картинка matplotlib с кэшем</td>
+<td>Графики рисует клиент</td>
+</tr>
+<tr>
+<td>Уведомления</td>
+<td><code>Notice</code>: заголовок, текст, действия</td>
+<td>Сообщение с кнопками</td>
+<td>Push или Web Push</td>
+</tr>
+<tr>
+<td>Команды текстом</td>
+<td><code>CommandService</code> возвращает <code>ActionPlan</code></td>
+<td>Карточка «Понял так»</td>
+<td>Тот же план, своя карточка</td>
+</tr>
+<tr>
+<td>Экспорт</td>
+<td><code>CsvExporter</code> собирает файлы</td>
+<td>Документы в чат</td>
+<td>Скачивание файла</td>
+</tr>
+<tr>
+<td>Числа и даты</td>
+<td><code>Decimal</code>, <code>date</code>, ISO 8601</td>
+<td>«77,5», «23.10, пт»</td>
+<td>Формат устройства</td>
+</tr>
+</tbody>
+</table></div>
+<p>Правило из раздела 4.4 про проверку владельца работает во всех каналах: сценарий читает данные только через <code>UserScopedRepository</code>, привязанный к <code>Actor.user_id</code>. Проверка callback-данных в Telegram остаётся как дополнительная защита канала.</p>
+<h2 id="s4">4. Что закладываем сейчас, чтобы потом не переделывать</h2>
+<p>Эти решения стоят недорого, пока базы и кода ещё нет. Если добавлять их после запуска, придётся переписывать данные и все сценарии.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Решение</th>
+<th>Цена сейчас</th>
+<th>Что даст для приложения и веба</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Identity</code> отдельно от <code>User</code>: Telegram-ID переезжает из <code>User</code> в <code>Identity</code></td>
+<td>Одна таблица</td>
+<td>Новый способ входа добавляется без миграции пользователей</td>
+</tr>
+<tr>
+<td>Сценарии с pydantic DTO на входе и выходе</td>
+<td>Дисциплина, лишнего кода нет</td>
+<td>HTTP API становится тонкой обёрткой, OpenAPI собирается из тех же моделей</td>
+</tr>
+<tr>
+<td>Внешний ID записи — UUID (<code>public_id</code>), а не порядковый номер</td>
+<td>Колонка</td>
+<td>Безопасные ссылки в API, создание записи на телефоне без связи</td>
+</tr>
+<tr>
+<td><code>updated_at</code> и <code>deleted_at</code> у пользовательских записей</td>
+<td>Две колонки и фильтр в <code>UserScopedRepository</code></td>
+<td>Синхронизация «что изменилось с …» для приложения</td>
+</tr>
+<tr>
+<td>Ключ идемпотентности <code>request_id</code> у сценариев, которые меняют данные</td>
+<td>Таблица ключей за 24 часа</td>
+<td>Повтор запроса при плохой сети не создаёт дубль. В Telegram это защищает от двойного нажатия</td>
+</tr>
+<tr>
+<td>Поле <code>version</code> у редактируемых сущностей: профиль, рецепт, привычка, уведомление, план</td>
+<td>Колонка</td>
+<td>Правка с двух устройств без молчаливой потери изменений</td>
+</tr>
+<tr>
+<td>Уведомления как <code>Notice</code> и каналы доставки</td>
+<td>Интерфейс вместо прямого вызова Telegram</td>
+<td>Push добавляется одним классом</td>
+</tr>
+<tr>
+<td>Статистика возвращает данные, картинку рисует Telegram-канал</td>
+<td>Разделение и так нужно для тестов</td>
+<td>Графики в приложении без matplotlib на сервере</td>
+</tr>
+<tr>
+<td>Часовой пояс в профиле, по умолчанию Europe/Moscow</td>
+<td>Поле</td>
+<td>Пользователи из других поясов. Требования при этом не меняются</td>
+</tr>
+<tr>
+<td>Тексты по ключам из каталога</td>
+<td>Уже есть в требованиях (7.4)</td>
+<td>Клиенты показывают свои формулировки по тем же кодам</td>
+</tr>
+</tbody>
+</table></div>
+<p>Мягкое удаление (<code>deleted_at</code>) касается только отдельных записей: удалённая запись хранится 30 дней как отметка для синхронизации. Удаление аккаунта, как и раньше, стирает все строки пользователя сразу.</p>
+<h3>Что это меняет в требованиях</h3>
+<p>Внесено в требования, редакция 10 от 03.11.2026.</p>
+<ul>
+<li><strong>Раздел 5, User:</strong> <code>tg_id</code> переезжает в новую сущность <code>Identity(user_id, provider, external_id)</code>. Поле «дата режима «Другой день»» переезжает в состояние диалога Telegram-канала.</li>
+<li><strong>Раздел 5, пользовательские таблицы:</strong> добавить <code>public_id</code>, <code>updated_at</code>, <code>deleted_at</code>, а у редактируемых — <code>version</code>.</li>
+<li><strong>Раздел 5, Profile:</strong> добавить <code>timezone</code> со значением по умолчанию Europe/Moscow.</li>
+<li><strong>Новая таблица <code>IdempotencyKey</code>:</strong> <code>user_id</code>, <code>request_id</code>, ответ, время создания. Записи хранятся 24 часа.</li>
+<li><strong>Раздел 7.3, правило «открыт только SSH»</strong> сохраняется до появления API.</li>
+</ul>
+<h2 id="s5">5. Структура репозитория</h2>
+<pre><code class="language-text">habit_bot/
+  main.py                  сборка: Settings → Container → ModuleRegistry → включённые каналы
+  kernel/
+    config.py              Settings (pydantic-settings), полный список ошибок CFG-* сразу
+    container.py           сборка зависимостей
+    modules.py             Module, ModuleContext, ModuleRegistry
+    channels.py            Channel, ChannelRegistry
+    identity.py            User, Identity, Actor, Role
+    events.py              EventBus, DomainEvent
+    clock.py               Clock, DayClock (часовой пояс пользователя, граница 04:00)
+    db.py                  Base, UnitOfWork, UserScopedRepository, IdempotencyStore
+    errors/catalog.py      ErrorCode, AppError — каталог раздела 7.4
+    domain/                общие чистые функции: числа, время, даты
+  platform/                общие сервисы без привязки к каналу
+    habits/                HabitKind, HabitRegistry, Progress, серии, светофор
+    ai/                    LlmGateway, LlmRouter, BudgetGuard, AiActionRegistry, CommandService
+    notify/                NotificationProvider, NotificationService, Notice
+    delivery/              DeliveryChannel, DeliveryRouter, Outbox
+    stats/                 StatsProvider, StatsData
+    export/                ExportTable, CsvExporter, README.csv
+    sources/               ExternalSource, SourceCache, OpenMeteo, IsDayOff
+    alerts/                AdminAlerter (склейка одинаковых ошибок за час)
+  channels/
+    telegram/              всё, что знает про aiogram
+      channel.py           TelegramChannel: Dispatcher, polling, middlewares
+      dialogs/             DbFsmStorage, черновики, сброс 15 мин, «Другой день»
+      ui/                  MenuRegistry, Screen, OwnedCallback, формат чисел и дат
+      render/              карточка дня, картинки статистики, карточка «Понял так»
+      delivery.py          TelegramDelivery(DeliveryChannel)
+    http/                  позже: FastAPI, токены, OpenAPI. Сейчас пакета нет
+  modules/
+    users/                 приглашения, анкета, профиль, цели КБЖУ, роли
+    days/                  выходной, перенос записей, карточка дня
+    food/   warmup/   workouts/   runs/   custom_habits/
+    stats_views/           сценарии «Итоги»
+    ai_commands/           команды текстом и заполнение через ИИ
+    notifications/         свои и готовые уведомления
+    admin/   export/   backup/
+    chat_digest/           будущий модуль: резюме чатов
+migrations/                Alembic, одна цепочка ревизий
+tests/                     unit/ (домен), usecases/ (сценарии без канала), telegram/ (поддельный Telegram)
+</code></pre>
+<p>Каждый модуль устроен одинаково, поэтому новый модуль делается по шаблону:</p>
+<pre><code class="language-text">modules/food/
+  module.py      FoodModule(Module): регистрирует всё, что ниже
+  models.py      FoodItem, FoodEntry (SQLAlchemy)
+  repo.py        FoodRepository(UserScopedRepository)
+  domain/        расчёт КБЖУ, разбор строки «Другое» — чистый код
+  dto.py         LogFoodIn, FoodEntryOut, DayCardData — pydantic
+  usecases.py    LogFood, ChangeQty, MoveEntry, DeleteEntry, ListItems — без aiogram
+  kind.py        FoodKind(HabitKind): прогресс дня для главного экрана, статистики и уведомлений
+  ai_actions.py  food.add, food.change_qty, food.delete, food.move и контекст для модели
+  stats.py       StatsData для дня и строки светофора
+  export.py      food.csv
+  public.py      то, что можно вызывать из других модулей
+  telegram/      handlers.py, keyboards.py, views.py — только Telegram
+</code></pre>
+<p>Когда появится HTTP API, в модуль добавится папка <code>http/</code> с роутами поверх тех же <code>usecases.py</code>. Остальные файлы модуля не изменятся.</p>
+<h2 id="s6">6. Точки расширения</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Что добавляем</th>
+<th>Что реализовать</th>
+<th>Где регистрируется</th>
+<th>Пример</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Свою привычку</td>
+<td>Ничего: это данные (<code>Habit</code>, <code>HabitEntry</code>)</td>
+<td>Пользователь в настройках</td>
+<td>💧 Вода, 😴 Сон</td>
+</tr>
+<tr>
+<td>Встроенный вид привычки со своим вводом</td>
+<td><code>HabitKind</code> и модуль</td>
+<td><code>ctx.habits</code></td>
+<td>Медитация с таймером</td>
+</tr>
+<tr>
+<td>Сценарий</td>
+<td>Класс в <code>usecases.py</code> с DTO</td>
+<td><code>ctx.usecases</code></td>
+<td><code>SummarizeChat</code></td>
+</tr>
+<tr>
+<td>Действие для команд текстом</td>
+<td><code>AiAction</code>: схема, проверка, выполнение, отмена</td>
+<td><code>ctx.ai_actions</code></td>
+<td><code>chat.summarize</code></td>
+</tr>
+<tr>
+<td>Данные для модели</td>
+<td><code>AiContextProvider</code></td>
+<td><code>ctx.ai_context</code></td>
+<td>Названия рецептов, список чатов</td>
+</tr>
+<tr>
+<td>Задачу ИИ со своей моделью</td>
+<td><code>AiTask</code> и маршрут в <code>LLM_ROUTES</code></td>
+<td><code>.env</code></td>
+<td>Резюме у другого провайдера</td>
+</tr>
+<tr>
+<td>Готовое уведомление</td>
+<td><code>NotificationProvider</code></td>
+<td><code>ctx.notifications</code></td>
+<td>🌤 Погода, 📰 Резюме чатов</td>
+</tr>
+<tr>
+<td>Данные статистики</td>
+<td><code>StatsProvider</code></td>
+<td><code>ctx.stats</code></td>
+<td>e1RM, км за неделю</td>
+</tr>
+<tr>
+<td>Таблицу экспорта</td>
+<td><code>ExportTable</code></td>
+<td><code>ctx.exports</code></td>
+<td><code>chat_summaries.csv</code></td>
+</tr>
+<tr>
+<td>Внешний источник данных</td>
+<td><code>ExternalSource</code>: таймаут 5 с, кэш 1 ч, работа без него</td>
+<td>Контейнер</td>
+<td>Курс валют</td>
+</tr>
+<tr>
+<td>Фоновую задачу</td>
+<td><code>JobSpec</code></td>
+<td><code>ctx.jobs</code></td>
+<td>Удаление сообщений старше 72 ч</td>
+</tr>
+<tr>
+<td>Реакцию на событие</td>
+<td>Подписка на <code>DomainEvent</code></td>
+<td><code>ctx.events</code></td>
+<td>Рекорд → уведомление 🏆</td>
+</tr>
+<tr>
+<td>Кнопку, экран или картинку в Telegram</td>
+<td>Роутер, <code>MenuEntry</code>, <code>StatsImage</code></td>
+<td><code>ctx.channel("telegram")</code></td>
+<td>«💬 Чаты»</td>
+</tr>
+<tr>
+<td>Канал входа</td>
+<td><code>Channel</code></td>
+<td><code>ENABLED_CHANNELS</code></td>
+<td>HTTP API, Telegram Mini App</td>
+</tr>
+<tr>
+<td>Канал доставки</td>
+<td><code>DeliveryChannel</code></td>
+<td><code>ctx.delivery</code></td>
+<td>Push (FCM, APNs), Web Push, почта</td>
+</tr>
+<tr>
+<td>Способ входа</td>
+<td><code>IdentityProvider</code></td>
+<td>Модуль <code>users</code></td>
+<td>Привязка через бота, Telegram Login</td>
+</tr>
+<tr>
+<td>Источник сообщений чатов</td>
+<td><code>ChatSource</code></td>
+<td>Модуль <code>chat_digest</code></td>
+<td>Группа, Telegram Business</td>
+</tr>
+</tbody>
+</table></div>
+<p>Модуль сам говорит, на каком он этапе (<code>MVP</code>, <code>V2</code>, <code>V3</code>, <code>LAB</code>) и от каких модулей зависит. Если модуль выключен, его сценарии, кнопки, задачи и действия ИИ не регистрируются, а таблицы и данные остаются в базе.</p>
+<pre><code class="language-python">class Module(ABC):
+    key: ClassVar[str]                      # &quot;food&quot;
+    stage: ClassVar[Stage]                  # Stage.MVP
+    depends_on: ClassVar[tuple[str, ...]] = ()
+
+    @abstractmethod
+    def register(self, ctx: ModuleContext) -&gt; None: ...
+
+
+class FoodModule(Module):
+    key, stage = &quot;food&quot;, Stage.MVP
+    depends_on = (&quot;users&quot;, &quot;days&quot;)
+
+    def register(self, ctx: ModuleContext) -&gt; None:
+        uc = FoodUseCases(ctx.uow, ctx.day_clock, ctx.events, ctx.idempotency)
+        ctx.usecases.add(uc)
+        ctx.habits.add(FoodKind(uc))
+        ctx.ai_actions.add(FoodAdd(uc), FoodChangeQty(uc), FoodDelete(uc), FoodMove(uc))
+        ctx.ai_context.add(FoodContext())
+        ctx.stats.add(FoodDayStats(), FoodTrafficRows())
+        ctx.exports.add(FoodCsv())
+
+        if tg := ctx.channel(&quot;telegram&quot;):        # канал включён — добавляем его часть
+            tg.add_router(food_router(uc))
+            tg.add_menu(MenuEntry(&quot;food&quot;, &quot;🍽 Еда&quot;, order=10))
+            tg.add_stats_image(&quot;food.day&quot;, FoodDayImage())
+        # Когда появится HTTP API:
+        # if http := ctx.channel(&quot;http&quot;):
+        #     http.add_router(food_api(uc))
+</code></pre>
+<p>У <code>Module</code> один метод <code>register(ctx)</code>. Модуль сам спрашивает, какие каналы включены, и добавляет в них свою часть. Если появляется новый канал или новая точка расширения, интерфейс модуля и уже написанные модули не меняются.</p>
+<h2 id="s7">7. Диаграммы классов</h2>
+<h3>7.1 Ядро, модули и каналы</h3>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class Module {
+    &lt;&lt;abstract&gt;&gt;
+    +key: str
+    +stage: Stage
+    +depends_on: tuple~str~
+    +register(ctx: ModuleContext) None
+  }
+  class ModuleRegistry {
+    +load(enabled: list~str~) None
+    +check_dependencies() None
+    +register_all(ctx: ModuleContext) None
+  }
+  class ModuleContext {
+    +settings: Settings
+    +uow: UnitOfWork
+    +day_clock: DayClock
+    +events: EventBus
+    +idempotency: IdempotencyStore
+    +usecases: UseCaseRegistry
+    +habits: HabitRegistry
+    +ai_actions: AiActionRegistry
+    +ai_context: AiContextRegistry
+    +notifications: NotificationRegistry
+    +delivery: DeliveryRouter
+    +stats: StatsRegistry
+    +exports: ExportRegistry
+    +jobs: JobRegistry
+    +channel(name: str) Optional~Channel~
+  }
+  class Channel {
+    &lt;&lt;interface&gt;&gt;
+    +name: str
+    +start() None
+    +stop() None
+  }
+  class ChannelRegistry {
+    +load(enabled: list~str~) None
+    +get(name: str) Optional~Channel~
+  }
+  class TelegramChannel {
+    +add_router(router) None
+    +add_menu(entry: MenuEntry) None
+    +add_stats_image(key, image: StatsImage) None
+  }
+  class HttpChannel {
+    &lt;&lt;позже&gt;&gt;
+    +add_router(router) None
+  }
+  class Stage {
+    &lt;&lt;enumeration&gt;&gt;
+    MVP
+    V2
+    V3
+    LAB
+  }
+  class EventBus {
+    +subscribe(event_type, handler) None
+    +publish_after_commit(event: DomainEvent) None
+  }
+  class DayClock {
+    +record_date(started_at: datetime, tz: str) date
+    +logical_today(tz: str) date
+  }
+  class UnitOfWork {
+    +begin() UnitOfWork
+    +commit() None
+    +repo(type: type~R~, actor: Actor) R
+  }
+  class FoodModule
+  class ChatDigestModule
+
+  ModuleRegistry o-- Module : ENABLED_MODULES
+  Module ..&gt; ModuleContext : register(ctx)
+  Module --&gt; Stage
+  Module &lt;|-- FoodModule
+  Module &lt;|-- ChatDigestModule
+  ModuleContext --&gt; ChannelRegistry
+  ChannelRegistry o-- Channel : ENABLED_CHANNELS
+  Channel &lt;|.. TelegramChannel
+  Channel &lt;|.. HttpChannel
+  ModuleContext --&gt; EventBus
+  ModuleContext --&gt; DayClock
+  ModuleContext --&gt; UnitOfWork
+</pre></div>
+<p><code>ChannelRegistry</code> загружает каналы из <code>ENABLED_CHANNELS</code>. Сейчас там только <code>telegram</code>. Модуль, которому нужен канал, получает его через <code>ctx.channel(...)</code>. Если канал выключен, модуль просто пропускает эту часть регистрации.</p>
+<h3>7.2 Пользователь и вход</h3>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class User {
+    +id: int
+    +public_id: UUID
+    +name: str
+    +role: Role
+    +status: UserStatus
+    +timezone: str
+    +created_at: datetime
+    +last_active_at: datetime
+  }
+  class Identity {
+    +user_id: int
+    +provider: str
+    +external_id: str
+    +created_at: datetime
+  }
+  class Actor {
+    &lt;&lt;value object&gt;&gt;
+    +user_id: int
+    +role: Role
+    +channel: str
+    +request_time: datetime
+  }
+  class IdentityProvider {
+    &lt;&lt;interface&gt;&gt;
+    +provider: str
+    +resolve(credentials) Optional~Identity~
+  }
+  class TelegramIdentityProvider {
+    +resolve(tg_id: int) Optional~Identity~
+  }
+  class LinkCodeProvider {
+    &lt;&lt;позже&gt;&gt;
+    +issue_code(user_id: int) str
+    +resolve(code: str) Optional~Identity~
+  }
+  class Session {
+    &lt;&lt;позже&gt;&gt;
+    +user_id: int
+    +device: str
+    +refresh_token_hash: str
+    +expires_at: datetime
+  }
+  class Invite {
+    +code: str
+    +created_by: int
+    +limit: int
+    +used: int
+    +expires_at: datetime
+    +revoked: bool
+  }
+  class AccessService {
+    +sign_in(provider: str, credentials) Actor
+    +register_by_invite(code: str, identity: Identity) User
+  }
+  class Role {
+    &lt;&lt;enumeration&gt;&gt;
+    ADMIN
+    USER
+  }
+
+  User &quot;1&quot; --&gt; &quot;*&quot; Identity
+  User --&gt; Role
+  IdentityProvider &lt;|.. TelegramIdentityProvider
+  IdentityProvider &lt;|.. LinkCodeProvider
+  AccessService --&gt; IdentityProvider
+  AccessService --&gt; Invite
+  AccessService ..&gt; Actor : выдаёт
+  LinkCodeProvider ..&gt; Session
+  User &quot;1&quot; --&gt; &quot;*&quot; Session
+</pre></div>
+<p>Сейчас есть одна <code>Identity</code> типа telegram. Администратор по-прежнему определяется списком <code>ADMIN_TG_IDS</code>: при старте <code>AccessService</code> ищет пользователей по <code>Identity(provider="telegram")</code>. Когда появится приложение, к тому же пользователю добавится вход через привязку: пользователь нажимает «Войти через Telegram», бот присылает код или кнопку подтверждения, и приложение получает сессию (<code>Session</code>). Регистрация по приглашению остаётся единственным способом попасть в бот.</p>
+<h3>7.3 Сценарии: один код для всех каналов</h3>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class UseCase {
+    &lt;&lt;abstract&gt;&gt;
+    +execute(actor: Actor, data: In) Out
+  }
+  class LogFood {
+    +execute(actor, data: LogFoodIn) FoodLogged
+  }
+  class LogFoodIn {
+    &lt;&lt;DTO&gt;&gt;
+    +item_id: UUID
+    +quantity: Decimal
+    +day: Optional~date~
+    +started_at: datetime
+    +request_id: UUID
+  }
+  class FoodLogged {
+    &lt;&lt;DTO&gt;&gt;
+    +entry: FoodEntryOut
+    +day_card: DayCardData
+  }
+  class DayCardData {
+    &lt;&lt;DTO&gt;&gt;
+    +day: date
+    +kbju_fact: Kbju
+    +kbju_goal: Kbju
+    +cost_rub: Decimal
+    +habits: list~Progress~
+  }
+  class AppError {
+    +code: str
+    +params: dict
+  }
+  class IdempotencyStore {
+    +run_once(actor, request_id, fn) Out
+  }
+  class FoodTelegramHandlers {
+    +on_item_pressed(callback) None
+  }
+  class FoodApiRoutes {
+    &lt;&lt;позже&gt;&gt;
+    +post_food_entry(body: LogFoodIn) FoodLogged
+  }
+  class FoodLogAction {
+    +apply(uow, params) UndoToken
+  }
+
+  UseCase &lt;|-- LogFood
+  LogFood ..&gt; LogFoodIn
+  LogFood ..&gt; FoodLogged
+  FoodLogged --&gt; DayCardData
+  LogFood ..&gt; AppError : INPUT-RANGE, INPUT-FUTURE …
+  LogFood --&gt; IdempotencyStore
+  FoodTelegramHandlers --&gt; LogFood : кнопка
+  FoodApiRoutes --&gt; LogFood : HTTP
+  FoodLogAction --&gt; LogFood : команда текстом
+</pre></div>
+<p>Один и тот же <code>LogFood</code> вызывают три входа: кнопка в Telegram, будущий HTTP API и действие ИИ из команды текстом. Проверки, расчёт КБЖУ, копирование цены и событие <code>FoodLogged</code> живут в одном месте. Если <code>day</code> не передан, сценарий считает дату по <code>started_at</code> и границе 04:00 в часовом поясе пользователя.</p>
+<h3>7.4 Привычки: единый интерфейс</h3>
+<p>По требованиям главный экран, статистика и уведомления работают со всеми привычками одинаково. Поэтому каждый вид привычки отвечает на одни и те же вопросы через <code>HabitKind</code>. Как привычка выглядит на экране, решает канал, а не модуль.</p>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction TB
+  class HabitKind {
+    &lt;&lt;interface&gt;&gt;
+    +key: str
+    +title: str
+    +emoji: str
+    +progress(user_id: int, day: date) Progress
+    +quick_mark(actor: Actor, day: date) Optional~EntryRef~
+    +traffic_rows(user_id: int, period: Period) list~TrafficRow~
+  }
+  class HabitRegistry {
+    +add(kind: HabitKind) None
+    +for_user(user_id: int) list~HabitView~
+    +progress_all(user_id: int, day: date) list~Progress~
+  }
+  class FoodKind
+  class WarmupKind
+  class WorkoutKind
+  class CustomHabitKind
+  class Habit {
+    +id: int
+    +public_id: UUID
+    +user_id: int
+    +kind: str
+    +name: str
+    +emoji: str
+    +measure: MeasureType
+    +unit: str
+    +daily_goal: Optional~Decimal~
+    +step: Decimal
+    +quick_values: list~Decimal~
+    +weekdays: set~int~
+    +on_home: bool
+    +order: int
+    +version: int
+    +updated_at: datetime
+  }
+  class HabitEntry {
+    +public_id: UUID
+    +habit_id: int
+    +user_id: int
+    +day: date
+    +time: time
+    +value: Decimal
+    +source: EntrySource
+    +updated_at: datetime
+    +deleted_at: Optional~datetime~
+  }
+  class Progress {
+    &lt;&lt;value object&gt;&gt;
+    +habit_key: str
+    +fact: Decimal
+    +goal: Optional~Decimal~
+    +unit: str
+    +done: bool
+    +light: Light
+  }
+  class Streaks {
+    &lt;&lt;domain&gt;&gt;
+    +streak(done_days, schedule, day_off) int
+  }
+  class TelegramHabitButtons {
+    &lt;&lt;telegram&gt;&gt;
+    +home_row(progress) Keyboard
+  }
+
+  HabitKind &lt;|.. FoodKind
+  HabitKind &lt;|.. WarmupKind
+  HabitKind &lt;|.. WorkoutKind
+  HabitKind &lt;|.. CustomHabitKind
+  HabitRegistry o-- HabitKind
+  HabitKind ..&gt; Progress : возвращает
+  CustomHabitKind --&gt; Habit : все свои привычки
+  Habit &quot;1&quot; --&gt; &quot;*&quot; HabitEntry
+  CustomHabitKind ..&gt; Streaks
+  TelegramHabitButtons --&gt; HabitRegistry
+</pre></div>
+<p>Встроенные привычки (еда, зарядка, тренировка) по требованиям тоже лежат строками в <code>Habit</code> с полем <code>kind</code>. По этому полю <code>HabitRegistry</code> находит класс, который считает прогресс. Бег учитывается в <code>WorkoutKind</code> через <code>runs.public</code>. Цель «N раз в неделю» из v2 добавляется полем <code>weekly_goal</code> и веткой в <code>Streaks</code>, а интерфейс не меняется.</p>
+<h3>7.5 Telegram-канал: диалоги и интерфейс</h3>
+<p>Всё на этой диаграмме существует только в Telegram. Приложению и вебу оно не понадобится: у них состояние формы хранится на устройстве, а сценарий получает уже готовые данные.</p>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class BaseMiddleware {
+    &lt;&lt;aiogram&gt;&gt;
+  }
+  class ErrorMiddleware {
+    +render(e: AppError) Screen
+  }
+  class AuthMiddleware {
+    +sign_in(tg_id) Actor
+  }
+  class ActivityMiddleware {
+    +reset_if_idle(state: DialogState) None
+  }
+  class TgSession {
+    +actor: Actor
+    +started_at: datetime
+    +other_day: Optional~date~
+  }
+  class DbFsmStorage {
+    +get_state(key) str
+    +set_data(key, data) None
+  }
+  class DialogState {
+    +user_id: int
+    +scope: str
+    +state: str
+    +data: json
+    +other_day: Optional~date~
+    +last_action_at: datetime
+    +version: int
+  }
+  class InactivityPolicy {
+    +ttl_for(scope: str) timedelta
+  }
+  class OwnedCallback {
+    +owner_id: int
+    +state_version: int
+    +is_stale(s: TgSession) bool
+  }
+  class MenuRegistry {
+    +add(entry: MenuEntry) None
+    +home_keyboard(user_id: int) Keyboard
+  }
+  class TgFormat {
+    +number(d: Decimal) str
+    +day_label(d: date) str
+  }
+  class DayCardView {
+    +render(data: DayCardData) Screen
+  }
+
+  BaseMiddleware &lt;|-- ErrorMiddleware
+  BaseMiddleware &lt;|-- AuthMiddleware
+  BaseMiddleware &lt;|-- ActivityMiddleware
+  AuthMiddleware ..&gt; TgSession : создаёт
+  ActivityMiddleware --&gt; DbFsmStorage
+  ActivityMiddleware --&gt; InactivityPolicy : 15 мин, тренировка 3 ч, анкета без сброса
+  DbFsmStorage --&gt; DialogState
+  OwnedCallback ..&gt; DialogState : сверяет версию
+  DayCardView --&gt; TgFormat : «77,5», «23.10, пт»
+</pre></div>
+<p>Порядок middleware: ошибки → вход → сброс по бездействию. <code>TgSession.started_at</code> берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в <code>DialogState</code>, и канал передаёт выбранную дату в сценарий явным параметром <code>day</code>.</p>
+<h3>7.6 ИИ: задачи, действия, бюджет</h3>
+<p>ИИ используется для разных <strong>задач</strong>, и у каждой задачи свой маршрут к модели и свой бюджет. Команды текстом собираются из <strong>действий</strong>, которые регистрируют модули. План действий — это обычный DTO, поэтому карточку «Понял так» сможет показать любой канал.</p>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class AiTask {
+    &lt;&lt;enumeration&gt;&gt;
+    COMMAND_PARSE
+    FILL
+    GREETING
+    CHAT_SUMMARY
+    WEEKLY_REVIEW
+  }
+  class LlmGateway {
+    &lt;&lt;interface&gt;&gt;
+    +complete(task: AiTask, prompt: Prompt, schema: type) LlmResult
+  }
+  class LlmRouter {
+    +routes: dict~AiTask, ProviderChain~
+    +complete(task, prompt, schema) LlmResult
+  }
+  class OpenAiCompatibleClient {
+    +base_url: str
+    +model: str
+    +chat(messages, response_format) RawResult
+  }
+  class BudgetGuard {
+    +check(task: AiTask, user_id: int) None
+    +record(usage: Usage) None
+  }
+  class AiAction {
+    &lt;&lt;interface&gt;&gt;
+    +name: str
+    +params: type~BaseModel~
+    +validate(actor: Actor, p) Checked
+    +summary(p) ActionSummary
+    +apply(uow, p) UndoToken
+    +undo(uow, token: UndoToken) None
+  }
+  class ActionSummary {
+    &lt;&lt;DTO&gt;&gt;
+    +op: OpKind
+    +day: date
+    +object: str
+    +values: dict
+  }
+  class AiActionRegistry {
+    +schema_for(user_id: int) dict
+    +get(name: str) AiAction
+  }
+  class AiContextProvider {
+    &lt;&lt;interface&gt;&gt;
+    +context(user_id: int, days: list~date~) dict
+  }
+  class CommandService {
+    +parse(actor: Actor, text: str) ActionPlan
+    +execute(actor: Actor, plan_id: UUID) Result
+    +undo_all(actor: Actor, plan_id: UUID) None
+  }
+  class ActionPlan {
+    &lt;&lt;DTO&gt;&gt;
+    +id: UUID
+    +items: list~PlannedAction~
+    +questions: list~Question~
+    +status: PlanStatus
+  }
+
+  LlmGateway &lt;|.. LlmRouter
+  LlmRouter --&gt; OpenAiCompatibleClient : основной и запасной
+  LlmRouter --&gt; BudgetGuard
+  LlmRouter --&gt; AiTask
+  AiActionRegistry o-- AiAction
+  AiAction ..&gt; ActionSummary
+  CommandService --&gt; LlmGateway
+  CommandService --&gt; AiActionRegistry
+  CommandService --&gt; AiContextProvider : только нужные данные
+  CommandService ..&gt; ActionPlan
+</pre></div>
+<ul>
+<li><strong>Маршруты по задачам.</strong> <code>LLM_ROUTES</code> в <code>.env</code> задаёт для каждой задачи провайдера, модель и запасной вариант. Если маршрут не задан, используется <code>LLM_*</code> по умолчанию, как в требованиях 7.2.</li>
+<li><strong>Бюджет.</strong> Общий лимит в 5 $ в месяц остаётся, но <code>BudgetGuard</code> дополнительно ведёт доли по задачам. Поэтому новая функция не может съесть бюджет на разбор команд.</li>
+<li><strong>Действия.</strong> <code>summary()</code> возвращает структуру, а не готовую строку. Telegram собирает из неё «➕ 24.10 Еда: Куриное бедро × 2 — 500 ккал», а приложение нарисует свою карточку.</li>
+</ul>
+<h3>7.7 Уведомления и доставка</h3>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class NotificationProvider {
+    &lt;&lt;interface&gt;&gt;
+    +kind: str
+    +title: str
+    +stage: Stage
+    +default_schedule: ScheduleSpec
+    +build(user_id: int, at: datetime) Optional~Notice~
+  }
+  class Notice {
+    &lt;&lt;DTO&gt;&gt;
+    +kind: str
+    +title: str
+    +body: str
+    +stats: Optional~StatsData~
+    +actions: list~NoticeAction~
+  }
+  class NoticeAction {
+    &lt;&lt;DTO&gt;&gt;
+    +key: str
+    +label: str
+    +usecase: str
+    +params: dict
+  }
+  class NotificationService {
+    +tick(now: datetime) None
+    +subscribe(actor, kind, schedule, params) Notification
+    +snooze(actor, notification_id, minutes) None
+  }
+  class Notification {
+    +user_id: int
+    +kind: str
+    +schedule: ScheduleSpec
+    +skip_if_done: bool
+    +next_fire_at: datetime
+    +enabled: bool
+  }
+  class DeliveryRouter {
+    +deliver(user_id: int, notice: Notice) None
+  }
+  class DeliveryPolicy {
+    +allowed(user, at) bool
+  }
+  class DeliveryChannel {
+    &lt;&lt;interface&gt;&gt;
+    +name: str
+    +available_for(user_id: int) bool
+    +send(user_id: int, notice: Notice) None
+  }
+  class TelegramDelivery {
+    +send(user_id, notice) None
+  }
+  class PushDelivery {
+    &lt;&lt;позже&gt;&gt;
+    +send(user_id, notice) None
+  }
+  class WebPushDelivery {
+    &lt;&lt;позже&gt;&gt;
+    +send(user_id, notice) None
+  }
+  class CustomReminder
+  class WeatherToday
+  class ChatDigest
+
+  NotificationProvider &lt;|.. CustomReminder
+  NotificationProvider &lt;|.. WeatherToday
+  NotificationProvider &lt;|.. ChatDigest
+  NotificationProvider ..&gt; Notice : build
+  Notice --&gt; NoticeAction
+  NotificationService --&gt; NotificationProvider
+  NotificationService --&gt; Notification : next_fire_at ≤ now
+  NotificationService --&gt; DeliveryRouter
+  DeliveryRouter --&gt; DeliveryPolicy : тихие часы, пауза, лимиты
+  DeliveryRouter o-- DeliveryChannel
+  DeliveryChannel &lt;|.. TelegramDelivery
+  DeliveryChannel &lt;|.. PushDelivery
+  DeliveryChannel &lt;|.. WebPushDelivery
+</pre></div>
+<p>Вместо отдельной задачи APScheduler на каждое уведомление работает <strong>одна задача раз в минуту</strong>: <code>NotificationService.tick(now)</code>. Она выбирает из БД уведомления, у которых уже наступило время отправки (<code>next_fire_at</code>), получает от провайдера <code>Notice</code> и передаёт его в <code>DeliveryRouter</code>. Расписание живёт в БД, поэтому переживает перезапуск, а точность остаётся в пределах ±1 минуты.</p>
+<p>Кнопки уведомления описаны как <code>NoticeAction</code>, то есть ссылка на сценарий с параметрами, например <code>habit.mark</code> с <code>habit_id</code>. Telegram превращает действие в callback-кнопку, push — в кнопку уведомления, и обе вызывают один и тот же сценарий. Сейчас доставка только в Telegram. Когда появится приложение, добавятся <code>PushDelivery</code> и настройка «куда присылать».</p>
+<h3>7.8 Статистика: данные отдельно от картинки</h3>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class StatsProvider {
+    &lt;&lt;interface&gt;&gt;
+    +key: str
+    +day(user_id: int, day: date) Optional~StatsData~
+    +period(user_id: int, period: Period) Optional~StatsData~
+  }
+  class StatsData {
+    &lt;&lt;DTO&gt;&gt;
+    +title: str
+    +bars: list~Bar~
+    +table: list~Row~
+    +traffic: list~TrafficRow~
+    +totals: dict
+    +data_version: int
+  }
+  class FoodDayStats
+  class TrafficOverview
+  class StatsImage {
+    &lt;&lt;telegram&gt;&gt;
+    +render(data: StatsData) bytes
+  }
+  class ImageCache {
+    &lt;&lt;telegram&gt;&gt;
+    +get(user_id, key, data_version) Optional~bytes~
+  }
+  class ClientCharts {
+    &lt;&lt;позже&gt;&gt;
+  }
+
+  StatsProvider &lt;|.. FoodDayStats
+  StatsProvider &lt;|.. TrafficOverview
+  StatsProvider ..&gt; StatsData
+  StatsImage ..&gt; StatsData : matplotlib, Pillow
+  StatsImage --&gt; ImageCache
+  ClientCharts ..&gt; StatsData : JSON через API
+</pre></div>
+<p>Модули считают данные (<code>StatsData</code>), а рисует их канал. Telegram строит картинку matplotlib и кэширует её по версии данных, как требует раздел 7. Приложение получит те же данные в JSON и нарисует графики само. Требование «при построении статистики нет запросов к ИИ» проверяется на уровне <code>StatsProvider</code>, то есть для всех каналов сразу.</p>
+<h3>7.9 Пример расширения: модуль «Резюме чатов»</h3>
+<p>Модуль добавляется без изменений в ядре. Он реализует уже существующие интерфейсы (<code>Module</code>, <code>UseCase</code>, <code>AiAction</code>, <code>NotificationProvider</code>, <code>ExportTable</code>, <code>JobSpec</code>) и добавляет один новый порт — <code>ChatSource</code>. Источники сообщений есть только в Telegram, а читать резюме можно будет из любого канала.</p>
+<div class="diagram"><pre class="mermaid">classDiagram
+  direction LR
+  class ChatDigestModule {
+    +key: chat_digest
+    +stage: LAB
+    +register(ctx) None
+  }
+  class ChatSource {
+    &lt;&lt;interface&gt;&gt;
+    +kind: SourceKind
+    +router() Router
+    +normalize(update) Optional~IncomingMessage~
+  }
+  class GroupChatSource {
+    бот в группе, privacy mode выключен
+  }
+  class BusinessChatSource {
+    личные чаты через Telegram Business
+  }
+  class ForwardedSource {
+    пересланные боту сообщения
+  }
+  class UserClientSource {
+    &lt;&lt;optional&gt;&gt;
+    MTProto, по умолчанию выключен
+  }
+  class MonitoredChat {
+    +public_id: UUID
+    +user_id: int
+    +source: SourceKind
+    +tg_chat_id: int
+    +title: str
+    +retention_hours: int
+    +schedule: ScheduleSpec
+    +enabled: bool
+  }
+  class ChatMessage {
+    +chat_id: int
+    +tg_message_id: int
+    +author: str
+    +sent_at: datetime
+    +text: str
+    +expires_at: datetime
+  }
+  class ChatSummary {
+    +public_id: UUID
+    +chat_id: int
+    +period_from: datetime
+    +period_to: datetime
+    +text: str
+    +tokens: int
+    +cost_usd: Decimal
+  }
+  class IngestMessage {
+    +execute(actor, msg: IncomingMessage) None
+  }
+  class SummarizeChat {
+    +execute(actor, data: SummarizeIn) ChatSummaryOut
+  }
+  class ListSummaries {
+    +execute(actor, data: PeriodIn) list~ChatSummaryOut~
+  }
+  class Summarizer {
+    +summarize(messages) str
+  }
+  class RetentionJob {
+    +run(now) None
+  }
+  class LlmGateway {
+    &lt;&lt;interface&gt;&gt;
+  }
+
+  ChatSource &lt;|.. GroupChatSource
+  ChatSource &lt;|.. BusinessChatSource
+  ChatSource &lt;|.. ForwardedSource
+  ChatSource &lt;|.. UserClientSource
+  ChatDigestModule ..&gt; ChatSource : регистрирует в Telegram-канале
+  ChatSource ..&gt; IngestMessage : IncomingMessage
+  IngestMessage --&gt; MonitoredChat : только выбранные чаты
+  MonitoredChat &quot;1&quot; --&gt; &quot;*&quot; ChatMessage
+  MonitoredChat &quot;1&quot; --&gt; &quot;*&quot; ChatSummary
+  SummarizeChat --&gt; Summarizer
+  Summarizer --&gt; LlmGateway : AiTask.CHAT_SUMMARY
+  ListSummaries ..&gt; ChatSummary : для любого канала
+  RetentionJob ..&gt; ChatMessage : удаляет после expires_at
+</pre></div>
+<h2 id="s8">8. Ключевые потоки</h2>
+<h3>8.1 Один сценарий, разные каналы</h3>
+<div class="diagram"><pre class="mermaid">sequenceDiagram
+  autonumber
+  actor U as Пользователь
+  participant TG as Telegram-канал
+  participant API as HTTP API (позже)
+  participant UC as LogFood
+  participant DB as UnitOfWork
+  participant EB as EventBus
+  U-&gt;&gt;TG: «Еда» → «Коктейль»
+  TG-&gt;&gt;UC: execute(actor, LogFoodIn{item, 1, day из режима, started_at, request_id})
+  UC-&gt;&gt;DB: проверка владельца, расчёт КБЖУ, запись
+  DB--&gt;&gt;UC: commit
+  UC-&gt;&gt;EB: FoodLogged
+  UC--&gt;&gt;TG: FoodLogged{entry, day_card}
+  TG--&gt;&gt;U: карточка дня моноширинным блоком и кнопки ×0,5 ×2 📅 На вчера
+  Note over API,UC: Позже приложение отправит POST /food-entries с тем же LogFoodIn и получит тот же FoodLogged в JSON
+</pre></div>
+<h3>8.2 Команда текстом</h3>
+<div class="diagram"><pre class="mermaid">sequenceDiagram
+  autonumber
+  actor U as Пользователь
+  participant H as Telegram-канал
+  participant C as CommandService
+  participant X as AiContextRegistry
+  participant L as LlmRouter
+  participant R as AiActionRegistry
+  participant DB as UnitOfWork
+  U-&gt;&gt;H: «вчера на обед 2 бедра, коктейль сегодня удали»
+  H-&gt;&gt;C: parse(actor, text)
+  C-&gt;&gt;X: названия рецептов, привычек, записи упомянутых дней
+  C-&gt;&gt;L: complete(COMMAND_PARSE, prompt, schema_for(user))
+  L--&gt;&gt;C: JSON с действиями (проверен pydantic)
+  C-&gt;&gt;R: validate каждого действия
+  R--&gt;&gt;C: 3 действия прошли, чужие и несуществующие отброшены
+  C--&gt;&gt;H: ActionPlan (DTO)
+  H--&gt;&gt;U: «Понял так: …» [Выполнить всё] [Исправить] [Убрать]
+  U-&gt;&gt;H: Выполнить всё
+  H-&gt;&gt;C: execute(actor, plan_id)
+  C-&gt;&gt;DB: apply × 3 в одной транзакции
+  DB--&gt;&gt;C: commit, UndoToken × 3
+  C--&gt;&gt;H: Result
+  H--&gt;&gt;U: итог и «↩️ Отменить всё» на 10 минут
+</pre></div>
+<h3>8.3 Нажатие кнопки</h3>
+<p>Апдейт Telegram проходит цепочку middleware и превращается в <code>Actor</code>. Роутер модуля в Telegram-канале собирает DTO и вызывает сценарий. Сценарий меняет данные в одной транзакции <code>UnitOfWork</code>. После <code>commit</code> публикуются события, например <code>FoodLogged</code> или <code>RecordSet</code>. На них подписаны кэш картинок статистики (он сбрасывается по версии данных), уведомления о рекордах и сериях и будущий еженедельный разбор. Канал рисует ответ из DTO: карточку дня из <code>DayCardData</code>.</p>
+<h2 id="s9">9. Резюме чатов: что нужно решить заранее</h2>
+<p>Модуль «Резюме чатов» ложится в архитектуру без доработки ядра, но у Telegram есть ограничения: бот не видит переписку пользователя просто так. Возможные источники сообщений:</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Источник</th>
+<th>Что видит бот</th>
+<th>Условия</th>
+<th>Оценка</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Группа, куда добавлен бот</td>
+<td>Все новые сообщения группы</td>
+<td>Выключить privacy mode у @BotFather или сделать бота администратором группы. Участники должны знать, что бот читает</td>
+<td>Подходит для семейных и рабочих групп</td>
+</tr>
+<tr>
+<td>Telegram Business</td>
+<td>Новые сообщения в выбранных личных чатах с момента подключения</td>
+<td>Пользователь подключает бота в настройках Telegram для бизнеса; нужна подписка Premium. Групп нет, старой истории нет</td>
+<td>Лучший вариант для личных чатов</td>
+</tr>
+<tr>
+<td>Пересланные сообщения</td>
+<td>Пачку сообщений, которую пользователь переслал боту</td>
+<td>Без настроек, работает везде</td>
+<td>Резюме по запросу, без хранения</td>
+</tr>
+<tr>
+<td>Пользовательский клиент (MTProto)</td>
+<td>Всю переписку аккаунта</td>
+<td>Бот хранит сессию — по сути ключ от всего аккаунта Telegram</td>
+<td>Не рекомендую: риск утечки и блокировки, противоречит принципу минимума данных</td>
+</tr>
+</tbody>
+</table></div>
+<p>Что модуль добавляет к требованиям:</p>
+<ul>
+<li><strong>Приватность.</strong> Это переписка третьих лиц, а DeepSeek — китайский провайдер (раздел 7.2). Решение: для <code>CHAT_SUMMARY</code> отдельный маршрут в <code>LLM_ROUTES</code>, а в модель уходят только имя автора и текст, без Telegram-ID.</li>
+<li><strong>Хранение.</strong> Требование «все данные только в БД» сохраняется. Сообщения лежат в <code>ChatMessage</code> с <code>expires_at</code> (по умолчанию 72 часа) и удаляются после резюме. Остаются только резюме.</li>
+<li><strong>Нагрузка.</strong> Оценка на 10 чатов по 300 сообщений в день: около 12 тыс. токенов на чат в день, то есть ≈ 3,6 млн токенов в месяц. Это ≈ 0,5–1 $ в месяц на DeepSeek. Место в БД — десятки мегабайт при хранении 72 часа, для SQLite и VPS это немного.</li>
+<li><strong>Бюджет.</strong> Отдельная доля резюме в <code>BudgetGuard</code>. Если она закончится, резюме остановятся, а команды текстом продолжат работать.</li>
+<li><strong>Удаление аккаунта</strong> каскадно стирает подключённые чаты, сообщения и резюме. В экспорт добавляется <code>chat_summaries.csv</code>.</li>
+</ul>
+<p>По этому же шаблону подключаются и другие функции ассистента: голосовые команды (порт <code>SpeechToText</code> и существующий <code>CommandService</code>), еженедельный разбор (<code>AiTask.WEEKLY_REVIEW</code> и уведомление), напоминания из календаря (<code>ExternalSource</code> и <code>NotificationProvider</code>).</p>
+<h2 id="s10">10. Когда появятся приложение и веб</h2>
+<p>Интерфейсы приложения и веба в эту версию не входят. Ниже — что придётся сделать на сервере, когда до них дойдёт очередь. Сам код модулей при этом не меняется.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Задача</th>
+<th>Что сделать</th>
+<th>Затронет</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP API</td>
+<td>Пакет <code>channels/http</code> (FastAPI) и папки <code>http/</code> в модулях поверх тех же сценариев. API работает в том же процессе и том же цикле asyncio, что и бот: на 1 ГБ памяти это дешевле второго контейнера</td>
+<td>Только новые файлы</td>
+</tr>
+<tr>
+<td>Вход</td>
+<td><code>LinkCodeProvider</code>: «Войти через Telegram» в приложении, подтверждение в боте, затем токены <code>Session</code>. Для веба можно добавить вход через Telegram Login Widget</td>
+<td>Модуль <code>users</code></td>
+</tr>
+<tr>
+<td>Push</td>
+<td><code>PushDelivery</code> (FCM для Android, APNs для iOS), <code>WebPushDelivery</code>, токены устройств, настройка «куда присылать»</td>
+<td><code>platform/delivery</code></td>
+</tr>
+<tr>
+<td>Синхронизация</td>
+<td>Запрос «изменения с момента T» по <code>updated_at</code> и <code>deleted_at</code>; создание записей офлайн по <code>public_id</code> и <code>request_id</code></td>
+<td>Только API: поля уже заложены</td>
+</tr>
+<tr>
+<td>Развёртывание</td>
+<td>Домен, HTTPS через обратный прокси с автоматическим сертификатом, открыть порт 443 в файрволе. Это меняет правило «открыт только SSH» из раздела 7.3</td>
+<td>Диаграмма развертывания, bootstrap</td>
+</tr>
+<tr>
+<td>База</td>
+<td>Пока API и бот работают в одном процессе, SQLite хватает. Если API вынесут в отдельный процесс или вырастет нагрузка — переход на PostgreSQL: схема уже совместима</td>
+<td>Конфиг и миграции</td>
+</tr>
+<tr>
+<td>Промежуточный шаг</td>
+<td>Telegram Mini App: веб-интерфейс внутри Telegram. Вход по подписанным данным от Telegram, без отдельного логина. Использует тот же HTTP API</td>
+<td>Канал <code>http</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="s11">11. Правила, которые держат архитектуру</h2>
+<ol>
+<li>Текущее время берётся только из <code>Clock</code>, дата записи — только из <code>DayClock.record_date</code>. Прямой <code>datetime.now()</code> запрещён правилом линтера.</li>
+<li>Пользовательские данные читаются только через <code>UserScopedRepository</code>, привязанный к <code>Actor</code>. Каталог (<code>user_id = NULL</code>) — через отдельный <code>CatalogRepository</code>: только чтение и копирование.</li>
+<li>Сценарии и домен не импортируют aiogram, FastAPI и другие библиотеки каналов. Это проверяет import-linter.</li>
+<li>Сценарий принимает и возвращает DTO. Форматирование чисел и дат, тексты кнопок и картинки — только в канале.</li>
+<li>Одно действие пользователя — одна транзакция. События публикуются после <code>commit</code>.</li>
+<li>Каждый сценарий, который меняет данные, принимает <code>request_id</code> и выполняется через <code>IdempotencyStore</code>.</li>
+<li>Тексты для пользователя и администратора берутся из каталога по коду (раздел 7.4).</li>
+<li>Модуль не импортирует <code>models</code>, <code>repo</code> и <code>usecases</code> другого модуля — только его <code>public.py</code>.</li>
+<li>Модели модуля лежат в модуле, миграции идут одной цепочкой Alembic. Таблицы модуля начинаются с его ключа, например <code>chat_digest_message</code>.</li>
+<li>Каждый внешний вызов идёт через порт с таймаутом, повтором и кэшем. В CI порты заменяются фейками, реальных запросов к Telegram и модели нет.</li>
+</ol>
+<h2 id="s12">12. Как это ложится на план MVP (раздел 8.1)</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Часть</th>
+<th>Что строится из архитектуры</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Каркас</td>
+<td><code>kernel/</code>: Settings, ModuleRegistry, ChannelRegistry, UnitOfWork, IdempotencyStore, User и Identity, ErrorCatalog, AdminAlerter, логи; <code>channels/telegram/channel.py</code>; регистрация администратора через <code>Identity</code></td>
+</tr>
+<tr>
+<td>2. Диалоги</td>
+<td><code>channels/telegram/dialogs</code> и <code>ui</code>: middleware, DbFsmStorage, сброс 15 минут, OwnedCallback, MenuRegistry, TgFormat; <code>kernel/domain</code> — разбор чисел, времени и дат</td>
+</tr>
+<tr>
+<td>3. Регистрация</td>
+<td>Модуль <code>users</code>: AccessService, приглашения, анкета, цели, профиль с часовым поясом; <code>sources/OpenMeteo</code> для поиска городов</td>
+</tr>
+<tr>
+<td>4. Дни</td>
+<td><code>DayClock</code>, модуль <code>days</code>, <code>DayCardData</code> и <code>DayCardView</code> на <code>HabitRegistry</code></td>
+</tr>
+<tr>
+<td>5–8</td>
+<td>Модули <code>food</code>, <code>warmup</code>, <code>custom_habits</code>, <code>workouts</code> и <code>runs</code>. Каждый пишет сценарии с DTO, <code>HabitKind</code>, <code>StatsProvider</code>, экспорт и папку <code>telegram/</code>, а также сразу готовит <code>ai_actions.py</code></td>
+</tr>
+<tr>
+<td>9. ИИ</td>
+<td><code>platform/ai</code>: LlmRouter, BudgetGuard, AiActionRegistry, CommandService; модуль <code>ai_commands</code></td>
+</tr>
+<tr>
+<td>10. Итоги</td>
+<td><code>platform/stats</code> и <code>platform/export</code>; картинки в <code>channels/telegram/render</code>; модули <code>stats_views</code>, <code>admin</code>, <code>export</code>, <code>backup</code></td>
+</tr>
+<tr>
+<td>v2–v3</td>
+<td><code>platform/delivery</code> и модуль <code>notifications</code> с провайдерами; новые модули <code>chat_digest</code>, <code>weekly_review</code>, <code>voice</code></td>
+</tr>
+<tr>
+<td>Следующие версии</td>
+<td><code>channels/http</code>, вход через привязку, push — раздел 10</td>
+</tr>
+</tbody>
+</table></div>
+<p>Части 1–4 делают ядро, платформу и Telegram-канал, поэтому в них закладывается почти вся расширяемость. Начиная с части 5 каждая функция — это отдельный модуль по шаблону из раздела 5. Сценарии тестируются отдельно от канала (<code>tests/usecases/</code>), и потом этими же проверками будет закрыт HTTP API.</p>
+</main>
+<footer>Исходник этого документа с диаграммами в Mermaid сохранён в проекте «Тг Бот»: claude/architecture.md. Диаграмма развертывания — claude/deployment-diagram.md.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:'neutral'});</script></body></html>
