@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from html.parser import HTMLParser
 from typing import Any
 
 from aiogram import Bot
 from aiogram.client.session.base import BaseSession
-from aiogram.exceptions import TelegramForbiddenError
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.methods import (
     AnswerCallbackQuery,
     EditMessageReplyMarkup,
@@ -22,6 +23,70 @@ from aiogram.types import Chat, Message, User
 BOT_USER = User(id=1000001, is_bot=True, first_name="Habit Test", username="habit_test_bot")
 
 
+MAX_TEXT = 4096
+MAX_CALLBACK_DATA = 64
+MAX_BUTTON_TEXT = 64  # практический предел: длиннее Telegram обрезает или отклоняет
+MAX_TOAST = 200
+HTML_TAGS = {"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre", "tg-spoiler",
+             "blockquote", "span"}
+
+
+class _HtmlCheck(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[str] = []
+        self.errors: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in HTML_TAGS:
+            self.errors.append(f"can't parse entities: unsupported start tag \"{tag}\"")
+        self.stack.append(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self.stack or self.stack.pop() != tag:
+            self.errors.append(f"can't parse entities: unexpected end tag \"{tag}\"")
+
+
+def html_problem(text: str) -> str | None:
+    checker = _HtmlCheck()
+    checker.feed(text)
+    checker.close()
+    if checker.stack:
+        checker.errors.append(f"can't parse entities: unclosed tag \"{checker.stack[-1]}\"")
+    return checker.errors[0] if checker.errors else None
+
+
+def telegram_limits_problem(method: TelegramMethod[Any]) -> str | None:
+    """Ограничения Bot API, которые настоящий Telegram проверяет и отклоняет запрос с 400."""
+    text = getattr(method, "text", None)
+    if isinstance(method, (SendMessage, EditMessageText)):
+        if not text or not str(text).strip():
+            return "message text is empty"
+        if len(str(text)) > MAX_TEXT:
+            return "message is too long"
+        if getattr(method, "parse_mode", None) == "HTML":
+            problem = html_problem(str(text))
+            if problem:
+                return problem
+    if isinstance(method, AnswerCallbackQuery) and text and len(text) > MAX_TOAST:
+        return "MESSAGE_TOO_LONG"
+    markup = getattr(method, "reply_markup", None)
+    for row in getattr(markup, "inline_keyboard", None) or []:
+        for button in row:
+            if not button.text or not button.text.strip():
+                return "BUTTON_TEXT_EMPTY"
+            if len(button.text) > MAX_BUTTON_TEXT:
+                return "BUTTON_TEXT_TOO_LONG"
+            data = button.callback_data
+            if data is not None and (not data or len(data.encode()) > MAX_CALLBACK_DATA):
+                return "BUTTON_DATA_INVALID"
+    for row in getattr(markup, "keyboard", None) or []:
+        for button in row:
+            if not button.text or not button.text.strip():
+                return "BUTTON_TEXT_EMPTY"
+    return None
+
+
 class FakeTelegramSession(BaseSession):
     def __init__(self) -> None:
         super().__init__()
@@ -33,6 +98,10 @@ class FakeTelegramSession(BaseSession):
         return None
 
     async def make_request(self, bot: Bot, method: TelegramMethod[Any], timeout: int | None = None) -> Any:
+        problem = telegram_limits_problem(method)
+        if problem:
+            # Настоящий Telegram отвечает 400 Bad Request — поддельный тоже, чтобы ошибка всплыла в тестах.
+            raise TelegramBadRequest(method=method, message=f"Bad Request: {problem}")
         self.requests.append(method)
         if isinstance(method, GetMe):
             return BOT_USER
@@ -118,20 +187,23 @@ def callback_update(update_id: int, user_id: int, data: str, message_id: int = 5
     }
 
 
-# Записанные ответы Open-Meteo Geocoding (раздел 4.12): в CI нет реальных запросов.
+# Ответы Open-Meteo Geocoding (раздел 4.12) в том виде, как их отдаёт настоящий сервис (сверено заданием CI
+# «Внешние сервисы», tests/live): регион пишется то «область», то «Область». В обычных тестах сети нет.
 GEOCODER_ANSWERS: dict[str, list[dict[str, Any]]] = {
     "кировск": [
+        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
+         "admin1": "Ленинградская область"},
+        {"name": "Кировск", "latitude": 53.2697, "longitude": 29.4752, "country_code": "BY",
+         "admin1": "Могилевская область"},
         {"name": "Кировск", "latitude": 67.6142, "longitude": 33.6717, "country_code": "RU",
-         "admin1": "Мурманская область"},
-        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
-         "admin1": "Ленинградская область"},
-        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
-         "admin1": "Ленинградская область"},
+         "admin1": "Мурманская Область"},
+        {"name": "Кировск", "latitude": 67.6142, "longitude": 33.6717, "country_code": "RU",
+         "admin1": "Мурманская Область"},
     ],
     "масква": [],
     "ростов на дону": [
         {"name": "Ростов-на-Дону", "latitude": 47.2313, "longitude": 39.7233, "country_code": "RU",
-         "admin1": "Ростовская область"},
+         "admin1": "Ростовская Область"},
     ],
     "новосибирск": [
         {"name": "Новосибирск", "latitude": 55.0415, "longitude": 82.9346, "country_code": "RU",

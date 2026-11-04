@@ -96,6 +96,33 @@ jobs:
             exit 1
           fi
 
+  live:
+    name: Внешние сервисы
+    # Живые запросы к Open-Meteo с серверов GitHub. Сбой сервиса не блокирует слияние и выкладку —
+    # результат виден в сводке запуска.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+      - name: Open-Meteo Geocoding
+        env:
+          LIVE_SERVICES: "1"
+        run: |
+          if pytest -m live -p no:cacheprovider tests/live -q; then
+            echo "### Внешние сервисы: ✅ Open-Meteo Geocoding отвечает как ожидается" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Внешние сервисы: ⚠️ Open-Meteo Geocoding ответил не так, как ожидалось — см. лог" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
   notify-failure:
     name: Оповещение о красной проверке
     needs: checks

@@ -30,7 +30,7 @@ async def run_safely(job: JobSpec) -> bool:
     return True
 
 
-async def run_forever(job: JobSpec) -> None:  # pragma: no cover — бесконечный цикл; одна итерация — run_safely
+async def run_forever(job: JobSpec) -> None:
     while True:
         await asyncio.sleep(job.every.total_seconds())
         await run_safely(job)

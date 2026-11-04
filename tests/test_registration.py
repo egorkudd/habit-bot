@@ -136,7 +136,7 @@ async def test_city_choices_in_onboarding(app: Any, fake_session: Any) -> None:
     assert chat.texts()[-2].startswith("Поиск городов сейчас не отвечает.")
     await chat.press("Другой")
     assert await chat.say("Кировск") == "Шаг 10/12. Нашлось несколько — выберите:"
-    assert chat.labels()[:2] == ["Кировск, Мурманская обл.", "Кировск, Ленинградская обл."]
+    assert chat.labels()[:3] == ["Кировск, Ленинградская обл.", "Кировск, Могилевская обл.", "Кировск, Мурманская обл."]
     await chat.press("Кировск, Ленинградская обл.")
     await chat.press("✅ Принять")
     await chat.press("Готово")

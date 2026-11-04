@@ -57,23 +57,32 @@ class App:
                 await run_safely(job)
         self.telegram.finalize()
 
-    async def heartbeat_forever(self) -> None:  # pragma: no cover — бесконечный цикл; одна итерация — write_heartbeat
+    async def heartbeat_forever(self) -> None:
         while True:
             write_heartbeat(self.settings.data_dir, self.ctx.clock.now())
             await asyncio.sleep(HEARTBEAT_EVERY_SECONDS)
 
-    async def run(self) -> None:  # pragma: no cover — проверяется пробным запуском контейнера в CI
-        await self.startup()
+    def start_background(self) -> list[asyncio.Task[None]]:
+        """Фоновые задачи бота: отметка «жив» и задачи модулей по расписанию (сброс ввода раз в минуту и т. п.)."""
         tasks = [asyncio.create_task(self.heartbeat_forever())]
         tasks += [asyncio.create_task(run_forever(job)) for job in self.ctx.jobs]
+        return tasks
+
+    @staticmethod
+    async def stop_background(tasks: list[asyncio.Task[None]]) -> None:
+        for task in tasks:
+            task.cancel()
+        for task in tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    async def run(self) -> None:  # pragma: no cover — проверяется пробным запуском контейнера в CI
+        await self.startup()
+        tasks = self.start_background()
         try:
             await self.telegram.start()
         finally:
-            for task in tasks:
-                task.cancel()
-            for task in tasks:
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
+            await self.stop_background(tasks)
             await self.close()
 
     async def close(self) -> None:
