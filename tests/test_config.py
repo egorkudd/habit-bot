@@ -21,7 +21,7 @@ def test_valid_settings_and_defaults(base_env: dict[str, str]) -> None:
     settings = load_settings(base_env, KNOWN_MODULES)
     assert settings.admin_tg_ids == frozenset({ADMIN_ID})
     assert settings.bot_token == TOKEN
-    assert settings.enabled_modules == ("users",)
+    assert settings.enabled_modules == tuple(KNOWN_MODULES)
     assert settings.enabled_channels == ("telegram",)
     assert settings.llm_monthly_budget_usd == Decimal("5")
     assert settings.db_path == Path(base_env["DATA_DIR"]) / "bot.db"

@@ -50,7 +50,7 @@ def test_policy_scopes() -> None:
     assert policy.ttl_for(ONBOARDING) is None
     assert policy.ttl_for("новая_область") == IDLE_TIMEOUT
     assert ONBOARDING not in policy.expiring_scopes()
-    assert policy.known_scopes() == {DIALOG, OTHER_DAY, WORKOUT, ONBOARDING}
+    assert policy.known_scopes() == {DIALOG, OTHER_DAY, WORKOUT, ONBOARDING, "lost_day"}
 
 
 async def test_workout_and_onboarding_survive_15_minutes(app: Any) -> None:
@@ -171,7 +171,7 @@ async def test_user_locks_serialize_and_clean_up() -> None:
 
 async def test_activity_middleware_without_actor(app: Any) -> None:
     """Апдейт без пользователя (вход не пройден) идёт дальше без состояния ввода."""
-    middleware = ActivityMiddleware(app.telegram.storage, app.telegram.clock)
+    middleware = ActivityMiddleware(app.telegram.storage, app.telegram.clock, app.telegram.tz)
     seen: dict[str, Any] = {}
 
     async def handler(event: Any, data: dict[str, Any]) -> str:

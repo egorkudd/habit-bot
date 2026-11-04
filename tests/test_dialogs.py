@@ -28,8 +28,9 @@ class Chat:
 
     async def say(self, text: str) -> str:
         self.update_id += 1
-        await self.app.telegram.dispatcher.feed_raw_update(
-            self.app.telegram.bot, message_update(self.update_id, ADMIN_ID, text))
+        update = message_update(self.update_id, ADMIN_ID, text)
+        update["message"]["date"] = int(self.app.ctx.clock.now().timestamp())
+        await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
         return self.session.texts(ADMIN_ID)[-1]
 
     async def press(self, data: str) -> None:
@@ -89,9 +90,9 @@ async def test_more_menu(app: Any, fake_session: Any) -> None:
         ["📅 Другой день", "✍️ Текстом"], ["🛌 Выходной", "⚙️ Настройки"], ["🛠 Админ"],
     ]
     user_id = await chat.user_id()
-    await chat.press(MenuCb(o=user_id, t=0, k="other_day").pack())
+    await chat.press(MenuCb(o=user_id, t=0, k="text").pack())
     answer = fake_session.answers()[-1]
-    assert answer.text == "📅 Другой день — скоро: раздел появится в части 4 плана."
+    assert answer.text == "✍️ Текстом — скоро: раздел появится в части 9 плана."
 
 
 async def test_ready_section_is_left_to_its_module(app: Any, fake_session: Any) -> None:

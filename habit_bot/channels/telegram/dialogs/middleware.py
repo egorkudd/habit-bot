@@ -9,15 +9,17 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from datetime import UTC, date, datetime, tzinfo
 from typing import Any
 
 from aiogram import BaseMiddleware, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import TelegramObject
+from aiogram.types import TelegramObject, Update
 
 from habit_bot.channels.telegram.dialogs.fsm import DbFsmStorage, user_key
-from habit_bot.channels.telegram.dialogs.policy import DIALOG, ONBOARDING
+from habit_bot.channels.telegram.dialogs.policy import DIALOG, ONBOARDING, OTHER_DAY
 from habit_bot.kernel.clock import Clock
+from habit_bot.kernel.domain.parsing import logical_day
 from habit_bot.kernel.identity import Actor
 
 
@@ -43,12 +45,24 @@ class UserLocks:
         return len(self._locks)
 
 
+DAY_KEY = "_day"  # дата записи, запомненная в начале ввода
+
+
+def started_at_of(event: TelegramObject) -> datetime | None:
+    """Время сообщения из Telegram; у нажатия кнопки своего времени нет — берётся текущее."""
+    message = event.message if isinstance(event, Update) else None
+    if message is not None and message.date is not None:
+        return message.date if message.date.tzinfo else message.date.replace(tzinfo=UTC)
+    return None
+
+
 class ActivityMiddleware(BaseMiddleware):
     """Идёт после входа: сбрасывает просроченный ввод, продлевает остальной и даёт обработчикам ``state``."""
 
-    def __init__(self, storage: DbFsmStorage, clock: Clock) -> None:
+    def __init__(self, storage: DbFsmStorage, clock: Clock, tz: tzinfo) -> None:
         self._storage = storage
         self._clock = clock
+        self._tz = tz
         self.locks = UserLocks()
 
     async def __call__(
@@ -73,4 +87,14 @@ class ActivityMiddleware(BaseMiddleware):
             data["state"] = state
             data["raw_state"] = await state.get_state()
             data["fsm_storage"] = self._storage
+            # Раздел 4.3: дата записи — по началу ввода (время сообщения Telegram), граница суток 04:00;
+            # в режиме «Другой день» — выбранная дата. Сценарии получают её явным параметром.
+            started_at = started_at_of(event) or now
+            data["started_at"] = started_at
+            data["today"] = logical_day(started_at, self._tz)
+            dialog = await store.get(actor.user_id, DIALOG)
+            begun = dialog.data.get(DAY_KEY) if dialog else None
+            other_day = await store.day(actor.user_id, OTHER_DAY)
+            data["other_day"] = other_day
+            data["record_day"] = date.fromisoformat(begun) if begun else (other_day or data["today"])
             return await handler(event, data)

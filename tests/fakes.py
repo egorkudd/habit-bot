@@ -175,6 +175,7 @@ class TgChat:
 
     async def say(self, text: str) -> str:
         update = message_update(self._next_id(), self.tg_id, text, first_name=self.first_name)
+        update["message"]["date"] = int(self.app.ctx.clock.now().timestamp())  # время сообщения = часы теста
         await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
         return self.texts()[-1] if self.texts() else ""
 
@@ -186,7 +187,7 @@ class TgChat:
     def find_button(self, label: str) -> str:
         """callback_data кнопки с этой подписью в последнем сообщении, где она есть."""
         markups = [m.reply_markup for m in self.session.requests
-                   if isinstance(m, (SendMessage, EditMessageReplyMarkup))
+                   if isinstance(m, (SendMessage, EditMessageReplyMarkup, EditMessageText))
                    and (not isinstance(m, SendMessage) or int(m.chat_id) == self.tg_id)]
         for markup in reversed(markups):
             for row in getattr(markup, "inline_keyboard", None) or []:
@@ -201,6 +202,14 @@ class TgChat:
 
     def texts(self) -> list[str]:
         return self.session.texts(self.tg_id)
+
+    def keyboard(self) -> list[list[str]]:
+        """Клавиатура под полем ввода из последнего сообщения, где она была."""
+        for m in reversed(self.session.sent(self.tg_id)):
+            rows = getattr(m.reply_markup, "keyboard", None)
+            if rows:
+                return [[b.text for b in row] for row in rows]
+        return []
 
     def labels(self) -> list[str]:
         markup = self.session.sent(self.tg_id)[-1].reply_markup

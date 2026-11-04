@@ -46,6 +46,8 @@ class Profile(PublicIdMixin, TimestampMixin, VersionedMixin, Base):
     has_small_plates: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     show_all_exercises: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ask_feeling: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Кнопки главного экрана в выбранном порядке (раздел 3.1); пусто — по умолчанию.
+    home_buttons: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
 
 class Goal(PublicIdMixin, Base):

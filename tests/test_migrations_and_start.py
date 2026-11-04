@@ -25,7 +25,7 @@ def test_upgrade_downgrade_upgrade(tmp_path: Path) -> None:
     url = f"sqlite:///{db}"
     assert current_revision(db) is None
     migrate(url)
-    assert current_revision(db) == head_revision() == "0003_users_profile"
+    assert current_revision(db) == head_revision() == "0004_days"
     assert {"users", "identities", "idempotency_keys", "admin_alerts", "dialog_states"} <= _tables(db)
     migrate(url, "base")
     assert "users" not in _tables(db)
@@ -35,8 +35,9 @@ def test_upgrade_downgrade_upgrade(tmp_path: Path) -> None:
     assert current_revision(db) == "0001_initial"
     assert "dialog_states" not in _tables(db)
     migrate(url)
-    assert current_revision(db) == "0003_users_profile"
-    assert {"users_profile", "users_goal", "users_invite", "users_body_weight", "source_cache"} <= _tables(db)
+    assert current_revision(db) == "0004_days"
+    new_tables = {"users_profile", "users_goal", "users_invite", "users_body_weight", "source_cache", "days_status"}
+    assert new_tables <= _tables(db)
 
 
 def test_current_revision_without_alembic_table(tmp_path: Path) -> None:
@@ -58,7 +59,7 @@ def test_prepare_reports_config_problems(base_env: dict[str, str], capsys: Any) 
 def test_prepare_requires_migrations(base_env: dict[str, str], capsys: Any) -> None:
     """Бот не стартует на базе, схема которой не на версии кода."""
     assert entry.prepare(base_env) == entry.EXIT_MIGRATIONS
-    assert "код ждёт 0003_users_profile" in capsys.readouterr().err
+    assert "код ждёт 0004_days" in capsys.readouterr().err
 
 
 def test_prepare_ok(migrated_env: dict[str, str]) -> None:

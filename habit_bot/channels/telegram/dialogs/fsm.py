@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import date
 from typing import Any
 
 from aiogram.fsm.context import FSMContext
@@ -66,9 +67,15 @@ def scope_of_context(state: FSMContext) -> str:
     return scope_of(state.key)
 
 
-async def start_dialog(state: FSMContext, new_state: State) -> int:
-    """Начинает новый ввод с чистого листа: у него новый номер, кнопки прошлого ввода устаревают."""
+async def start_dialog(state: FSMContext, new_state: State, day: date | None = None) -> int:
+    """Начинает новый ввод с чистого листа: у него новый номер, кнопки прошлого ввода устаревают.
+
+    ``day`` — дата записи на момент начала ввода: ввод, начатый в 03:58 и законченный в 04:02, остаётся
+    в предыдущем дне (раздел 4.3).
+    """
     await state.clear()
+    if day is not None:
+        await state.set_data({"_day": day.isoformat()})
     await state.set_state(new_state)
     return await dialog_token(state)
 
