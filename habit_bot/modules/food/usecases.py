@@ -178,12 +178,13 @@ class Food:
             if not include_hidden:
                 query = query.where(FoodItem.active.is_(True))
             items = (await uow.session.execute(query)).scalars().all()
-            used = Counter(dict((await uow.session.execute(
+            rows = (await uow.session.execute(
                 select(FoodEntry.food_item_id, func.count()).where(
                     FoodEntry.user_id == actor.user_id, FoodEntry.deleted_at.is_(None), FoodEntry.day >= since,
                     FoodEntry.food_item_id.is_not(None),
                 ).group_by(FoodEntry.food_item_id)
-            )).all()))
+            )).all()
+            used: Counter[int] = Counter({int(item_id): int(count) for item_id, count in rows if item_id is not None})
             ordered = sorted(items, key=lambda i: (-used.get(i.id, 0), i.name.lower()))
             return [item_view(i) for i in ordered]
 
@@ -196,7 +197,7 @@ class Food:
         public = _uuid(public_id)
         if public is None:
             return None
-        return (await session.execute(  # type: ignore[no-any-return]
+        return (await session.execute(
             select(FoodItem).where(FoodItem.public_id == public, FoodItem.user_id == actor.user_id)
         )).scalar_one_or_none()
 
@@ -312,7 +313,7 @@ class Food:
         public = _uuid(public_id)
         if public is None:
             return None
-        return (await session.execute(  # type: ignore[no-any-return]
+        return (await session.execute(
             select(FoodEntry).where(FoodEntry.public_id == public, FoodEntry.user_id == actor.user_id,
                                     FoodEntry.deleted_at.is_(None))
         )).scalar_one_or_none()
