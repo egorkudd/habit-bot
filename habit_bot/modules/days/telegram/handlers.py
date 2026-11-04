@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import time
 from datetime import date
 
 from aiogram import Bot, F, Router
@@ -18,7 +17,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
 from habit_bot.channels.telegram.dialogs.policy import OTHER_DAY
-from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb
+from habit_bot.channels.telegram.ui.callbacks import MOVE_TTL_MINUTES, CancelCb, MenuCb, MoveCb
 from habit_bot.channels.telegram.ui.menu import is_return_label
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.days import (
@@ -40,7 +39,6 @@ PICK_TITLE = "За какой день записать? Можно и напи�
 ALREADY_TODAY = "Это сегодняшний день — записи и так попадают в него."
 UNSAVED = "Ввод не сохранён. Выйти без сохранения?"
 NOT_IN_MODE = "Вы и так в сегодняшнем дне."
-MOVE_TTL_MINUTES = 24 * 60  # кнопки под сохранённой записью работают 24 часа
 
 
 class DayCb(CallbackData, prefix="d"):
@@ -48,16 +46,6 @@ class DayCb(CallbackData, prefix="d"):
     t: int
     a: str
     v: str | None = None
-
-
-class MoveCb(CallbackData, prefix="mv"):
-    """«📅 На вчера» под карточкой записи: вид записи, её public_id, минута создания кнопки."""
-
-    o: int
-    t: int
-    k: str
-    i: str
-    m: int
 
 
 class OtherDay(StatesGroup):
@@ -82,13 +70,6 @@ def entered(day: date) -> str:
 
 def back_to_today(today: date) -> str:
     return f"Вернулись к сегодняшнему дню ({format_day(today)})."
-
-
-def move_button(actor: Actor, kind: str, public_id: str, now_minute: int | None = None) -> InlineKeyboardButton:
-    """Кнопка для карточек записей частей 5–8."""
-    minute = now_minute if now_minute is not None else int(time.time() // 60)
-    data = MoveCb(o=actor.user_id, t=0, k=kind, i=public_id, m=minute).pack()
-    return InlineKeyboardButton(text="📅 На вчера", callback_data=data)
 
 
 def build_days_router(days: Days, screens: Screens) -> Router:

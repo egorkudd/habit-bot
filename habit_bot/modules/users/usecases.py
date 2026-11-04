@@ -331,6 +331,25 @@ class Profiles:
             view = self._profile_view(user, profile)
         return view, bool(RECALC_FIELDS.intersection(changes))
 
+    async def consume_starter(self, actor: Actor, key: str) -> bool:
+        """Пункт стартового набора из анкеты применяется один раз: модуль забирает его из профиля."""
+        async with self._uow() as uow:
+            profile = (await uow.session.execute(
+                select(Profile).where(Profile.user_id == actor.user_id)
+            )).scalar_one_or_none()
+            if profile is None or key not in (profile.starter_kit or []):
+                return False
+            profile.starter_kit = [k for k in profile.starter_kit if k != key]
+            return True
+
+    async def add_goal(self, actor: Actor, targets: Targets, *, start_date: date, source: str) -> GoalView:
+        """Цель с заданной датой начала — для заполнения истории целей (раздел 3.12, часть 9)."""
+        view = await self.profile(actor)
+        assert view is not None
+        async with self._uow() as uow:
+            uow.session.add(self._goal(actor.user_id, view, targets, source, start_date))
+        return GoalView.of(targets, start_date, source, None)
+
     # --- главный экран (раздел 3.1) ---
     async def home_layout(self, actor: Actor) -> list[str] | None:
         """Кнопки главного экрана в порядке пользователя; ``None`` — по умолчанию."""
