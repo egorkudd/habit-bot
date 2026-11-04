@@ -82,11 +82,15 @@ def resolve_local(text: str) -> tuple[str, City | None]:
     return query, city
 
 
+_OBLAST_END = re.compile(r"\s+область$", re.IGNORECASE)
+_OBLAST_START = re.compile(r"^область\s+", re.IGNORECASE)
+
+
 def short_region(region: str | None) -> str:
-    """«Мурманская область» → «Мурманская обл.»."""
+    """«Мурманская область» и «Мурманская Область» (так пишет Open-Meteo) → «Мурманская обл.»."""
     if not region:
         return ""
-    return region.replace(" область", " обл.").replace("Область ", "обл. ")
+    return _OBLAST_START.sub("обл. ", _OBLAST_END.sub(" обл.", region.strip()))
 
 
 def suggest(text: str, limit: int = SUGGESTIONS) -> list[City]:

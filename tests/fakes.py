@@ -187,20 +187,23 @@ def callback_update(update_id: int, user_id: int, data: str, message_id: int = 5
     }
 
 
-# Записанные ответы Open-Meteo Geocoding (раздел 4.12): в CI нет реальных запросов.
+# Ответы Open-Meteo Geocoding (раздел 4.12) в том виде, как их отдаёт настоящий сервис (сверено заданием CI
+# «Внешние сервисы», tests/live): регион пишется то «область», то «Область». В обычных тестах сети нет.
 GEOCODER_ANSWERS: dict[str, list[dict[str, Any]]] = {
     "кировск": [
+        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
+         "admin1": "Ленинградская область"},
+        {"name": "Кировск", "latitude": 53.2697, "longitude": 29.4752, "country_code": "BY",
+         "admin1": "Могилевская область"},
         {"name": "Кировск", "latitude": 67.6142, "longitude": 33.6717, "country_code": "RU",
-         "admin1": "Мурманская область"},
-        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
-         "admin1": "Ленинградская область"},
-        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
-         "admin1": "Ленинградская область"},
+         "admin1": "Мурманская Область"},
+        {"name": "Кировск", "latitude": 67.6142, "longitude": 33.6717, "country_code": "RU",
+         "admin1": "Мурманская Область"},
     ],
     "масква": [],
     "ростов на дону": [
         {"name": "Ростов-на-Дону", "latitude": 47.2313, "longitude": 39.7233, "country_code": "RU",
-         "admin1": "Ростовская область"},
+         "admin1": "Ростовская Область"},
     ],
     "новосибирск": [
         {"name": "Новосибирск", "latitude": 55.0415, "longitude": 82.9346, "country_code": "RU",

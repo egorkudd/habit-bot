@@ -61,6 +61,7 @@ def test_pick_matches() -> None:
 def test_region_and_label() -> None:
     """«Мурманская область» → «Мурманская обл.»; у города-региона регион не повторяется."""
     assert short_region("Мурманская область") == "Мурманская обл."
+    assert short_region("Ростовская Область") == "Ростовская обл."  # так отвечает настоящий Open-Meteo
     assert short_region("Область Абай") == "обл. Абай"
     assert short_region(None) == ""
     assert City("Москва", "Москва", 0, 0).label == "Москва"
