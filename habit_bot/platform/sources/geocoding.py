@@ -17,6 +17,7 @@ from habit_bot.platform.sources.models import SourceCache
 log = logging.getLogger(__name__)
 OPEN_METEO_GEOCODING = "https://geocoding-api.open-meteo.com/v1/search"
 TIMEOUT_SECONDS = 5
+ATTEMPTS = 2
 CACHE_TTL = timedelta(days=30)
 SOURCE = "geocoding"
 
@@ -53,21 +54,29 @@ def parse_response(payload: dict[str, Any]) -> list[Place]:
 
 
 class OpenMeteoGeocoder:
-    def __init__(self, base_url: str = OPEN_METEO_GEOCODING, timeout: float = TIMEOUT_SECONDS) -> None:
+    """Таймаут 5 секунд и один повтор (архитектура, правило 10): сервис иногда отвечает дольше обычного."""
+
+    def __init__(self, base_url: str = OPEN_METEO_GEOCODING, timeout: float = TIMEOUT_SECONDS,
+                 attempts: int = ATTEMPTS) -> None:
         self._url = base_url
         self._timeout = aiohttp.ClientTimeout(total=timeout)
+        self._attempts = max(1, attempts)
 
     async def search(self, name: str) -> list[Place]:
         params = {"name": name, "count": "10", "language": "ru", "format": "json"}
-        try:
-            async with aiohttp.ClientSession(timeout=self._timeout) as session, \
-                    session.get(self._url, params=params) as response:
-                response.raise_for_status()
-                payload = await response.json(content_type=None)
-        except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
-            log.warning("Поиск городов не ответил: %s", type(exc).__name__, extra={"code": "CITY-SERVICE"})
-            raise GeocoderUnavailable from exc
-        return parse_response(payload if isinstance(payload, dict) else {})
+        for attempt in range(1, self._attempts + 1):
+            try:
+                async with aiohttp.ClientSession(timeout=self._timeout) as session, \
+                        session.get(self._url, params=params) as response:
+                    response.raise_for_status()
+                    payload = await response.json(content_type=None)
+                return parse_response(payload if isinstance(payload, dict) else {})
+            except (aiohttp.ClientError, TimeoutError, ValueError) as exc:
+                log.warning("Поиск городов не ответил (попытка %s): %s", attempt, type(exc).__name__,
+                            extra={"code": "CITY-SERVICE"})
+                if attempt == self._attempts:
+                    raise GeocoderUnavailable from exc
+        raise GeocoderUnavailable  # pragma: no cover — цикл выше всегда возвращает или бросает
 
 
 class CachedGeocoder:
