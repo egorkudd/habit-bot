@@ -201,11 +201,12 @@ class Food:
         )).scalar_one_or_none()
 
     async def _check_name(self, session: AsyncSession, actor: Actor, name: str, skip_id: int | None = None) -> None:
-        same = (await session.execute(
-            select(FoodItem.id).where(FoodItem.user_id == actor.user_id,
-                                      func.lower(FoodItem.name) == name.strip().lower())
-        )).scalars().all()
-        if [i for i in same if i != skip_id]:
+        # Сравнение без учёта регистра — в Python: lower() в SQLite не знает кириллицу.
+        rows = (await session.execute(
+            select(FoodItem.id, FoodItem.name).where(FoodItem.user_id == actor.user_id)
+        )).all()
+        wanted = name.strip().casefold()
+        if [i for i, n in rows if n.casefold() == wanted and i != skip_id]:
             raise AppError("INPUT-DUPLICATE", name=name.strip())
 
     async def create_item(
