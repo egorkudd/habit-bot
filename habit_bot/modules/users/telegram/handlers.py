@@ -11,7 +11,7 @@ from aiogram.types import Message, TelegramObject, Update
 from aiogram.types import User as TgUser
 
 from habit_bot import __version__
-from habit_bot.channels.telegram.ui.menu import MenuRegistry
+from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.logs import current_user_id
@@ -60,15 +60,15 @@ class AuthMiddleware(BaseMiddleware):
         return await handler(event, data)
 
 
-def build_router(menu: MenuRegistry, names: Callable[[Actor], Awaitable[str]]) -> Router:
+def build_router(screens: Screens, names: Callable[[Actor], Awaitable[str]]) -> Router:
     router = Router(name="users")
 
     @router.message(CommandStart())
-    async def start(message: Message, actor: Actor) -> None:
+    async def start(message: Message, bot: Bot, actor: Actor) -> None:
         if actor.is_admin:
             text = ADMIN_GREETING.format(version=__version__)
         else:
             text = USER_GREETING.format(name=await names(actor))
-        await message.answer(text, reply_markup=menu.home_keyboard(actor))
+        await screens.home(bot, message.chat.id, actor, text)
 
     return router

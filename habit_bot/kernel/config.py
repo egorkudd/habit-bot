@@ -115,7 +115,7 @@ def load_settings(env: Mapping[str, str], known_modules: Iterable[str]) -> Setti
             "CFG-BACKUP", f"BACKUP_PASSWORD короче {MIN_BACKUP_PASSWORD} символов",
         ))
 
-    modules = split_list(env.get("ENABLED_MODULES")) or ("users",)
+    modules = split_list(env.get("ENABLED_MODULES")) or known  # по умолчанию включены все модули
     unknown_modules = [m for m in modules if m not in known]
     if unknown_modules:
         problems.append(ConfigProblem(

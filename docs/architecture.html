@@ -262,7 +262,7 @@ footer{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding
 </table></div>
 <p>Мягкое удаление (<code>deleted_at</code>) касается только отдельных записей: удалённая запись хранится 30 дней как отметка для синхронизации. Удаление аккаунта, как и раньше, стирает все строки пользователя сразу.</p>
 <h3>Что это меняет в требованиях</h3>
-<p>Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2 и 3 (04.11.2026).</p>
+<p>Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2–4 (04.11.2026).</p>
 <ul>
 <li><strong>Раздел 5, User:</strong> <code>tg_id</code> переезжает в новую сущность <code>Identity(user_id, provider, external_id)</code>. Поле «дата режима «Другой день»» переезжает в состояние диалога Telegram-канала.</li>
 <li><strong>Раздел 5, пользовательские таблицы:</strong> добавить <code>public_id</code>, <code>updated_at</code>, <code>deleted_at</code>, а у редактируемых — <code>version</code>.</li>
@@ -1341,8 +1341,8 @@ class FoodModule(Module):
 <td>Модуль <code>users</code>: <code>SignInTelegram</code> (вход по приглашению из ссылки <code>/start КОД</code>), <code>Invites</code>, <code>Profiles</code> (анкета, профиль, цели, удаление аккаунта — общая очистка всех таблиц с <code>user_id</code>), домен <code>kbju</code>, <code>city</code>, <code>invites</code>, <code>profile</code>; таблицы <code>users_profile</code>, <code>users_goal</code>, <code>users_invite</code>, <code>users_body_weight</code>; <code>platform/sources</code>: <code>OpenMeteoGeocoder</code> + <code>CachedGeocoder</code> (кэш 30 дней в <code>source_cache</code>). Анкета — область <code>onboarding</code>, её роутер подключается раньше меню (<code>add_router(first=True)</code>)</td>
 </tr>
 <tr>
-<td>4. Дни</td>
-<td><code>DayClock</code>, модуль <code>days</code>, <code>DayCardData</code> и <code>DayCardView</code> на <code>HabitRegistry</code></td>
+<td>4. Дни ✅</td>
+<td>Модуль <code>days</code>: <code>Days</code> (выходные <code>days_status</code>, карточка дня <code>DayCardData</code> с разделами <code>add_card_section</code>, перенос записей <code>add_mover</code> / <code>EntryMover</code>); <code>kernel/domain/days.py</code> — подписи, календарь, давность. <code>ActivityMiddleware</code> кладёт в обработчик <code>today</code> и <code>record_day</code> (по времени сообщения, граница 04:00; в «Другом дне» — выбранная дата; ввод помнит дату начала <code>start_dialog(..., day)</code>). Области <code>other_day</code> и <code>lost_day</code> (отметка на 12 ч после сброса). <code>Screens.home</code> строит клавиатуру по выбору пользователя (<code>users_profile.home_buttons</code>) и с кнопкой «📅 23.10 ✕ Вернуться к сегодня»</td>
 </tr>
 <tr>
 <td>5–8</td>

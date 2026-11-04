@@ -147,13 +147,14 @@ class TelegramChannel:
     ) -> None:
         self.bot = Bot(settings.bot_token, session=session or build_session(settings))
         self.clock = clock or SystemClock()
+        self.tz = tz
         # Состояния ввода хранит DbFsmStorage по user_id бота; встроенное хранилище aiogram не нужно.
         self.dispatcher = Dispatcher(disable_fsm=True)
         self.notifier = TelegramNotifier(self.bot)
         self.dialogs = DialogStore(uow=uow)
         self.storage = DbFsmStorage(self.dialogs, self.clock)
         self.menu = MenuRegistry()
-        self.screens = Screens(self.menu)
+        self.screens = Screens(self.menu, self.dialogs)
         self._error_middleware = ErrorMiddleware(None)
         self.dispatcher.update.outer_middleware(self._error_middleware)
         self.dispatcher.callback_query.middleware(CallbackGuardMiddleware(self.storage, self.screens))
@@ -178,7 +179,7 @@ class TelegramChannel:
         """После модулей: сброс по бездействию (нужен вход — он от модуля users) и ответ на необработанное."""
         if self._finalized:
             return
-        self.add_outer_middleware(ActivityMiddleware(self.storage, self.clock))
+        self.add_outer_middleware(ActivityMiddleware(self.storage, self.clock, self.tz))
         self.dispatcher.include_router(build_fallback_router(self.screens))
         self._finalized = True
 

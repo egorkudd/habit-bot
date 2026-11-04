@@ -10,15 +10,18 @@ DIALOG = "dialog"          # текущий ввод: выбор блюда, к�
 OTHER_DAY = "other_day"    # режим «Другой день» (часть 4)
 WORKOUT = "workout"        # идущая тренировка (часть 8): 3 часа
 ONBOARDING = "onboarding"  # анкета регистрации (часть 3): продолжается с того же шага
+LOST_DAY = "lost_day"      # «Другой день» сбросился по бездействию: следующая запись спросит «📅 Нет, за 24.10»
 
 IDLE_TIMEOUT = timedelta(minutes=15)
 WORKOUT_TIMEOUT = timedelta(hours=3)
+LOST_DAY_TIMEOUT = timedelta(hours=12)
 
 DEFAULT_TTL: Mapping[str, timedelta | None] = MappingProxyType({
     DIALOG: IDLE_TIMEOUT,
     OTHER_DAY: IDLE_TIMEOUT,
     WORKOUT: WORKOUT_TIMEOUT,
     ONBOARDING: None,
+    LOST_DAY: LOST_DAY_TIMEOUT,
 })
 
 

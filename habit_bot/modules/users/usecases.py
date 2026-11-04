@@ -331,6 +331,22 @@ class Profiles:
             view = self._profile_view(user, profile)
         return view, bool(RECALC_FIELDS.intersection(changes))
 
+    # --- главный экран (раздел 3.1) ---
+    async def home_layout(self, actor: Actor) -> list[str] | None:
+        """Кнопки главного экрана в порядке пользователя; ``None`` — по умолчанию."""
+        async with self._uow() as uow:
+            layout = (await uow.session.execute(
+                select(Profile.home_buttons).where(Profile.user_id == actor.user_id)
+            )).scalar_one_or_none()
+            return list(layout) if layout is not None else None
+
+    async def set_home_layout(self, actor: Actor, keys: list[str] | None) -> None:
+        async with self._uow() as uow:
+            profile = (await uow.session.execute(
+                select(Profile).where(Profile.user_id == actor.user_id)
+            )).scalar_one()
+            profile.home_buttons = None if keys is None else list(keys)
+
     # --- цели ---
     async def set_goal(self, actor: Actor, targets: Targets, *, source: str) -> GoalView:
         """Новая цель с датой начала «сегодня»; прошлые дни считаются по старой (раздел 3.0)."""

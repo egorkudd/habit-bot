@@ -53,7 +53,12 @@ SETTINGS_TITLE = "⚙️ Настройки"
 SAVED = "Сохранено ✅"
 DELETE_QUESTION = "Удалить аккаунт и все данные? Это нельзя отменить."
 DELETED = "Аккаунт и все данные удалены. Чтобы начать заново, напишите /start."
-SOON = {"home": "🏠 Главный экран — скоро: в части 4 плана.", "export": "📦 Экспорт — скоро: в части 10 плана."}
+SOON = {"export": "📦 Экспорт — скоро: в части 10 плана."}
+HOME_TITLE = (
+    "🏠 Главный экран: отметьте кнопки (до {limit}) и поднимите нужные выше «⬆». «☰ Ещё» остаётся всегда."
+)
+HOME_SAVED = "Главный экран сохранён 👇"
+HOME_LIMIT_TOAST = "Не больше {limit} кнопок — плюс «☰ Ещё»"
 FIELDS: dict[str, str] = {
     "name": "Имя", "sex": "Пол", "birth": "Дата рождения", "height": "Рост", "weight": "Вес",
     "activity": "Активность", "mode": "Цель", "target": "Целевой вес", "experience": "Опыт", "city": "Город",
@@ -77,12 +82,13 @@ class SettingsInput(StatesGroup):
     recalc = State()
     kbju = State()
     delete = State()
+    home = State()
 
 
 def settings_keyboard(actor: Actor) -> Any:
     return keyboard([
         [button(actor, 0, "👤 Профиль", "settings", "profile"), button(actor, 0, "🎯 Цели КБЖУ", "settings", "goals")],
-        [button(actor, 0, "🏠 Главный экран", "soon", "home"), button(actor, 0, "📦 Экспорт", "soon", "export")],
+        [button(actor, 0, "🏠 Главный экран", "settings", "home"), button(actor, 0, "📦 Экспорт", "soon", "export")],
         [button(actor, 0, "🗑 Удалить аккаунт", "settings", "delete")],
     ])
 
@@ -176,8 +182,54 @@ class SettingsFlow:
         )
 
 
+HOME_CHOICES = 7  # до 8 кнопок, одна из них — «☰ Ещё»
+
+
 def build_settings_router(flow: SettingsFlow) -> Router:
     router = Router(name="users.settings")
+
+    async def home_editor(actor: Actor, state: FSMContext, chosen: list[str]) -> Any:
+        token = await dialog_token(state)
+        entries = {e.key: e for e in flow.screens.menu.choosable(actor)}
+        order = [k for k in chosen if k in entries] + [k for k in entries if k not in chosen]
+        rows = []
+        for key in order:
+            mark = "☑" if key in chosen else "☐"
+            row = [button(actor, token, f"{mark} {entries[key].label}", "hm_t", key)]
+            if key in chosen and chosen.index(key) > 0:
+                row.append(button(actor, token, "⬆", "hm_u", key))
+            rows.append(row)
+        rows.append([button(actor, token, "↩ По умолчанию", "hm_r"), button(actor, token, "✅ Готово", "hm_s")])
+        return keyboard(rows)
+
+    @router.callback_query(StateFilter(SettingsInput.home), UCb.filter(F.a.in_({"hm_t", "hm_u", "hm_r"})))
+    async def edit_home(query: CallbackQuery, callback_data: UCb, actor: Actor, state: FSMContext) -> None:
+        chosen = list((await state.get_data()).get("layout", []))
+        key, toast = callback_data.value, None
+        if callback_data.a == "hm_r":
+            chosen = [e.key for e in flow.screens.menu.choosable(actor)]
+        elif callback_data.a == "hm_u" and key in chosen and chosen.index(key) > 0:
+            i = chosen.index(key)
+            chosen[i - 1], chosen[i] = chosen[i], chosen[i - 1]
+        elif callback_data.a == "hm_t" and key in chosen:
+            chosen.remove(key)
+        elif callback_data.a == "hm_t" and len(chosen) >= HOME_CHOICES:
+            toast = HOME_LIMIT_TOAST.format(limit=HOME_CHOICES)
+        elif callback_data.a == "hm_t":
+            chosen.append(key)
+        await state.update_data(layout=chosen)
+        await query.answer(toast)
+        if isinstance(query.message, Message):
+            await query.message.edit_reply_markup(reply_markup=await home_editor(actor, state, chosen))
+
+    @router.callback_query(StateFilter(SettingsInput.home), UCb.filter(F.a == "hm_s"))
+    async def save_home(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        await flow.screens.close_buttons(query)
+        chosen = list((await state.get_data()).get("layout", []))
+        default = [e.key for e in flow.screens.menu.choosable(actor)]
+        await flow.profiles.set_home_layout(actor, None if chosen == default else chosen)
+        await state.clear()
+        await flow.screens.home(bot, query.from_user.id, actor, HOME_SAVED)
 
     @router.callback_query(MenuCb.filter(F.k == "settings"))
     async def open_settings(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
@@ -194,6 +246,13 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         chat_id = query.from_user.id
         if callback_data.value == "profile":
             await flow.show_profile(bot, chat_id, actor)
+        elif callback_data.value == "home":
+            await start_dialog(state, SettingsInput.home)
+            layout = await flow.profiles.home_layout(actor)
+            chosen = list(layout) if layout is not None else [e.key for e in flow.screens.menu.choosable(actor)]
+            await state.update_data(layout=chosen)
+            await bot.send_message(chat_id, HOME_TITLE.format(limit=HOME_CHOICES),
+                                   reply_markup=await home_editor(actor, state, chosen))
         elif callback_data.value == "goals":
             await flow.show_goals(bot, chat_id, actor)
         else:

@@ -109,7 +109,7 @@ flowchart TB
 
 ### Что это меняет в требованиях
 
-Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2 и 3 (04.11.2026).
+Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2–4 (04.11.2026).
 
 - **Раздел 5, User:** `tg_id` переезжает в новую сущность `Identity(user_id, provider, external_id)`. Поле «дата режима «Другой день»» переезжает в состояние диалога Telegram-канала.
 - **Раздел 5, пользовательские таблицы:** добавить `public_id`, `updated_at`, `deleted_at`, а у редактируемых — `version`.
@@ -1079,7 +1079,7 @@ sequenceDiagram
 | 1. Каркас | `kernel/`: Settings, ModuleRegistry, ChannelRegistry, UnitOfWork, IdempotencyStore, User и Identity, ErrorCatalog, AdminAlerter, логи; `channels/telegram/channel.py`; регистрация администратора через `Identity` |
 | 2. Диалоги ✅ | `channels/telegram/dialogs` и `ui`: ActivityMiddleware, DialogStore + DbFsmStorage, сброс 15 минут, CallbackGuardMiddleware, MenuRegistry, Screens; `kernel/domain` — разбор и формат чисел, времени и дат; `kernel/jobs` — фоновые задачи |
 | 3. Регистрация ✅ | Модуль `users`: `SignInTelegram` (вход по приглашению из ссылки `/start КОД`), `Invites`, `Profiles` (анкета, профиль, цели, удаление аккаунта — общая очистка всех таблиц с `user_id`), домен `kbju`, `city`, `invites`, `profile`; таблицы `users_profile`, `users_goal`, `users_invite`, `users_body_weight`; `platform/sources`: `OpenMeteoGeocoder` + `CachedGeocoder` (кэш 30 дней в `source_cache`). Анкета — область `onboarding`, её роутер подключается раньше меню (`add_router(first=True)`) |
-| 4. Дни | `DayClock`, модуль `days`, `DayCardData` и `DayCardView` на `HabitRegistry` |
+| 4. Дни ✅ | Модуль `days`: `Days` (выходные `days_status`, карточка дня `DayCardData` с разделами `add_card_section`, перенос записей `add_mover` / `EntryMover`); `kernel/domain/days.py` — подписи, календарь, давность. `ActivityMiddleware` кладёт в обработчик `today` и `record_day` (по времени сообщения, граница 04:00; в «Другом дне» — выбранная дата; ввод помнит дату начала `start_dialog(..., day)`). Области `other_day` и `lost_day` (отметка на 12 ч после сброса). `Screens.home` строит клавиатуру по выбору пользователя (`users_profile.home_buttons`) и с кнопкой «📅 23.10 ✕ Вернуться к сегодня» |
 | 5–8 | Модули `food`, `warmup`, `custom_habits`, `workouts` и `runs`. Каждый пишет сценарии с DTO, `HabitKind`, `StatsProvider`, экспорт и папку `telegram/`, а также сразу готовит `ai_actions.py` |
 | 9. ИИ | `platform/ai`: LlmRouter, BudgetGuard, AiActionRegistry, CommandService; модуль `ai_commands` |
 | 10. Итоги | `platform/stats` и `platform/export`; картинки в `channels/telegram/render`; модули `stats_views`, `admin`, `export`, `backup` |

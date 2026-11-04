@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
+from habit_bot.channels.telegram.dialogs.policy import OTHER_DAY
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb
 from habit_bot.channels.telegram.ui.menu import MORE_KEY, MenuRegistry, soon_text
 from habit_bot.channels.telegram.ui.screens import Screens
@@ -15,6 +16,7 @@ from habit_bot.kernel.identity import Actor
 CANCEL_WORDS = frozenset({"отмена", "✕ отмена", "отменить"})
 CANCELLED = "Отменено, ничего не записано."
 NOTHING_TO_CANCEL = "Отменять нечего. Вот главное меню 👇"
+BACK_TO_TODAY = "Вернулись к сегодняшнему дню."
 MORE_TITLE = "Ещё:"
 NOT_UNDERSTOOD = "Не понял. Выберите раздел в меню 👇"
 
@@ -38,7 +40,11 @@ def build_core_router(menu: MenuRegistry, screens: Screens) -> Router:
     async def cancel(bot: Bot, chat_id: int, actor: Actor, state: FSMContext) -> None:
         had_input = await state.get_state() is not None or bool(await state.get_data())
         await state.clear()
-        await screens.home(bot, chat_id, actor, CANCELLED if had_input else NOTHING_TO_CANCEL)
+        # Раздел 3.7: «отмена» и /cancel выходят и из режима «Другой день».
+        left_day = await screens.dialogs.clear(actor.user_id, OTHER_DAY)
+        suffix = f" {BACK_TO_TODAY}" if left_day else ""
+        text = CANCELLED + suffix if had_input or left_day else NOTHING_TO_CANCEL
+        await screens.home(bot, chat_id, actor, text)
 
     @router.message(Command("cancel"))
     @router.message(F.text.func(is_cancel_word))
