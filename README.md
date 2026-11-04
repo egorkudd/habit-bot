@@ -81,6 +81,8 @@ python3.12 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 DATA_DIR=./data python -m habit_bot.ops migrate
 pytest --cov
+pytest -m scenario                  # только поведенческие сценарии: пользователь в поддельном Telegram
+python scripts/gen_scenarios_doc.py # обновить каталог docs/test-scenarios.md
 ruff check . && mypy habit_bot && lint-imports
 python scripts/gen_error_table.py   # обновить таблицу ошибок ниже после правки каталога
 ```
