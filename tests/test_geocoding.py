@@ -90,3 +90,21 @@ async def test_cache_30_days(app: Any, clock: Any) -> None:
     clock.advance(days=31)
     await cached.search("Тула")
     assert inner.calls == 2
+
+
+async def test_retry_after_one_failure(no_network: None) -> None:
+    """Первый запрос не удался — второй отвечает: город найден, пользователь ошибки не видит."""
+    calls: list[int] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            return web.Response(status=503)
+        return web.json_response(KIROVSK)
+
+    server = await _server(handler)
+    try:
+        places = await OpenMeteoGeocoder(str(server.make_url("/v1/search"))).search("Кировск")
+    finally:
+        await server.close()
+    assert len(calls) == 2 and places[0].name == "Кировск"
