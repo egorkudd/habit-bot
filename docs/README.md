@@ -9,6 +9,7 @@ HTML открывается в браузере после скачивания 
 | Архитектура и диаграммы классов | [architecture.md](architecture.md), [architecture.pdf](architecture.pdf), [architecture.html](architecture.html) | Модульный монолит, слои, модули, каналы (Telegram сейчас, web/mobile потом), классы |
 | Диаграмма развертывания | [deployment.pdf](deployment.pdf), [deployment.html](deployment.html), [deployment-plantuml.md](deployment-plantuml.md) | Сервер, Docker, GitHub Actions, ghcr.io, Telegram, языковая модель |
 | Ход разработки | [progress.md](progress.md) | Что сделано и принято по частям, решения и находки |
+| Поведенческие сценарии | [test-scenarios.md](test-scenarios.md) | Как ведёт себя бот в типичных и нештатных ситуациях — каталог автотестов `tests/scenarios` |
 
 Первоисточники: артефакты claude.ai (требования, архитектура, развертывание) и документы проекта
 `claude/progress.md`, `claude/architecture.md`, `claude/deployment-diagram.md`. Если версии расходятся —
