@@ -36,6 +36,7 @@ junit_family = "legacy"  # описания тестов (record_property) по�
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-ra"
 markers = [
+    "live: живые внешние сервисы — только в задании CI «Внешние сервисы»",
     "integration: тесты с базой и поддельным Telegram",
     "scenario: поведенческие сценарии — пользователь в поддельном Telegram (tests/scenarios)",
 ]
