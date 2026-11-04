@@ -49,9 +49,9 @@ async def test_s24_only_admin_cannot_leave(world: World, owner: Persona) -> None
 async def test_s25_user_blocked_the_bot(world: World, owner: Persona) -> None:
     """S-25. Пользователь заблокировал бота: ответы не доходят, но бот не падает и продолжает работать."""
     world.session.blocked_chats.add(ADMIN_ID)
-    await owner.tap("🤸 Зарядка")
+    await owner.tap("📊 Итоги")
     world.session.blocked_chats.clear()
-    assert (await owner.tap("🤸 Зарядка")).startswith("🤸 Зарядка — скоро")
+    assert (await owner.tap("📊 Итоги")).startswith("📊 Итоги — скоро")
 
 
 async def test_s26_city_service_down(world: World, owner: Persona) -> None:

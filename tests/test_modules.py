@@ -52,7 +52,7 @@ def test_channel_registry() -> None:
 
 def test_app_wiring(app: Any) -> None:
     """Модуль users подключён: сервисы, хук запуска и Telegram-канал."""
-    assert [m.key for m in app.registry.modules] == ["users", "days", "food"]
+    assert [m.key for m in app.registry.modules] == ["users", "days", "food", "warmup"]
     assert "users.sign_in" in app.ctx.services
     assert app.ctx.channel("telegram") is app.telegram
     assert app.ctx.startup_hooks

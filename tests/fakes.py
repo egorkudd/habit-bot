@@ -249,7 +249,20 @@ class TgChat:
         update = message_update(self._next_id(), self.tg_id, text, first_name=self.first_name)
         update["message"]["date"] = int(self.app.ctx.clock.now().timestamp())  # время сообщения = часы теста
         await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
-        return self.texts()[-1] if self.texts() else ""
+        return self.latest_text()
+
+    def _mine(self) -> list[Any]:
+        """Отправленные и изменённые сообщения этого чата — в порядке запросов к Telegram."""
+        return [m for m in self.session.requests
+                if isinstance(m, (SendMessage, EditMessageText, EditMessageReplyMarkup))
+                and getattr(m, "chat_id", None) is not None and int(m.chat_id) == self.tg_id]
+
+    def latest_text(self) -> str:
+        """Что пользователь видит последним: новое сообщение или изменённый текст старого."""
+        for m in reversed(self._mine()):
+            if isinstance(m, (SendMessage, EditMessageText)):
+                return str(m.text)
+        return ""
 
     async def press_data(self, data: str) -> None:
         update = callback_update(self._next_id(), self.tg_id, data)
@@ -270,7 +283,7 @@ class TgChat:
 
     async def press(self, label: str) -> str:
         await self.press_data(self.find_button(label))
-        return self.texts()[-1] if self.texts() else ""
+        return self.latest_text()
 
     def texts(self) -> list[str]:
         return self.session.texts(self.tg_id)
@@ -284,5 +297,10 @@ class TgChat:
         return []
 
     def labels(self) -> list[str]:
-        markup = self.session.sent(self.tg_id)[-1].reply_markup
-        return [b.text for row in getattr(markup, "inline_keyboard", None) or [] for b in row]
+        """Кнопки под последним сообщением (с учётом изменённых кнопок)."""
+        for m in reversed(self._mine()):
+            if isinstance(m, EditMessageReplyMarkup) and m.reply_markup is None:
+                continue
+            markup = m.reply_markup
+            return [b.text for row in getattr(markup, "inline_keyboard", None) or [] for b in row]
+        return []
