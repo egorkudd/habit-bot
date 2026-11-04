@@ -77,7 +77,7 @@ async def test_start_shows_main_menu(app: Any, fake_session: Any) -> None:
 async def test_menu_buttons_answer_soon(app: Any, fake_session: Any) -> None:
     """Результат части 2: меню видно, кнопки отвечают «скоро» с номером части плана."""
     chat = await _chat(app, fake_session)
-    assert await chat.say("🍽 Еда") == "🍽 Еда — скоро: раздел появится в части 5 плана."
+    assert await chat.say("🤸 Зарядка") == "🤸 Зарядка — скоро: раздел появится в части 6 плана."
     assert await chat.say("📊 Итоги") == "📊 Итоги — скоро: раздел появится в части 10 плана."
     assert fake_session.last(ADMIN_ID).reply_markup is not None
 
@@ -98,8 +98,8 @@ async def test_more_menu(app: Any, fake_session: Any) -> None:
 async def test_ready_section_is_left_to_its_module(app: Any, fake_session: Any) -> None:
     """Когда модуль подключил раздел, ядро не отвечает за него «скоро»."""
     chat = await _chat(app, fake_session)
-    app.telegram.menu.mark_ready("food")
-    assert await chat.say("🍽 Еда") == NOT_UNDERSTOOD
+    app.telegram.menu.mark_ready("warmup")
+    assert await chat.say("🤸 Зарядка") == NOT_UNDERSTOOD
 
 
 async def test_input_check_full_flow(app: Any, fake_session: Any) -> None:
@@ -140,10 +140,10 @@ async def test_cancel_word_command_and_button(app: Any, fake_session: Any) -> No
 
 
 async def test_menu_button_closes_unfinished_input(app: Any, fake_session: Any) -> None:
-    """Переход в раздел меню посреди ввода закрывает ввод: «🍽 Еда» не принимается за число."""
+    """Переход в раздел меню посреди ввода закрывает ввод: «🤸 Зарядка» не принимается за число."""
     chat = await _chat(app, fake_session)
     await chat.say("/check")
-    assert (await chat.say("🍽 Еда")).startswith("🍽 Еда — скоро")
+    assert (await chat.say("🤸 Зарядка")).startswith("🤸 Зарядка — скоро")
     assert await chat.states() == []
 
 

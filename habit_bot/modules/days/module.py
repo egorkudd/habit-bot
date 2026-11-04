@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import date
+
+from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
 from habit_bot.modules.days.usecases import Days
 
@@ -18,10 +21,16 @@ class DaysModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
+            from habit_bot.modules.days.telegram.card import render_card
             from habit_bot.modules.days.telegram.handlers import build_days_router
 
             assert isinstance(channel, TelegramChannel)
             # Раньше остальных: «📅 23.10 ✕ Вернуться к сегодня» работает даже посреди ввода.
             channel.add_router(build_days_router(days, channel.screens), first=True)
+
+            async def day_card(actor: Actor, day: date) -> str:
+                return render_card(await days.card(actor, day))
+
+            channel.day_card = day_card
             channel.menu.mark_ready("other_day")
             channel.menu.mark_ready("day_off")

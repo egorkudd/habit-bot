@@ -21,12 +21,14 @@ from habit_bot.kernel.events import EventBus
 from habit_bot.kernel.idempotency import IdempotencyStore
 from habit_bot.kernel.jobs import JobSpec, run_forever, run_safely
 from habit_bot.kernel.modules import ModuleContext, ModuleRegistry
+from habit_bot.kernel.purge import purge
 from habit_bot.modules import KNOWN_MODULES
 from habit_bot.platform.alerts.alerter import AdminAlerter
 
 log = logging.getLogger(__name__)
 HEARTBEAT_EVERY_SECONDS = 30
 EXPIRE_EVERY = timedelta(minutes=1)
+PURGE_EVERY = timedelta(hours=6)
 
 
 def heartbeat_path(data_dir: Path) -> Path:
@@ -113,6 +115,11 @@ def build_app(
         channels=channels, services={"alerter": alerter, **({"geocoder": geocoder} if geocoder else {})},
     )
     ctx.add_job(JobSpec("dialogs.expire", EXPIRE_EVERY, telegram.expire_idle))
+
+    async def purge_deleted() -> int:
+        return await purge(uow, clock.now(), ctx.idempotency)
+
+    ctx.add_job(JobSpec("kernel.purge", PURGE_EVERY, purge_deleted))
     registry = ModuleRegistry(KNOWN_MODULES)
     registry.load(settings.enabled_modules)
     registry.register_all(ctx)

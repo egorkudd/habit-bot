@@ -6,6 +6,7 @@ Telegram ограничивает данные кнопки 64 байтами, �
 from __future__ import annotations
 
 from aiogram.filters.callback_data import CallbackData
+from aiogram.types import InlineKeyboardButton
 
 
 class MenuCb(CallbackData, prefix="m"):
@@ -29,6 +30,25 @@ class StepCb(CallbackData, prefix="s"):
     o: int
     t: int
     a: str
+
+
+MOVE_TTL_MINUTES = 24 * 60  # кнопки под сохранённой записью работают 24 часа (раздел 3)
+
+
+class MoveCb(CallbackData, prefix="mv"):
+    """«📅 На вчера» под карточкой записи: вид записи, её public_id, минута создания кнопки."""
+
+    o: int
+    t: int
+    k: str
+    i: str
+    m: int
+
+
+def move_button(owner_id: int, kind: str, public_id: str, now_minute: int) -> InlineKeyboardButton:
+    """Кнопка переноса для карточек записей (еда, зарядка, привычки)."""
+    data = MoveCb(o=owner_id, t=0, k=kind, i=public_id, m=now_minute).pack()
+    return InlineKeyboardButton(text="📅 На вчера", callback_data=data)
 
 
 def owner_and_token(data: object) -> tuple[int, int] | None:

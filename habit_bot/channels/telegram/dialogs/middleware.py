@@ -97,4 +97,6 @@ class ActivityMiddleware(BaseMiddleware):
             other_day = await store.day(actor.user_id, OTHER_DAY)
             data["other_day"] = other_day
             data["record_day"] = date.fromisoformat(begun) if begun else (other_day or data["today"])
+            # Ключ повтора: Telegram может доставить тот же апдейт ещё раз — запись не должна задвоиться.
+            data["request_id"] = f"tg:{event.update_id}" if isinstance(event, Update) else None
             return await handler(event, data)

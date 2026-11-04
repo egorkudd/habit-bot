@@ -6,7 +6,7 @@ import logging
 import traceback
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from datetime import datetime, tzinfo
+from datetime import date, datetime, tzinfo
 from pathlib import Path
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
@@ -161,6 +161,9 @@ class TelegramChannel:
         self.dispatcher.include_router(build_core_router(self.menu, self.screens))
         self.dispatcher.include_router(build_input_check_router(self.clock, tz, self.screens))
         self._finalized = False
+        self._top_routers = 0
+        # Карточка дня в HTML: (actor, day) → текст. Её подключает модуль days, а показывают все разделы.
+        self.day_card: Callable[[Any, date], Awaitable[str]] | None = None
 
     def set_alerter(self, alerter: Alerter) -> None:
         self._error_middleware._alerter = alerter
@@ -168,12 +171,14 @@ class TelegramChannel:
     def add_outer_middleware(self, middleware: BaseMiddleware) -> None:
         self.dispatcher.update.outer_middleware(middleware)
 
-    def add_router(self, router: Router, *, first: bool = False) -> None:
-        """``first=True`` — раньше отмены и меню (например, анкета: она перехватывает весь ввод до конца)."""
+    def add_router(self, router: Router, *, first: bool = False, top: bool = False) -> None:
+        """Порядок обработки: ``top`` — самым первым (анкета: перехватывает весь ввод, пока не пройдена);
+        ``first`` — сразу после них, раньше отмены, меню и чужого ввода («🍽 Еда», «Вернуться к сегодня»)."""
         self.dispatcher.include_router(router)
-        if first:
+        if top or first:
             self.dispatcher.sub_routers.remove(router)
-            self.dispatcher.sub_routers.insert(0, router)
+            self.dispatcher.sub_routers.insert(0 if top else self._top_routers, router)
+            self._top_routers += int(top)
 
     def finalize(self) -> None:
         """После модулей: сброс по бездействию (нужен вход — он от модуля users) и ответ на необработанное."""

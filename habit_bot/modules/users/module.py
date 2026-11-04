@@ -45,7 +45,7 @@ class UsersModule(Module):
 
             assert isinstance(channel, TelegramChannel)
             channel.add_outer_middleware(AuthMiddleware(sign_in))
-            channel.add_router(build_onboarding_router(OnboardingFlow(profiles, channel.screens)), first=True)
+            channel.add_router(build_onboarding_router(OnboardingFlow(profiles, channel.screens)), top=True)
             channel.add_router(build_router(channel.screens, name_of))
             channel.add_router(build_settings_router(SettingsFlow(profiles, channel.screens)))
             channel.add_router(build_admin_router(invites, channel.screens))

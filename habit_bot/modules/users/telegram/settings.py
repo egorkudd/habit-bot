@@ -85,8 +85,9 @@ class SettingsInput(StatesGroup):
     home = State()
 
 
-def settings_keyboard(actor: Actor) -> Any:
+def settings_keyboard(actor: Actor, extra: list[InlineKeyboardButton] | None = None) -> Any:
     return keyboard([
+        *([b] for b in extra or []),
         [button(actor, 0, "👤 Профиль", "settings", "profile"), button(actor, 0, "🎯 Цели КБЖУ", "settings", "goals")],
         [button(actor, 0, "🏠 Главный экран", "settings", "home"), button(actor, 0, "📦 Экспорт", "soon", "export")],
         [button(actor, 0, "🗑 Удалить аккаунт", "settings", "delete")],
@@ -108,7 +109,8 @@ class SettingsFlow:
         self.screens = screens
 
     async def show_settings(self, bot: Bot, chat_id: int, actor: Actor) -> None:
-        await bot.send_message(chat_id, SETTINGS_TITLE, reply_markup=settings_keyboard(actor))
+        extra = self.screens.menu.settings_buttons(actor)
+        await bot.send_message(chat_id, SETTINGS_TITLE, reply_markup=settings_keyboard(actor, extra))
 
     async def show_profile(self, bot: Bot, chat_id: int, actor: Actor, prefix: str = "") -> None:
         view = await self.profiles.profile(actor)

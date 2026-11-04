@@ -17,6 +17,7 @@ from habit_bot.kernel.identity import Actor
 class Place(StrEnum):
     HOME = "home"   # клавиатура под полем ввода
     MORE = "more"   # кнопки под сообщением «Ещё»
+    SETTINGS = "settings"  # кнопки в «⚙️ Настройки» от модулей («🍽 Рецепты и продукты»)
 
 
 MORE_KEY = "more"
@@ -118,6 +119,10 @@ class MenuRegistry:
         if other_day is not None:
             rows.insert(0, [KeyboardButton(text=return_label(other_day))])
         return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, is_persistent=True)
+
+    def settings_buttons(self, actor: Actor) -> list[InlineKeyboardButton]:
+        return [InlineKeyboardButton(text=e.label, callback_data=MenuCb(o=actor.user_id, t=0, k=e.key).pack())
+                for e in self.entries(Place.SETTINGS, actor)]
 
     def more_keyboard(self, actor: Actor) -> InlineKeyboardMarkup:
         buttons = [

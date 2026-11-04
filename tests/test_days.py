@@ -13,10 +13,9 @@ from aiogram.types import Message
 from habit_bot.app import build_app
 from habit_bot.channels.telegram.dialogs.fsm import start_dialog
 from habit_bot.channels.telegram.dialogs.policy import LOST_DAY, OTHER_DAY
-from habit_bot.channels.telegram.ui.callbacks import MenuCb
+from habit_bot.channels.telegram.ui.callbacks import MenuCb, MoveCb, move_button
 from habit_bot.channels.telegram.ui.menu import MenuEntry
 from habit_bot.kernel.errors import AppError
-from habit_bot.modules.days.telegram.handlers import MoveCb, move_button
 from tests.conftest import ADMIN_ID, OTHER_ID, register_active
 from tests.fakes import TgChat
 
@@ -183,7 +182,7 @@ async def test_move_to_yesterday(app: Any, fake_session: Any, clock: Any) -> Non
     days.add_mover("x", mover)
     days.add_card_section(lambda a, d: _section(d))
     minute = int(clock.now().timestamp() // 60)
-    data = move_button(actor, "x", "e1", minute).callback_data
+    data = move_button(actor.user_id, "x", "e1", minute).callback_data
     clock.advance(hours=1)
     await chat.press_data(data)
     assert mover.entries["e1"] == date(2026, 10, 24)
