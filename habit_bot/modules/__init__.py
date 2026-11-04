@@ -4,4 +4,5 @@ KNOWN_MODULES: dict[str, str] = {
     "users": "habit_bot.modules.users.module:UsersModule",
     "days": "habit_bot.modules.days.module:DaysModule",
     "food": "habit_bot.modules.food.module:FoodModule",
+    "warmup": "habit_bot.modules.warmup.module:WarmupModule",
 }

@@ -32,7 +32,7 @@ class Persona(TgChat):
         """Нажать кнопку с подписью: под сообщением (inline) или внизу (клавиатура = отправка текста)."""
         self.app = self.world.app
         self.mark()
-        if any(label in row for row in self.keyboard()) and not self._has_inline(label):
+        if any(label in row for row in self.keyboard()) and label not in self.labels():
             return await super().say(label)
         return await self.press(label)
 
@@ -65,7 +65,7 @@ class Persona(TgChat):
         return self.texts()[self._mark:]
 
     def last(self) -> str:
-        return self.texts()[-1] if self.texts() else ""
+        return self.latest_text()
 
     def sees(self, label: str) -> bool:
         """Кнопка с подписью есть под последними сообщениями или на клавиатуре."""
