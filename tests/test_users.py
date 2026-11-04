@@ -2,11 +2,13 @@
 
 from typing import Any
 
+import pytest
 from sqlalchemy import func, select
 
+from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.identity import Identity, Provider, Role, User, UserStatus
 from habit_bot.modules.users.usecases import SignInTelegram, SyncAdminRoles
-from tests.conftest import ADMIN_ID, OTHER_ID
+from tests.conftest import ADMIN_ID, OTHER_ID, register_active
 from tests.fakes import message_update
 
 
@@ -16,11 +18,11 @@ async def _count_users(app: Any) -> int:
 
 
 async def test_admin_start_without_invite(app: Any, fake_session: Any) -> None:
-    """Раздел 9: ID из ADMIN_TG_IDS пишет /start без ссылки → регистрация и роль «Администратор»."""
+    """Раздел 9: ID из ADMIN_TG_IDS пишет /start без ссылки → регистрация, роль «Администратор» и анкета."""
     await app.telegram.dispatcher.feed_raw_update(app.telegram.bot, message_update(1, ADMIN_ID, "/start"))
     texts = fake_session.texts(ADMIN_ID)
-    assert len(texts) == 1
-    assert texts[0].startswith("Привет, администратор")
+    assert texts[0].startswith("Привет! Пара минут")
+    assert texts[1].startswith("Шаг 1/12. Как к вам обращаться?")
     async with app.ctx.uow() as uow:
         identity = (await uow.session.execute(select(Identity))).scalar_one()
         user = await uow.session.get(User, identity.user_id)
@@ -41,15 +43,19 @@ async def test_guest_without_invite(app: Any, fake_session: Any) -> None:
 
 
 async def test_repeated_start_does_not_duplicate(app: Any, fake_session: Any) -> None:
-    """Повторный /start не создаёт второго пользователя."""
+    """Повторный /start не создаёт второго пользователя; прошедший анкету видит приветствие и меню."""
+    await register_active(app)
     for update_id in (1, 2):
         await app.telegram.dispatcher.feed_raw_update(app.telegram.bot, message_update(update_id, ADMIN_ID, "/start"))
     assert await _count_users(app) == 1
-    assert len(fake_session.texts(ADMIN_ID)) == 2
+    texts = fake_session.texts(ADMIN_ID)
+    assert len(texts) == 2
+    assert texts[0].startswith("Привет, администратор")
 
 
 async def test_unknown_text_gets_fallback(app: Any, fake_session: Any) -> None:
     """Непонятный текст — подсказка выбрать раздел и главное меню."""
+    await register_active(app)
     await app.telegram.dispatcher.feed_raw_update(app.telegram.bot, message_update(1, ADMIN_ID, "привет"))
     assert fake_session.texts(ADMIN_ID) == ["Не понял. Выберите раздел в меню 👇"]
     assert fake_session.last(ADMIN_ID).reply_markup is not None
@@ -80,7 +86,9 @@ async def test_blocked_user_has_no_access(app: Any) -> None:
         assert user is not None
         assert user.name == "Администратор"
         user.status = UserStatus.BLOCKED
-    assert await sign_in.execute(ADMIN_ID, "Егор") is None
+    with pytest.raises(AppError) as err:
+        await sign_in.execute(ADMIN_ID, "Егор")
+    assert err.value.user_text() == "Доступ к боту закрыт. Обратитесь к администратору"
 
 
 async def test_activity_time_does_not_change_version(app: Any, clock: Any) -> None:

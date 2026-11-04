@@ -62,8 +62,8 @@ def parse_number_in_range(text: str, *, low: Decimal | int, high: Decimal | int,
     else:
         guess = ""
     raise AppError(
-        "INPUT-RANGE", field=field, low=format_number(low_d), high=format_number(high_d), unit=unit,
-        value=text.strip(), guess=guess,
+        "INPUT-RANGE", field=field, low=format_number(low_d), high=format_number(high_d),
+        unit=f" {unit}" if unit else "", value=text.strip(), guess=guess,
     )
 
 

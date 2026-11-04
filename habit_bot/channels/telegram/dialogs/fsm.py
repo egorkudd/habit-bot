@@ -56,6 +56,16 @@ class DbFsmStorage(BaseStorage):
         return None
 
 
+def context_for(state: FSMContext, scope: str) -> FSMContext:
+    """Состояние той же пары «бот — пользователь» в другой области ввода (например, анкеты)."""
+    key = user_key(state.key.bot_id, state.key.user_id, scope)
+    return FSMContext(storage=state.storage, key=key)
+
+
+def scope_of_context(state: FSMContext) -> str:
+    return scope_of(state.key)
+
+
 async def start_dialog(state: FSMContext, new_state: State) -> int:
     """Начинает новый ввод с чистого листа: у него новый номер, кнопки прошлого ввода устаревают."""
     await state.clear()

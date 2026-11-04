@@ -121,7 +121,7 @@ button{align-self:flex-start;font:inherit;font-size:13px;padding:6px 12px;border
       <tr><td>Контейнер habit-bot</td><td>Python 3.12, aiogram 3, APScheduler, SQLAlchemy + Alembic, matplotlib, Pillow, httpx</td><td><code>restart: unless-stopped</code>; настройки из <code>.env</code></td></tr>
       <tr><td>Том /srv/bot/data</td><td><code>bot.db</code> (SQLite WAL), одна последняя копия бэкапа, логи JSON за 14 дней (не больше 50 МБ), временные файлы до 24 ч</td><td>Бэкап раз в 2 дня уходит администратору в Telegram, зашифрован; история копий — в чате, на сервере только последняя</td></tr>
       <tr><td>DeepSeek API</td><td>DeepSeek V4.1 Flash, OpenAI-совместимый API; запасной провайдер через <code>LLM_FALLBACK_*</code></td><td>HTTPS, JSON-ответ, месячный лимит расходов и дневной лимит на пользователя</td></tr>
-      <tr><td>Open-Meteo, isdayoff.ru</td><td>Погода и поиск городов; производственный календарь</td><td>Таймаут 5 с, кэш 1 ч, бот работает и без них</td></tr>
+      <tr><td>Open-Meteo, isdayoff.ru</td><td>Погода и поиск городов; производственный календарь</td><td>Таймаут 5 с, кэш 1 ч (поиск городов — 30 дней, таблица <code>source_cache</code>), бот работает и без них</td></tr>
       <tr><td>GitHub</td><td>Приватный репозиторий <code>habit-bot</code>, Secrets, Actions: ci, deploy, rollback, bootstrap, healthcheck, cleanup</td><td>SSH на VPS под пользователем deploy; healthcheck раз в час</td></tr>
       <tr><td>ghcr.io</td><td>Docker-образы с тегом версии, хранятся 3 последние</td><td>VPS скачивает образ при выкладке и откате</td></tr>
     </tbody>

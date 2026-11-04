@@ -40,6 +40,8 @@ filterwarnings = ["ignore::DeprecationWarning:aiogram.*"]
 
 [tool.coverage.run]
 branch = true
+# SQLAlchemy asyncio переключает greenlet: без этого покрытие теряет строки после обращений к базе.
+concurrency = ["greenlet", "thread"]
 source = ["habit_bot", "scripts"]
 omit = ["habit_bot/migrations/*"]
 

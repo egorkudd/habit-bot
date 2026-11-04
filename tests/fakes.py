@@ -116,3 +116,92 @@ def callback_update(update_id: int, user_id: int, data: str, message_id: int = 5
             },
         },
     }
+
+
+# Записанные ответы Open-Meteo Geocoding (раздел 4.12): в CI нет реальных запросов.
+GEOCODER_ANSWERS: dict[str, list[dict[str, Any]]] = {
+    "кировск": [
+        {"name": "Кировск", "latitude": 67.6142, "longitude": 33.6717, "country_code": "RU",
+         "admin1": "Мурманская область"},
+        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
+         "admin1": "Ленинградская область"},
+        {"name": "Кировск", "latitude": 59.8756, "longitude": 30.9914, "country_code": "RU",
+         "admin1": "Ленинградская область"},
+    ],
+    "масква": [],
+    "ростов на дону": [
+        {"name": "Ростов-на-Дону", "latitude": 47.2313, "longitude": 39.7233, "country_code": "RU",
+         "admin1": "Ростовская область"},
+    ],
+    "новосибирск": [
+        {"name": "Новосибирск", "latitude": 55.0415, "longitude": 82.9346, "country_code": "RU",
+         "admin1": "Новосибирская область"},
+    ],
+    "париж": [
+        {"name": "Париж", "latitude": 48.8534, "longitude": 2.3488, "country_code": "FR", "admin1": "Иль-де-Франс"},
+    ],
+}
+
+
+class FakeGeocoder:
+    """Отвечает записанными ответами; «сломано» — сервис недоступен."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def search(self, name: str) -> list[Any]:
+        from habit_bot.modules.users.domain.city import normalize
+        from habit_bot.platform.sources.geocoding import GeocoderUnavailable, parse_response
+
+        self.calls.append(name)
+        key = normalize(name)
+        if key == "сломано":
+            raise GeocoderUnavailable
+        return parse_response({"results": GEOCODER_ANSWERS[key]} if GEOCODER_ANSWERS.get(key) else {})
+
+
+class TgChat:
+    """Переписка одного пользователя с ботом через поддельный Telegram: текст, нажатия по подписи кнопки."""
+
+    def __init__(self, app: Any, session: FakeTelegramSession, tg_id: int, first_name: str = "Егор") -> None:
+        self.app = app
+        self.session = session
+        self.tg_id = tg_id
+        self.first_name = first_name
+
+    def _next_id(self) -> int:
+        self.session._message_id += 1
+        return self.session._message_id
+
+    async def say(self, text: str) -> str:
+        update = message_update(self._next_id(), self.tg_id, text, first_name=self.first_name)
+        await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
+        return self.texts()[-1] if self.texts() else ""
+
+    async def press_data(self, data: str) -> None:
+        update = callback_update(self._next_id(), self.tg_id, data)
+        update["callback_query"]["from"]["first_name"] = self.first_name
+        await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
+
+    def find_button(self, label: str) -> str:
+        """callback_data кнопки с этой подписью в последнем сообщении, где она есть."""
+        markups = [m.reply_markup for m in self.session.requests
+                   if isinstance(m, (SendMessage, EditMessageReplyMarkup))
+                   and (not isinstance(m, SendMessage) or int(m.chat_id) == self.tg_id)]
+        for markup in reversed(markups):
+            for row in getattr(markup, "inline_keyboard", None) or []:
+                for button in row:
+                    if button.text == label:
+                        return str(button.callback_data)
+        raise AssertionError(f"Кнопки «{label}» нет")
+
+    async def press(self, label: str) -> str:
+        await self.press_data(self.find_button(label))
+        return self.texts()[-1] if self.texts() else ""
+
+    def texts(self) -> list[str]:
+        return self.session.texts(self.tg_id)
+
+    def labels(self) -> list[str]:
+        markup = self.session.sent(self.tg_id)[-1].reply_markup
+        return [b.text for row in getattr(markup, "inline_keyboard", None) or [] for b in row]

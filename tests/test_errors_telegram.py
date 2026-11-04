@@ -12,7 +12,7 @@ from habit_bot import ops
 from habit_bot.app import build_app
 from habit_bot.channels.telegram.channel import chat_id_of, error_location
 from habit_bot.kernel.errors import AppError
-from tests.conftest import ADMIN_ID, OTHER_ID
+from tests.conftest import ADMIN_ID, OTHER_ID, register_active
 from tests.fakes import message_update
 
 INCIDENT = re.compile(r"E-[0-9A-F]{4}")
@@ -32,6 +32,7 @@ async def _app_with_broken_handler(settings: Any, fake_session: Any, clock: Any)
 
     application.telegram.add_router(router)
     await application.startup()
+    await register_active(application)
     return application
 
 

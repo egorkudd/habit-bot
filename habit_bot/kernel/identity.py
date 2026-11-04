@@ -24,6 +24,7 @@ class UserStatus(StrEnum):
     ONBOARDING = "onboarding"
     ACTIVE = "active"
     BLOCKED = "blocked"
+    DELETED = "deleted"  # аккаунт удалён: строки пользователя стёрты, осталась обезличенная отметка
 
 
 class Provider(StrEnum):
@@ -70,6 +71,7 @@ class Actor:
     role: Role
     channel: str
     request_time: datetime
+    onboarding: bool = False  # анкета ещё не пройдена
 
     @property
     def is_admin(self) -> bool:
