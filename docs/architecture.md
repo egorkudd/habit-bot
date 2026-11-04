@@ -109,7 +109,7 @@ flowchart TB
 
 ### Что это меняет в требованиях
 
-Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2–5 (04.11.2026).
+Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2–6 (04.11.2026).
 
 - **Раздел 5, User:** `tg_id` переезжает в новую сущность `Identity(user_id, provider, external_id)`. Поле «дата режима «Другой день»» переезжает в состояние диалога Telegram-канала.
 - **Раздел 5, пользовательские таблицы:** добавить `public_id`, `updated_at`, `deleted_at`, а у редактируемых — `version`.
@@ -1081,7 +1081,8 @@ sequenceDiagram
 | 3. Регистрация ✅ | Модуль `users`: `SignInTelegram` (вход по приглашению из ссылки `/start КОД`), `Invites`, `Profiles` (анкета, профиль, цели, удаление аккаунта — общая очистка всех таблиц с `user_id`), домен `kbju`, `city`, `invites`, `profile`; таблицы `users_profile`, `users_goal`, `users_invite`, `users_body_weight`; `platform/sources`: `OpenMeteoGeocoder` + `CachedGeocoder` (кэш 30 дней в `source_cache`). Анкета — область `onboarding`, её роутер подключается раньше меню (`add_router(first=True)`) |
 | 4. Дни ✅ | Модуль `days`: `Days` (выходные `days_status`, карточка дня `DayCardData` с разделами `add_card_section`, перенос записей `add_mover` / `EntryMover`); `kernel/domain/days.py` — подписи, календарь, давность. `ActivityMiddleware` кладёт в обработчик `today` и `record_day` (по времени сообщения, граница 04:00; в «Другом дне» — выбранная дата; ввод помнит дату начала `start_dialog(..., day)`). Области `other_day` и `lost_day` (отметка на 12 ч после сброса). `Screens.home` строит клавиатуру по выбору пользователя (`users_profile.home_buttons`) и с кнопкой «📅 23.10 ✕ Вернуться к сегодня» |
 | 5. Еда ✅ | Модуль `food`: `Food` (каталог `CATALOG` грузится при старте, свои рецепты и продукты `food_item`, записи `food_entry` с копией КБЖУ и цены, «Другое», множитель, перенос через `Days.add_mover`, строки карточки дня через `add_card_section`, повтор апдейта — `IdempotencyStore` по `update_id`); домен `nutrition`, `other_line`. Ядро: `kernel/purge.py` — окончательное удаление записей через 30 дней по колонке `deleted_at`. Канал: `channel.day_card`, `Place.SETTINGS`, `add_router(top=…)` для анкеты |
-| 6–8 | Модули `warmup`, `custom_habits`, `workouts` и `runs`. Каждый пишет сценарии с DTO, `HabitKind`, `StatsProvider`, экспорт и папку `telegram/`, а также сразу готовит `ai_actions.py` |
+| 6. Зарядка ✅ | Модуль `warmup`: `Warmup` (набор `warmup_template` с шагами и порядком, зарядки `warmup_session` + `warmup_item` с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели `warmup_goal` со строкой прогресса, цель «в день» `warmup_settings`, перенос через `add_mover`); домен `warmup.py` (шаги, разбор значений, темп). Черновик — ввод в области `dialog` с правкой одного сообщения |
+| 7–8 | Модули `custom_habits`, `workouts` и `runs`. Каждый пишет сценарии с DTO, `HabitKind`, `StatsProvider`, экспорт и папку `telegram/`, а также сразу готовит `ai_actions.py` |
 | 9. ИИ | `platform/ai`: LlmRouter, BudgetGuard, AiActionRegistry, CommandService; модуль `ai_commands` |
 | 10. Итоги | `platform/stats` и `platform/export`; картинки в `channels/telegram/render`; модули `stats_views`, `admin`, `export`, `backup` |
 | v2–v3 | `platform/delivery` и модуль `notifications` с провайдерами; новые модули `chat_digest`, `weekly_review`, `voice` |

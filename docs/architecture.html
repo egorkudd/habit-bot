@@ -262,7 +262,7 @@ footer{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding
 </table></div>
 <p>Мягкое удаление (<code>deleted_at</code>) касается только отдельных записей: удалённая запись хранится 30 дней как отметка для синхронизации. Удаление аккаунта, как и раньше, стирает все строки пользователя сразу.</p>
 <h3>Что это меняет в требованиях</h3>
-<p>Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2–5 (04.11.2026).</p>
+<p>Внесено в требования, редакция 10 от 03.11.2026. Раздел 7.5 обновлён по итогам части 2, раздел 12 — по частям 2–6 (04.11.2026).</p>
 <ul>
 <li><strong>Раздел 5, User:</strong> <code>tg_id</code> переезжает в новую сущность <code>Identity(user_id, provider, external_id)</code>. Поле «дата режима «Другой день»» переезжает в состояние диалога Telegram-канала.</li>
 <li><strong>Раздел 5, пользовательские таблицы:</strong> добавить <code>public_id</code>, <code>updated_at</code>, <code>deleted_at</code>, а у редактируемых — <code>version</code>.</li>
@@ -1349,8 +1349,12 @@ class FoodModule(Module):
 <td>Модуль <code>food</code>: <code>Food</code> (каталог <code>CATALOG</code> грузится при старте, свои рецепты и продукты <code>food_item</code>, записи <code>food_entry</code> с копией КБЖУ и цены, «Другое», множитель, перенос через <code>Days.add_mover</code>, строки карточки дня через <code>add_card_section</code>, повтор апдейта — <code>IdempotencyStore</code> по <code>update_id</code>); домен <code>nutrition</code>, <code>other_line</code>. Ядро: <code>kernel/purge.py</code> — окончательное удаление записей через 30 дней по колонке <code>deleted_at</code>. Канал: <code>channel.day_card</code>, <code>Place.SETTINGS</code>, <code>add_router(top=…)</code> для анкеты</td>
 </tr>
 <tr>
-<td>6–8</td>
-<td>Модули <code>warmup</code>, <code>custom_habits</code>, <code>workouts</code> и <code>runs</code>. Каждый пишет сценарии с DTO, <code>HabitKind</code>, <code>StatsProvider</code>, экспорт и папку <code>telegram/</code>, а также сразу готовит <code>ai_actions.py</code></td>
+<td>6. Зарядка ✅</td>
+<td>Модуль <code>warmup</code>: <code>Warmup</code> (набор <code>warmup_template</code> с шагами и порядком, зарядки <code>warmup_session</code> + <code>warmup_item</code> с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели <code>warmup_goal</code> со строкой прогресса, цель «в день» <code>warmup_settings</code>, перенос через <code>add_mover</code>); домен <code>warmup.py</code> (шаги, разбор значений, темп). Черновик — ввод в области <code>dialog</code> с правкой одного сообщения</td>
+</tr>
+<tr>
+<td>7–8</td>
+<td>Модули <code>custom_habits</code>, <code>workouts</code> и <code>runs</code>. Каждый пишет сценарии с DTO, <code>HabitKind</code>, <code>StatsProvider</code>, экспорт и папку <code>telegram/</code>, а также сразу готовит <code>ai_actions.py</code></td>
 </tr>
 <tr>
 <td>9. ИИ</td>
