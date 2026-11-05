@@ -53,7 +53,9 @@ async def test_owner_onboarding(app: Any, fake_session: Any) -> None:
     assert texts[-1].startswith("Можно сразу внести")
 
     (profile,) = await _rows(app, Profile)
-    assert (profile.city_name, profile.timezone, profile.starter_kit) == ("Москва", "Europe/Moscow", ["habits"])
+    # «Примеры привычек» применены сразу с главным экраном после анкеты: «👁 Глаза» встала на клавиатуру.
+    assert (profile.city_name, profile.timezone, profile.starter_kit) == ("Москва", "Europe/Moscow", [])
+    assert any("👁 Глаза" in row for row in chat.keyboard())
     (goal,) = await _rows(app, Goal)
     assert (goal.kcal, goal.protein, goal.fat, goal.carbs, goal.source) == (2800, 160, 80, 360, "calc")
     (weight,) = await _rows(app, BodyWeight)

@@ -782,7 +782,8 @@ class FoodModule(Module):
   CustomHabitKind ..&gt; Streaks
   TelegramHabitButtons --&gt; HabitRegistry
 </pre></div>
-<p>Встроенные привычки (еда, зарядка, тренировка) по требованиям тоже лежат строками в <code>Habit</code> с полем <code>kind</code>. По этому полю <code>HabitRegistry</code> находит класс, который считает прогресс. Бег учитывается в <code>WorkoutKind</code> через <code>runs.public</code>. Цель «N раз в неделю» из v2 добавляется полем <code>weekly_goal</code> и веткой в <code>Streaks</code>, а интерфейс не меняется.</p>
+<p>Встроенные привычки (еда, зарядка, тренировка) по требованиям тоже лежат строками в <code>Habit</code> с полем <code>kind</code>. По этому полю <code>HabitRegistry</code> находит класс, который считает прогресс.</p>
+<p><strong>Как сделано в части 7.</strong> Модуль <code>habits</code>: <code>Habits</code> (сценарии без aiogram), домен <code>habits/domain/habits.py</code> (типы, шаблоны, выполнение за день, расписание, <code>streak</code>), таблицы <code>habits_habit</code> и <code>habits_entry</code>. Упрощения против схемы выше: встроенные привычки пока не строки <code>Habit</code> — список «✅ Привычки» получает их выполнение через <code>Builtin</code> (метка, ключ раздела, функция «факт / цель»), которые модуль <code>habits</code> собирает из сервисов <code>food</code> и <code>warmup</code>, если они включены; <code>HabitRegistry</code> с <code>traffic_rows</code> появится вместе со статистикой (часть 10). Поле <code>on_home</code> не хранится: показ на главном экране — ключ <code>h&lt;public_id&gt;</code> в кнопках главного экрана профиля (<code>Screens.extras</code> даёт пункты своих привычек, <code>Screens.set_on_home</code> ставит и убирает кнопку). Нажатие текстовой кнопки привычки ловит асинхронный фильтр <code>OwnHabitLabel</code> в роутере <code>first</code>; посреди ввода привычки текст считается ответом. Бег учитывается в <code>WorkoutKind</code> через <code>runs.public</code>. Цель «N раз в неделю» из v2 добавляется полем <code>weekly_goal</code> и веткой в <code>Streaks</code>, а интерфейс не меняется.</p>
 <h3>7.5 Telegram-канал: диалоги и интерфейс</h3>
 <p>Всё на этой диаграмме существует только в Telegram. Приложению и вебу оно не понадобится: у них состояние формы хранится на устройстве, а сценарий получает уже готовые данные. Построено в части 2.</p>
 <div class="diagram"><pre class="mermaid">classDiagram
@@ -1383,6 +1384,10 @@ class FoodModule(Module):
 <tr>
 <td>6. Зарядка ✅</td>
 <td>Модуль <code>warmup</code>: <code>Warmup</code> (набор <code>warmup_template</code> с шагами и порядком, зарядки <code>warmup_session</code> + <code>warmup_item</code> с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели <code>warmup_goal</code> со строкой прогресса, цель «в день» <code>warmup_settings</code>, перенос через <code>add_mover</code>); домен <code>warmup.py</code> (шаги, разбор значений, темп). Черновик — ввод в области <code>dialog</code> с правкой одного сообщения; правки 0.6.2 — все значения одной строкой (<code>parse_values_line</code>), без отдельной «как в прошлый раз»</td>
+</tr>
+<tr>
+<td>7. Привычки ✅</td>
+<td>Модуль <code>habits</code>: <code>Habits</code> (шаблоны и свои, отметки с ключом повтора, «Другое значение», «Снять отметку», «Отметить несколько», серии с выходными <code>Days.days_off</code> и расписанием, архив, удаление с историей, перенос через <code>add_mover</code>), строка карточки дня через <code>add_card_section</code>; канал — <code>Screens.extras</code> / <code>set_on_home</code> для кнопок своих привычек на главном экране, <code>MenuRegistry.defaults</code></td>
 </tr>
 <tr>
 <td>Правки 0.6.2</td>

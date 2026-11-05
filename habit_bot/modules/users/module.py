@@ -50,5 +50,6 @@ class UsersModule(Module):
             channel.add_router(build_settings_router(SettingsFlow(profiles, channel.screens)))
             channel.add_router(build_admin_router(invites, channel.screens))
             channel.screens.layout = profiles.home_layout
+            channel.screens.save_layout = profiles.set_home_layout
             channel.menu.mark_ready("settings")
             channel.menu.mark_ready("admin")
