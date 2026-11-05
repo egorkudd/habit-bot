@@ -61,7 +61,7 @@ async def test_s28_broken_job_does_not_stop_others(world: World, owner: Persona)
     finally:
         await world.app.stop_background(tasks)
     assert calls == ["сломанная"]
-    assert (await owner.tap("📊 Итоги")).startswith("📊 Итоги — скоро")
+    assert await owner.tap("📊 Итоги") == "📊 Еда · 03.11 (вт)"  # бот отвечает
 
 
 async def _wait(condition: object, seconds: float) -> bool:
