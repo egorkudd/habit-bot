@@ -112,14 +112,19 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - name: Установка зависимостей
         run: pip install -r requirements-dev.txt
-      - name: Open-Meteo Geocoding
+      - name: Open-Meteo Geocoding и языковая модель
         env:
           LIVE_SERVICES: "1"
+          # Без ключа прогон модели на 30 эталонных фразах пропускается (tests/live/test_llm_live.py).
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
-          if pytest -m live -p no:cacheprovider tests/live -q; then
-            echo "### Внешние сервисы: ✅ Open-Meteo Geocoding отвечает как ожидается" >> "$GITHUB_STEP_SUMMARY"
+          if pytest -m live -p no:cacheprovider tests/live -q -rs; then
+            echo "### Внешние сервисы: ✅ Open-Meteo Geocoding и модель (если задан ключ) отвечают как ожидается" \
+              >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "### Внешние сервисы: ⚠️ Open-Meteo Geocoding ответил не так, как ожидалось — см. лог" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Внешние сервисы: ⚠️ ответ не такой, как ожидалось — см. лог" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 

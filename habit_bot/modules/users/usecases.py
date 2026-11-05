@@ -350,6 +350,16 @@ class Profiles:
             uow.session.add(self._goal(actor.user_id, view, targets, source, start_date))
         return GoalView.of(targets, start_date, source, None)
 
+    async def delete_goal(self, actor: Actor, start_date: date, source: str) -> bool:
+        """Убрать цель, заданную с этой даты (отмена команды текстом). Последняя цель не удаляется."""
+        async with self._uow() as uow:
+            goals = (await uow.session.execute(select(Goal).where(Goal.user_id == actor.user_id))).scalars().all()
+            found = next((g for g in goals if g.start_date == start_date and g.source == source), None)
+            if found is None or len(goals) <= 1:
+                return False
+            await uow.session.delete(found)
+            return True
+
     # --- главный экран (раздел 3.1) ---
     async def home_layout(self, actor: Actor) -> list[str] | None:
         """Кнопки главного экрана в порядке пользователя; ``None`` — по умолчанию."""

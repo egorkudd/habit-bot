@@ -40,7 +40,7 @@ class WorkoutsModule(Module):
         ctx.services["workouts.week"] = week_progress
 
         async def card_section(actor: Actor, day: date) -> list[str]:
-            return [f"{KIND_LABELS[s.kind]} {s.duration_min} мин"
+            return [f"{KIND_LABELS[s.kind]}" + (f" {s.duration_min} мин" if s.duration_min else "")
                     + (f" · {format_number(s.tonnage)} кг" if s.tonnage else "")
                     for s in await workouts.day_sessions(actor, day)]
 

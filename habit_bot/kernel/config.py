@@ -68,6 +68,9 @@ class Settings:
     llm_model: str | None = None
     llm_api_key: str | None = None
     llm_monthly_budget_usd: Decimal = Decimal("5")
+    llm_fallback_base_url: str | None = None
+    llm_fallback_model: str | None = None
+    llm_fallback_api_key: str | None = None
 
     @property
     def db_path(self) -> Path:
@@ -115,7 +118,8 @@ def load_settings(env: Mapping[str, str], known_modules: Iterable[str]) -> Setti
             "CFG-BACKUP", f"BACKUP_PASSWORD короче {MIN_BACKUP_PASSWORD} символов",
         ))
 
-    modules = split_list(env.get("ENABLED_MODULES")) or known  # по умолчанию включены все модули
+    explicit_modules = split_list(env.get("ENABLED_MODULES"))
+    modules = explicit_modules or known  # по умолчанию включены все модули
     unknown_modules = [m for m in modules if m not in known]
     if unknown_modules:
         problems.append(ConfigProblem(
@@ -138,7 +142,9 @@ def load_settings(env: Mapping[str, str], known_modules: Iterable[str]) -> Setti
     llm_base_url = _get(env, "LLM_BASE_URL")
     llm_model = _get(env, "LLM_MODEL")
     llm_api_key = _get(env, "LLM_API_KEY")
-    if MODULES_NEEDING_LLM.intersection(modules):
+    # Ключ модели обязателен, только если модуль ИИ включён явно. По умолчанию (все модули) бот работает и без
+    # ключа: разбор текстом выключен, кнопки — как обычно (раздел 7.2, «при нулевом балансе — только кнопки»).
+    if MODULES_NEEDING_LLM.intersection(explicit_modules):
         missing = [
             name for name, value in
             (("LLM_BASE_URL", llm_base_url), ("LLM_MODEL", llm_model), ("LLM_API_KEY", llm_api_key))
@@ -179,4 +185,7 @@ def load_settings(env: Mapping[str, str], known_modules: Iterable[str]) -> Setti
         llm_model=llm_model,
         llm_api_key=llm_api_key,
         llm_monthly_budget_usd=budget,
+        llm_fallback_base_url=_get(env, "LLM_FALLBACK_BASE_URL"),
+        llm_fallback_model=_get(env, "LLM_FALLBACK_MODEL"),
+        llm_fallback_api_key=_get(env, "LLM_FALLBACK_API_KEY"),
     )

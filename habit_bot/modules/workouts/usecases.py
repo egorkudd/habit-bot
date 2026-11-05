@@ -455,6 +455,27 @@ class Workouts:
             log.info("Тренировки завершены автоматически: %s", finished)
         return finished
 
+    async def log_sets(self, actor: Actor, day: date,
+                       groups: Sequence[tuple[str, Sequence[SetValue]]]) -> SessionView:
+        """Подходы командой текстом: отдельная «Свободная» тренировка за день, сразу завершённая."""
+        now = self._clock.now()
+        async with self._uow() as uow:
+            row = WorkoutSession(user_id=actor.user_id, day=day, kind=Kind.FREE.value, status=OPEN, started_at=now,
+                                 last_action_at=now, missing=[], tonnage=0)
+            uow.session.add(row)
+            await uow.session.flush()
+            public_id = row.public_id.hex
+        for exercise_id, sets in groups:
+            await self.add_sets(actor, public_id, exercise_id, sets)
+        async with self._uow() as uow:
+            done = await self._own_session(uow.session, actor, public_id)
+            assert done is not None
+            view = await self._view(uow.session, done)
+            self._close(done, view, None, auto=False)
+            done.duration_min = None
+            await uow.session.flush()
+            return await self._view(uow.session, done)
+
     async def delete_session(self, actor: Actor, public_id: str) -> SessionView | None:
         async with self._uow() as uow:
             row = await self._own_session(uow.session, actor, public_id)
