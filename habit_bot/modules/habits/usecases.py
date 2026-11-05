@@ -382,6 +382,18 @@ class Habits:
             days[day] = days.get(day, Decimal(0)) + Decimal(str(value))
         return result
 
+    async def entries_between(self, actor: Actor, start: date, end: date,
+                              ) -> list[tuple[date, datetime, HabitView, Decimal]]:
+        """Отметки всех привычек (и архивных) за период — для экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(HabitEntry, Habit).join(Habit, Habit.id == HabitEntry.habit_id)
+                .where(HabitEntry.user_id == actor.user_id, HabitEntry.deleted_at.is_(None),
+                       HabitEntry.day >= start, HabitEntry.day <= end)
+                .order_by(HabitEntry.day, HabitEntry.logged_at, HabitEntry.id)
+            )).all()
+            return [(e.day, e.logged_at, habit_view(h), Decimal(str(e.value))) for e, h in rows]
+
     async def day_entries(self, actor: Actor, public_id: str, day: date) -> list[tuple[datetime, Decimal]]:
         """Отметки привычки за день со временем — для картинки «Итоги»."""
         async with self._uow() as uow:

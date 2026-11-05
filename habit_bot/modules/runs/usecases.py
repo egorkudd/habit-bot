@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -123,6 +123,14 @@ class Runs:
                 RunEntry.user_id == actor.user_id, RunEntry.day >= start, RunEntry.day <= end,
                 RunEntry.deleted_at.is_(None)).order_by(RunEntry.day, RunEntry.id))).scalars().all()
             return [(r.day, _value(r)) for r in rows]
+
+    async def entries_between(self, actor: Actor, start: date, end: date) -> list[tuple[date, datetime, RunValue]]:
+        """Забеги за период со временем записи — для экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(select(RunEntry).where(
+                RunEntry.user_id == actor.user_id, RunEntry.day >= start, RunEntry.day <= end,
+                RunEntry.deleted_at.is_(None)).order_by(RunEntry.day, RunEntry.id))).scalars().all()
+            return [(r.day, r.logged_at, _value(r)) for r in rows]
 
     async def count_between(self, actor: Actor, start: date, end: date) -> int:
         """Забеги за период — для цели «тренировок в неделю» (бег считается тренировкой)."""

@@ -54,7 +54,6 @@ SETTINGS_TITLE = "⚙️ Настройки"
 SAVED = "Сохранено ✅"
 DELETE_QUESTION = "Удалить аккаунт и все данные? Это нельзя отменить."
 DELETED = "Аккаунт и все данные удалены. Чтобы начать заново, напишите /start."
-SOON = {"export": "📦 Экспорт — скоро: в части 10 плана."}
 HOME_TITLE = (
     "🏠 Главный экран: отметьте кнопки (до {limit}) и поднимите нужные выше «⬆». «☰ Ещё» остаётся всегда."
 )
@@ -90,7 +89,7 @@ def settings_keyboard(actor: Actor, extra: list[InlineKeyboardButton] | None = N
     return keyboard([
         *([b] for b in extra or []),
         [button(actor, 0, "👤 Профиль", "settings", "profile"), button(actor, 0, "🎯 Цели КБЖУ", "settings", "goals")],
-        [button(actor, 0, "🏠 Главный экран", "settings", "home"), button(actor, 0, "📦 Экспорт", "soon", "export")],
+        [button(actor, 0, "🏠 Главный экран", "settings", "home")],
         [button(actor, 0, "🗑 Удалить аккаунт", "settings", "delete")],
     ])
 
@@ -243,10 +242,6 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         await flow.screens.close_buttons(query)
         await flow.show_settings(bot, query.from_user.id, actor)
 
-    @router.callback_query(UCb.filter(F.a == "soon"))
-    async def soon(query: CallbackQuery, callback_data: UCb) -> None:
-        await flow.screens.close_buttons(query, toast=SOON.get(callback_data.value, "Скоро"))
-
     @router.callback_query(UCb.filter(F.a == "settings"))
     async def section(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
@@ -264,8 +259,12 @@ def build_settings_router(flow: SettingsFlow) -> Router:
             await flow.show_goals(bot, chat_id, actor)
         else:
             token = await start_dialog(state, SettingsInput.delete)
-            await bot.send_message(chat_id, DELETE_QUESTION, reply_markup=keyboard([[
-                button(actor, token, "🗑 Да, удалить всё", "delete", "yes"), cancel_button(actor, token)]]))
+            rows = [[button(actor, token, "🗑 Да, удалить всё", "delete", "yes"), cancel_button(actor, token)]]
+            export = flow.screens.menu.get("export")
+            if export is not None and export.ready:  # раздел 2.3: перед удалением предложить скачать экспорт
+                rows.insert(0, [InlineKeyboardButton(text="📦 Сначала скачать экспорт",
+                                                     callback_data=MenuCb(o=actor.user_id, t=0, k="export").pack())])
+            await bot.send_message(chat_id, DELETE_QUESTION, reply_markup=keyboard(rows))
 
     @router.callback_query(UCb.filter(F.a == "edit"))
     async def edit(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
