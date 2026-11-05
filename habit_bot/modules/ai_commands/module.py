@@ -58,6 +58,8 @@ class AiCommandsModule(Module):
                     return InlineKeyboardButton(text=f"💾 «{name}» как рецепт"[:60], callback_data=EntryCb(
                         o=actor.user_id, t=0, a="save", i=entry_id, m=minute).pack())
 
-            channel.add_router(build_ai_router(commands, channel.screens, lambda: channel.day_card, save_button))
+            router, free_text = build_ai_router(commands, channel.screens, lambda: channel.day_card, save_button)
+            channel.add_router(router)
+            channel.add_router(free_text, last=True)
             channel.menu.mark_ready(TEXT_KEY)
             channel.menu.add(MenuEntry(FILL_KEY, "✍️ Заполнить с помощью ИИ", 5, Place.SETTINGS, ready=True))

@@ -73,7 +73,8 @@ def card_text(view: CommandView, page: int = 0) -> str:
 
 
 def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable[[], DayCard | None],
-                    save_recipe_button: Callable[[Actor, str, str], InlineKeyboardButton] | None = None) -> Router:
+                    save_recipe_button: Callable[[Actor, str, str], InlineKeyboardButton] | None = None,
+                    ) -> tuple[Router, Router]:
     router = Router(name="ai_commands")
 
     def btn(actor: Actor, text: str, action: str, value: str) -> InlineKeyboardButton:
@@ -261,16 +262,16 @@ def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable
         await parse(bot, query.from_user.id, actor,
                     f"{view.text}\nОтвет на вопрос «{view.question['text']}»: {options[index]}", view.mode)
 
-    # --- любой текст, который не ответ в текущем вводе (последним: сначала состояния ввода) ---
-    @router.message(F.text, F.func(lambda m: not (m.text or "").startswith("/")))
+    # --- любой текст, который не ответ в текущем вводе: отдельный роутер, последним перед «Не понял» — сначала все
+    # состояния ввода модулей. Без ключа модели не срабатывает — отвечает обычная подсказка с меню ---
+    free = Router(name="ai_free_text")
+
+    @free.message(F.text, F.func(lambda m: commands.available and not (m.text or "").startswith("/")))
     async def free_text(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
-        if not commands.available:
-            await screens.home(bot, message.chat.id, actor, "Не понял. Выберите раздел в меню 👇")
-            return
         await state.clear()
         await parse(bot, message.chat.id, actor, message.text or "", TEXT)
 
-    return router
+    return router, free
 
 
 __all__ = ["AiCb", "build_ai_router", "card_text"]

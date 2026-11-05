@@ -85,7 +85,8 @@ async def test_menu_buttons_answer_soon(app: Any, fake_session: Any) -> None:
 
 
 async def test_more_menu(app: Any, fake_session: Any) -> None:
-    """«Ещё»: Другой день, Текстом, Выходной, Настройки и у администратора — Админ; нажатие — «скоро»."""
+    """«Ещё»: Другой день, Текстом, Выходной, Настройки и у администратора — Админ; «Текстом» без ключа модели —
+    «пока не подключён»."""
     chat = await _chat(app, fake_session)
     assert await chat.say("☰ Ещё") == MORE_TITLE
     assert _labels(fake_session.last(ADMIN_ID).reply_markup) == [
@@ -93,8 +94,7 @@ async def test_more_menu(app: Any, fake_session: Any) -> None:
     ]
     user_id = await chat.user_id()
     await chat.press(MenuCb(o=user_id, t=0, k="text").pack())
-    answer = fake_session.answers()[-1]
-    assert answer.text == "✍️ Текстом — скоро: раздел появится в части 9 плана."
+    assert fake_session.last(ADMIN_ID).text == "Разбор текстом пока не подключён. Кнопки работают как обычно"
 
 
 async def test_ready_section_is_left_to_its_module(app: Any, fake_session: Any) -> None:

@@ -17,8 +17,7 @@ async def test_s13_walks_through_menu(world: World, owner: Persona) -> None:
         assert await owner.tap(label) == f"{label} — скоро: раздел появится в части {part} плана."
     await owner.tap("☰ Ещё")
     assert all(owner.sees(b) for b in ("📅 Другой день", "✍️ Текстом", "🛌 Выходной", "⚙️ Настройки", "🛠 Админ"))
-    await owner.tap("✍️ Текстом")
-    assert owner.session.answers()[-1].text == "✍️ Текстом — скоро: раздел появится в части 9 плана."
+    assert await owner.tap("✍️ Текстом") == "Разбор текстом пока не подключён. Кнопки работают как обычно"
     assert await owner.say("как дела?") == "Не понял. Выберите раздел в меню 👇"
     assert await owner.sticker() == "Не понял. Выберите раздел в меню 👇"
 
