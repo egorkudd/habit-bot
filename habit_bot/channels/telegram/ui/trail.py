@@ -97,11 +97,12 @@ class TrailRecorder(BaseRequestMiddleware):
         response = await make_request(bot, method)
         current = _current.get()
         sent: object = response  # на деле сессия возвращает сам результат метода, а не Response
-        if current is None or not isinstance(method, SendMessage) or not isinstance(sent, Message):
+        request: object = method
+        if current is None or not isinstance(request, SendMessage) or not isinstance(sent, Message):
             return response
         if sent.chat.id != current.chat_id:
             return response  # оповещение администратору и другим людям — не наш след
-        if isinstance(method.reply_markup, (ReplyKeyboardMarkup, ReplyKeyboardRemove)):
+        if isinstance(request.reply_markup, (ReplyKeyboardMarkup, ReplyKeyboardRemove)):
             current.keyboard.append((sent.message_id, current.result))
         elif not current.result:
             current.transient.append(sent.message_id)
