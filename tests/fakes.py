@@ -380,3 +380,37 @@ class TgChat:
             markup = m.reply_markup
             return [b.text for row in getattr(markup, "inline_keyboard", None) or [] for b in row]
         return []
+
+
+class FakeLlm:
+    """Языковая модель на записанных ответах: ответ ищется по тексту сообщения пользователя в запросе.
+
+    ``fail`` — код ошибки провайдера (``LLM-DOWN``, ``LLM-402``…), ``invalid`` — сколько раз ответить не JSON.
+    Запросы сохраняются — по ним проверяется, что в модель не ушли имя, Telegram-ID и профиль.
+    """
+
+    def __init__(self, replies: dict[str, Any] | None = None) -> None:
+        self.replies: dict[str, Any] = dict(replies or {})
+        self.requests: list[list[dict[str, str]]] = []
+        self.fail: str | None = None
+        self.invalid = 0
+        self.tokens = (3000, 2000, 400)  # вход, из них кэш, выход
+
+    async def complete(self, messages: Any) -> Any:
+        import json
+
+        from habit_bot.platform.ai.client import LlmError, LlmReply
+
+        self.requests.append(list(messages))
+        if self.fail:
+            raise LlmError(self.fail, "тест")
+        prompt_tokens, cached, completion = self.tokens
+        if self.invalid:
+            self.invalid -= 1
+            return LlmReply("это не JSON", prompt_tokens, completion, cached, "fake")
+        user = messages[-1]["content"]
+        message = user.split("Сообщение: ", 1)[-1].split("\n\nРаньше понял так", 1)[0]
+        reply = next((r for key, r in sorted(self.replies.items(), key=lambda kv: -len(kv[0]))
+                      if key in message), {"actions": [], "question": None})
+        text = reply if isinstance(reply, str) else json.dumps(reply, ensure_ascii=False)
+        return LlmReply(text, prompt_tokens, completion, cached, "fake")

@@ -274,6 +274,20 @@ class Warmup:
             )).scalars().all()
             return [await self._view(uow.session, r) for r in rows]
 
+    async def set_value(self, actor: Actor, session_public_id: str, name: str, value: int) -> int | None:
+        """Исправить значение упражнения в записанной зарядке («планка во 2-й зарядке 6:15, а не 6:00»).
+        Возвращает прежнее значение; ``None`` — такого упражнения в зарядке нет."""
+        async with self._uow() as uow:
+            found = await self._own_session(uow.session, actor, session_public_id)
+            if found is None:
+                return None
+            items = (await uow.session.execute(select(WarmupItem).where(WarmupItem.session_id == found.id)))
+            item = next((i for i in items.scalars().all() if i.name.casefold() == name.casefold()), None)
+            if item is None:
+                return None
+            old, item.value = item.value, max(0, int(value))
+            return old
+
     async def delete_session(self, actor: Actor, public_id: str) -> SessionView | None:
         async with self._uow() as uow:
             found = await self._own_session(uow.session, actor, public_id)

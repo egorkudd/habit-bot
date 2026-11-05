@@ -94,8 +94,9 @@ class App:
 
 def build_app(
     settings: Settings, *, telegram_session: BaseSession | None = None, clock: Clock | None = None,
-    geocoder: object | None = None,
+    geocoder: object | None = None, llm: object | None = None,
 ) -> App:
+    """``llm`` — клиент языковой модели вместо настоящего (тесты подставляют записанные ответы)."""
     engine = make_engine(settings.database_url)
     sessionmaker = make_sessionmaker(engine)
     events = EventBus()
@@ -112,7 +113,8 @@ def build_app(
 
     ctx = ModuleContext(
         settings=settings, clock=clock, uow=uow, events=events, idempotency=IdempotencyStore(),
-        channels=channels, services={"alerter": alerter, **({"geocoder": geocoder} if geocoder else {})},
+        channels=channels, services={"alerter": alerter, **({"geocoder": geocoder} if geocoder else {}),
+                  **({"llm.client": llm} if llm else {})},
     )
     ctx.add_job(JobSpec("dialogs.expire", EXPIRE_EVERY, telegram.expire_idle))
 

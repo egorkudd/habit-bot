@@ -83,12 +83,14 @@ class Persona(TgChat):
 class World:
     """Бот, часы и база одного сценария. ``restart()`` — перезапуск контейнера с той же базой."""
 
-    def __init__(self, settings: Any, session: FakeTelegramSession, clock: Any, geocoder: Any) -> None:
+    def __init__(self, settings: Any, session: FakeTelegramSession, clock: Any, geocoder: Any,
+                 llm: Any = None) -> None:
         self.settings = settings
         self.session = session
         self.clock = clock
         self.geocoder = geocoder
-        self.app: App = build_app(settings, telegram_session=session, clock=clock, geocoder=geocoder)
+        self.llm = llm  # модель на записанных ответах; None — ключа нет, разбор текстом выключен
+        self.app: App = build_app(settings, telegram_session=session, clock=clock, geocoder=geocoder, llm=llm)
         self.people: list[Persona] = []
 
     async def start(self) -> World:
@@ -100,7 +102,8 @@ class World:
 
     async def restart(self) -> None:
         await self.app.close()
-        self.app = build_app(self.settings, telegram_session=self.session, clock=self.clock, geocoder=self.geocoder)
+        self.app = build_app(self.settings, telegram_session=self.session, clock=self.clock, geocoder=self.geocoder,
+                             llm=self.llm)
         await self.app.startup()  # при старте сразу сбрасывается просроченный ввод
 
     def person(self, tg_id: int, first_name: str) -> Persona:

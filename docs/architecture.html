@@ -1398,8 +1398,8 @@ class FoodModule(Module):
 <td>Модули <code>workouts</code> (база <code>workouts_exercise</code> из <code>catalog.py</code> с полями раздела 3.4.1 и фильтром <code>offered</code>, тренировки <code>workouts_session</code> + <code>workouts_set</code>, тоннаж, «как в прошлый раз», автозавершение — фоновая задача <code>workouts.auto_finish</code> раз в минуту и проверка при открытии, сервис <code>workouts.week</code> — цель «тренировок в неделю» с бегом, строка в списке привычек через <code>habits.builtins</code>) и <code>runs</code> (<code>runs_entry</code>, домен темпа, сравнения и рекордов). Идущая тренировка — область <code>workout</code> (3 часа) через <code>context_for(state, WORKOUT)</code>; её текстовый ввод ловит фильтр <code>WorkoutText</code>, только когда нет обычного ввода</td>
 </tr>
 <tr>
-<td>9. ИИ</td>
-<td><code>platform/ai</code>: LlmRouter, BudgetGuard, AiActionRegistry, CommandService; модуль <code>ai_commands</code></td>
+<td>9. ИИ ✅</td>
+<td><code>platform/ai</code>: <code>OpenAiCompatibleClient</code> + <code>FallbackClient</code> (вместо LlmRouter; <code>build_client</code> даёт <code>None</code> без ключа — разбор выключен), <code>Budget</code> (вместо BudgetGuard: месячные траты по <code>ai_command.cost_usd</code>, 50 разборов в сутки), таблица <code>ai_command</code> (разбор, план, записи отмены, токены; 30 дней). Модуль <code>ai_commands</code>: закрытый набор действий pydantic <code>domain/actions.py</code> (вместо AiActionRegistry — список фиксирован в коде, модули не регистрируют свои), <code>prompt.py</code> (контекст без имени, ID и профиля: названия рецептов, привычек, зарядки, упражнений и записи за 3 дня), <code>Planner</code> (проверка: объект есть и свой, диапазоны, будущее, дубли), <code>Executor</code> (выполнение через сценарии модулей и отмена в обратном порядке), <code>TextCommands</code> (вместо CommandService). Свободный текст ловит отдельный роутер <code>ai_free_text</code>, подключённый <code>add_router(last=True)</code> — после всех модулей, перед ответом «Не понял»; без ключа он не срабатывает</td>
 </tr>
 <tr>
 <td>10. Итоги</td>

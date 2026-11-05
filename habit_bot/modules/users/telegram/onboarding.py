@@ -26,6 +26,7 @@ from aiogram.types import (
 from habit_bot.channels.telegram.dialogs.fsm import context_for, dialog_token
 from habit_bot.channels.telegram.dialogs.policy import ONBOARDING
 from habit_bot.channels.telegram.ui import trail
+from habit_bot.channels.telegram.ui.callbacks import MenuCb
 from habit_bot.channels.telegram.ui.routes import is_cancel_word
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_number
@@ -73,7 +74,6 @@ RESUME = "Продолжим анкету с того же места."
 ANSWER_ABOVE = "Анкету нельзя отменить, но можно прерваться — продолжим с того же шага. Ответьте на вопрос 👇"
 OLD_BUTTON = "Эта кнопка от прошлого шага"
 AFTER_TEXT = "Можно сразу внести свои рецепты, цели и последние результаты одним текстом:"
-AI_SOON = "✍️ Заполнение с помощью ИИ появится в части 9 плана."
 LATER_TEXT = "Хорошо. Главное меню внизу 👇"
 
 
@@ -270,7 +270,9 @@ class OnboardingFlow:
         trail.result()  # вопросы анкеты и ответы убираются, итог «Готово…» остаётся
         await self.screens.home(bot, chat_id, actor, f"Готово, {profile.name}! Норма с сегодняшнего дня:\n"
                                                      f"{targets_line(goal)}")
-        after = keyboard([[button(actor, 0, "✍️ Заполнить с помощью ИИ", "after", "ai"),
+        fill = InlineKeyboardButton(text="✍️ Заполнить с помощью ИИ",
+                                    callback_data=MenuCb(o=actor.user_id, t=0, k="fill").pack())  # модуль ai_commands
+        after = keyboard([[fill,
                            button(actor, 0, "Позже", "after", "later")]])
         await bot.send_message(chat_id, AFTER_TEXT, reply_markup=after)
 
@@ -455,9 +457,6 @@ def build_onboarding_router(flow: OnboardingFlow) -> Router:
     # --- после анкеты ---
     @router.callback_query(UCb.filter(F.a == "after"))
     async def after(query: CallbackQuery, callback_data: UCb, bot: Bot, actor: Actor) -> None:
-        if callback_data.value == "ai":
-            await flow.screens.close_buttons(query, toast=AI_SOON)
-            return
         await flow.screens.close_buttons(query)
         if query.message is not None:
             trail.discard(query.message.message_id)

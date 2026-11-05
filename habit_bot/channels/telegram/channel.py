@@ -166,6 +166,7 @@ class TelegramChannel:
         self.dispatcher.include_router(build_input_check_router(self.clock, tz, self.screens))
         self._finalized = False
         self._top_routers = 0
+        self._last_routers: list[Router] = []
         # Карточка дня в HTML: (actor, day) → текст. Её подключает модуль days, а показывают все разделы.
         self.day_card: Callable[[Any, date], Awaitable[str]] | None = None
 
@@ -175,9 +176,13 @@ class TelegramChannel:
     def add_outer_middleware(self, middleware: BaseMiddleware) -> None:
         self.dispatcher.update.outer_middleware(middleware)
 
-    def add_router(self, router: Router, *, first: bool = False, top: bool = False) -> None:
+    def add_router(self, router: Router, *, first: bool = False, top: bool = False, last: bool = False) -> None:
         """Порядок обработки: ``top`` — самым первым (анкета: перехватывает весь ввод, пока не пройдена);
-        ``first`` — сразу после них, раньше отмены, меню и чужого ввода («🍽 Еда», «Вернуться к сегодня»)."""
+        ``first`` — сразу после них, раньше отмены, меню и чужого ввода («🍽 Еда», «Вернуться к сегодня»);
+        ``last`` — после всех, перед ответом на необработанное (свободный текст для разбора ИИ)."""
+        if last:
+            self._last_routers.append(router)
+            return
         self.dispatcher.include_router(router)
         if top or first:
             self.dispatcher.sub_routers.remove(router)
@@ -189,6 +194,8 @@ class TelegramChannel:
         if self._finalized:
             return
         self.add_outer_middleware(ActivityMiddleware(self.storage, self.clock, self.tz))
+        for router in self._last_routers:
+            self.dispatcher.include_router(router)
         self.dispatcher.include_router(build_fallback_router(self.screens))
         self._finalized = True
 

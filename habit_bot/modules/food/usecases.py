@@ -10,7 +10,7 @@ import logging
 import uuid
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -67,6 +67,7 @@ class EntryView:
     price: Decimal | None
     source: str
     item_public_id: str | None = None
+    logged_at: datetime | None = None
 
 
 def _dec(value: float | None) -> Decimal | None:
@@ -92,7 +93,7 @@ def entry_view(entry: FoodEntry, item_public_id: str | None = None) -> EntryView
     return EntryView(
         entry.public_id.hex, entry.day, entry.name, Decimal(str(entry.quantity)), Unit(entry.unit),
         entry.portion_label, Nutrients.of(entry.kcal, entry.protein, entry.fat, entry.carbs), _dec(entry.price),
-        entry.source, item_public_id,
+        entry.source, item_public_id, entry.logged_at,
     )
 
 
@@ -349,6 +350,28 @@ class Food:
         if current is None:
             raise AppError("UI-STALE")
         return await self.set_quantity(actor, public_id, current.quantity * factor)
+
+    async def restore_entry(self, actor: Actor, public_id: str) -> bool:
+        """Вернуть удалённую запись («↩️ Отменить всё» после команды текстом, раздел 3.10)."""
+        public = _uuid(public_id)
+        if public is None:
+            return False
+        async with self._uow() as uow:
+            entry = (await uow.session.execute(select(FoodEntry).where(
+                FoodEntry.public_id == public, FoodEntry.user_id == actor.user_id))).scalar_one_or_none()
+            if entry is None:
+                return False
+            entry.deleted_at = None
+            return True
+
+    async def delete_item(self, actor: Actor, public_id: str) -> bool:
+        """Удалить свой рецепт совсем (отмена его создания командой текстом); записи остаются без ссылки."""
+        async with self._uow() as uow:
+            item = await self._own_item(uow.session, actor, public_id)
+            if item is None:
+                return False
+            await uow.session.delete(item)
+            return True
 
     async def delete_entry(self, actor: Actor, public_id: str) -> EntryView | None:
         """Удалённая запись не видна в боте и в итогах; через 30 дней стирается совсем."""
