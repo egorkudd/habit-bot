@@ -81,3 +81,35 @@ async def _wait_async(rows: object, seconds: float) -> bool:
             return True
         await asyncio.sleep(1)
     return False
+
+
+async def test_s91_workout_auto_finish_really_runs(world: World, owner: Persona) -> None:
+    """S-91. Раздел 9: тренировку с подходами бросили; через 3 часа без действий настоящая фоновая задача в течение
+    минуты завершает её с записанными подходами, без сообщений пользователю."""
+    from habit_bot.modules.workouts.models import WorkoutSession
+
+    await owner.tap("🏋️ Тренировка")
+    await owner.tap("🧩 Свободная")
+    await owner.tap("➕ Упражнение")
+    await owner.tap("📚 Все по группам")
+    await owner.tap(next(b for b in owner.labels() if b.startswith("Стоя")))
+    await owner.tap("Приседания")
+    await owner.say("3×20")
+    sent = len(owner.texts())
+    world.clock.advance(hours=3, minutes=1)
+
+    async def still_open() -> list[WorkoutSession]:
+        async with world.app.ctx.uow() as uow:
+            return list((await uow.session.execute(select(WorkoutSession).where(
+                WorkoutSession.status == "open"))).scalars().all())
+
+    assert await still_open()
+    tasks = world.app.start_background()
+    try:
+        assert await _wait_async(still_open, REAL_WAIT_SECONDS), "автозавершение за минуту не сработало"
+    finally:
+        await world.app.stop_background(tasks)
+    assert len(owner.texts()) == sent
+    async with world.app.ctx.uow() as uow:
+        (session,) = (await uow.session.execute(select(WorkoutSession))).scalars().all()
+    assert (session.status, session.auto_finished) == ("done", True)

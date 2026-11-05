@@ -70,6 +70,7 @@ class HabitsModule(Module):
                 return [MenuEntry(home_key(h), h.label, 500 + h.position, ready=True) for h in found]
 
             channel.screens.extras = extras
+            ctx.services["habits.builtins"] = builtins  # тренировки добавят свою строку (часть 8)
             nav, router = build_habits_router(habits, days, channel.screens, lambda: channel.day_card,
                                               lambda: builtins)
             channel.add_router(nav, first=True)

@@ -21,6 +21,9 @@ ignore = [
     "UP046",   # Generic[T] читается привычнее для SQLAlchemy
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"habit_bot/modules/workouts/catalog.py" = ["E501"]  # база упражнений — таблица, строка на упражнение
+
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true

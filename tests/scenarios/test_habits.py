@@ -150,7 +150,8 @@ async def test_s67_list_sorted_and_updated_in_place(world: World, owner: Persona
     sauna = await habits.create(actor, name="Сауна", emoji="🧖", measure=Measure.CHECK, weekdays=[5])
     await owner.tap("✅ Привычки")
     labels = [b for row in _rows(owner) for b in row]
-    assert labels[:4] == ["🍽 Еда 0/2 800", "🤸 Зарядка 0/2", "👁 Глаза 0/3", "💊 Витамины 0/1"]
+    assert labels[:5] == ["🍽 Еда 0/2 800", "🤸 Зарядка 0/2", "🏋️ Тренировки за неделю 0/3", "👁 Глаза 0/3",
+                          "💊 Витамины 0/1"]
     assert "💤 Не сегодня: Сауна" in labels and "🧖 Сауна 0" not in labels
     sent = len(owner.texts())
     await owner.tap("💊 Витамины 0/1")

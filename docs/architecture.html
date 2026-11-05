@@ -1394,8 +1394,8 @@ class FoodModule(Module):
 <td><code>channels/telegram/ui/layout.py</code> (кнопки по ширине), <code>ui/trail.py</code> (чистый чат, область <code>trail</code>), «🏠 Домой» в <code>MenuRegistry.home_keyboard</code>, скрытые разделы в «Ещё» (<code>MenuRegistry.hidden</code>)</td>
 </tr>
 <tr>
-<td>7–8</td>
-<td>Модули <code>custom_habits</code>, <code>workouts</code> и <code>runs</code>. Каждый пишет сценарии с DTO, <code>HabitKind</code>, <code>StatsProvider</code>, экспорт и папку <code>telegram/</code>, а также сразу готовит <code>ai_actions.py</code></td>
+<td>8. Тренировки и бег ✅</td>
+<td>Модули <code>workouts</code> (база <code>workouts_exercise</code> из <code>catalog.py</code> с полями раздела 3.4.1 и фильтром <code>offered</code>, тренировки <code>workouts_session</code> + <code>workouts_set</code>, тоннаж, «как в прошлый раз», автозавершение — фоновая задача <code>workouts.auto_finish</code> раз в минуту и проверка при открытии, сервис <code>workouts.week</code> — цель «тренировок в неделю» с бегом, строка в списке привычек через <code>habits.builtins</code>) и <code>runs</code> (<code>runs_entry</code>, домен темпа, сравнения и рекордов). Идущая тренировка — область <code>workout</code> (3 часа) через <code>context_for(state, WORKOUT)</code>; её текстовый ввод ловит фильтр <code>WorkoutText</code>, только когда нет обычного ввода</td>
 </tr>
 <tr>
 <td>9. ИИ</td>
