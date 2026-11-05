@@ -63,6 +63,11 @@ class Days:
     def now(self) -> datetime:
         return self._clock.now()
 
+    @property
+    def tz(self) -> tzinfo:
+        """Часовой пояс дат и времени на экранах (раздел 4.3: в MVP — Москва)."""
+        return self._tz
+
     def today(self) -> date:
         return logical_day(self._clock.now(), self._tz)
 

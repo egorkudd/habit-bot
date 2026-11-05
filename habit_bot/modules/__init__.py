@@ -6,4 +6,6 @@ KNOWN_MODULES: dict[str, str] = {
     "food": "habit_bot.modules.food.module:FoodModule",
     "warmup": "habit_bot.modules.warmup.module:WarmupModule",
     "habits": "habit_bot.modules.habits.module:HabitsModule",
+    "runs": "habit_bot.modules.runs.module:RunsModule",
+    "workouts": "habit_bot.modules.workouts.module:WorkoutsModule",
 }
