@@ -125,12 +125,37 @@ class Food:
                     changed += 1
         return changed
 
-    async def catalog(self) -> list[ItemView]:
+    async def catalog(self, *, include_hidden: bool = False) -> list[ItemView]:
+        """Общий каталог; скрытые администратором продукты пользователям не показываются."""
+        query = select(FoodItem).where(FoodItem.user_id.is_(None))
+        if not include_hidden:
+            query = query.where(FoodItem.active.is_(True))
         async with self._uow() as uow:
-            rows = (await uow.session.execute(
-                select(FoodItem).where(FoodItem.user_id.is_(None)).order_by(FoodItem.name)
-            )).scalars().all()
+            rows = (await uow.session.execute(query.order_by(FoodItem.name))).scalars().all()
             return [item_view(i) for i in rows]
+
+    async def add_catalog_item(self, name: str, nutrients: Nutrients) -> ItemView:
+        """Админ добавляет продукт в общий каталог (раздел 3.13): значения на 1 порцию."""
+        async with self._uow() as uow:
+            item = FoodItem(user_id=None, catalog_key=None, name=name, kind=PRODUCT, composition="",
+                            unit=Unit.PORTION.value, portion_label=None, kcal=float(nutrients.kcal),
+                            protein=float(nutrients.protein), fat=float(nutrients.fat), carbs=float(nutrients.carbs),
+                            price=None, active=True)
+            uow.session.add(item)
+            await uow.session.flush()
+            return item_view(item)
+
+    async def set_catalog_active(self, public_id: str, active: bool) -> ItemView | None:
+        """Скрыть или вернуть продукт каталога. Копии у пользователей не меняются."""
+        public = _uuid(public_id)
+        async with self._uow() as uow:
+            item = (await uow.session.execute(
+                select(FoodItem).where(FoodItem.public_id == public, FoodItem.user_id.is_(None))
+            )).scalar_one_or_none() if public else None
+            if item is None:
+                return None
+            item.active = active
+            return item_view(item)
 
     async def add_from_catalog(self, actor: Actor, catalog_public_id: str) -> tuple[ItemView, bool]:
         """«Добавить к себе»: копия продукта в личный список. Возвращает (продукт, добавлен ли сейчас)."""

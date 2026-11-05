@@ -14,11 +14,37 @@ from habit_bot.modules.warmup.models import WarmupGoal, WarmupItem, WarmupSessio
 from habit_bot.modules.workouts.models import Exercise, WorkoutSession, WorkoutSet, WorkoutSettings
 from habit_bot.platform.ai.models import AiCommand
 from habit_bot.platform.alerts.models import AdminAlert
+from habit_bot.platform.backup.models import BackupLog
 from habit_bot.platform.sources.models import SourceCache
 
 __all__ = [
-    "AdminAlert", "AiCommand", "Base", "BodyWeight", "DayStatus", "DialogState", "Exercise", "FoodEntry", "FoodItem",
-    "Goal", "Habit", "HabitEntry", "IdempotencyKey", "Identity", "Invite", "Profile", "RunEntry", "SourceCache",
-    "StatsSettings", "User", "WarmupGoal", "WarmupItem", "WarmupSession", "WarmupSettings", "WarmupTemplate",
-    "WorkoutSession", "WorkoutSet", "WorkoutSettings",
+    "AdminAlert",
+    "AiCommand",
+    "BackupLog",
+    "Base",
+    "BodyWeight",
+    "DayStatus",
+    "DialogState",
+    "Exercise",
+    "FoodEntry",
+    "FoodItem",
+    "Goal",
+    "Habit",
+    "HabitEntry",
+    "IdempotencyKey",
+    "Identity",
+    "Invite",
+    "Profile",
+    "RunEntry",
+    "SourceCache",
+    "StatsSettings",
+    "User",
+    "WarmupGoal",
+    "WarmupItem",
+    "WarmupSession",
+    "WarmupSettings",
+    "WarmupTemplate",
+    "WorkoutSession",
+    "WorkoutSet",
+    "WorkoutSettings",
 ]

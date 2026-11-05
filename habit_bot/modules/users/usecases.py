@@ -442,16 +442,27 @@ class Profiles:
                 others = {str(i) for i in self._admins} - own
                 if not others:
                     raise AppError("ACCESS-LAST-ADMIN")
-            for table in reversed(Base.metadata.sorted_tables):
-                if table.name != User.__tablename__ and "user_id" in table.c:
-                    await session.execute(delete(table).where(table.c.user_id == actor.user_id))
-            await session.execute(update(Invite).where(Invite.created_by == actor.user_id).values(created_by=None))
-            await session.execute(
-                update(User).where(User.id == actor.user_id).values(
-                    name="", status=UserStatus.DELETED, role=Role.USER, invite_id=None,
-                )
-            )
+            await self._erase(session, actor.user_id)
         log.info("Аккаунт удалён", extra={"user": actor.user_id})
+
+    async def erase_user(self, user_id: int) -> None:
+        """Удаление пользователя администратором (раздел 3.13): то же, что «Удалить аккаунт»."""
+        async with self._uow() as uow:
+            await self._erase(uow.session, user_id)
+        log.info("Пользователь удалён администратором", extra={"user": user_id})
+
+    @staticmethod
+    async def _erase(session: AsyncSession, user_id: int) -> None:
+        """Стирает все строки пользователя, включая Identity; в User остаётся обезличенная отметка."""
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name != User.__tablename__ and "user_id" in table.c:
+                await session.execute(delete(table).where(table.c.user_id == user_id))
+        await session.execute(update(Invite).where(Invite.created_by == user_id).values(created_by=None))
+        await session.execute(
+            update(User).where(User.id == user_id).values(
+                name="", status=UserStatus.DELETED, role=Role.USER, invite_id=None,
+            )
+        )
 
     async def count_user_rows(self, user_id: int) -> int:
         """Сколько строк пользователя осталось во всех таблицах (для проверки удаления)."""

@@ -491,6 +491,12 @@ class Workouts:
                 WorkoutSession.deleted_at.is_(None)).order_by(WorkoutSession.id))).scalars().all()
             return [await self._view(uow.session, r) for r in rows]
 
+    async def catalog_count(self) -> int:
+        """Упражнений в общей базе — для «🛠 Админ» → «📚 Каталог»."""
+        async with self._uow() as uow:
+            return int((await uow.session.execute(
+                select(func.count(Exercise.id)).where(Exercise.user_id.is_(None)))).scalar_one())
+
     async def sessions_between(self, actor: Actor, start: date, end: date) -> list[SessionView]:
         """Завершённые тренировки за период — для итогов (рекорды, сравнение) и экспорта."""
         async with self._uow() as uow:

@@ -7,6 +7,8 @@ from aiogram.types import CallbackQuery
 
 from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import MenuCb
+from habit_bot.channels.telegram.ui.layout import fit_rows
+from habit_bot.channels.telegram.ui.menu import Place
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_day
 from habit_bot.kernel.identity import Actor
@@ -16,7 +18,6 @@ from habit_bot.modules.users.telegram.fields import UCb, button, keyboard
 from habit_bot.modules.users.usecases import Invites
 
 ADMIN_TITLE = "🛠 Админ"
-USERS_SOON = "👥 Пользователи — скоро: в части 10 плана."
 NO_INVITES = "Действующих приглашений нет."
 
 
@@ -46,13 +47,9 @@ def build_admin_router(invites: Invites, screens: Screens) -> Router:
     @router.callback_query(MenuCb.filter(F.k == "admin"))
     async def open_admin(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
         await screens.close_buttons(query)
-        markup = keyboard([[button(actor, 0, "🎟 Приглашения", "inv_list"),
-                            button(actor, 0, "👥 Пользователи", "users")]])
-        await bot.send_message(query.from_user.id, ADMIN_TITLE, reply_markup=markup)
-
-    @router.callback_query(UCb.filter(F.a == "users"))
-    async def users_soon(query: CallbackQuery) -> None:
-        await screens.close_buttons(query, toast=USERS_SOON)
+        await invites.active(actor)  # проверка роли до показа кнопок
+        buttons = [button(actor, 0, "🎟 Приглашения", "inv_list"), *screens.menu.settings_buttons(actor, Place.ADMIN)]
+        await bot.send_message(query.from_user.id, ADMIN_TITLE, reply_markup=keyboard(fit_rows(buttons, 2)))
 
     @router.callback_query(UCb.filter(F.a == "inv_list"))
     async def list_invites(query: CallbackQuery, bot: Bot, actor: Actor) -> None:

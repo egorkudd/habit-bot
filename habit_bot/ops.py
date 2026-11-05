@@ -53,7 +53,7 @@ def make_backup(db_path: Path, target: Path) -> str:
     if not db_path.exists():
         return "базы ещё нет — бэкап не нужен"
     target.parent.mkdir(parents=True, exist_ok=True)
-    tmp = target.with_name(target.name + ".tmp")
+    tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")  # выкладка и бот могут делать копию одновременно
     tmp.unlink(missing_ok=True)
     try:
         src = sqlite3.connect(db_path)
@@ -105,6 +105,9 @@ def main(argv: list[str] | None = None, env: Mapping[str, str] | None = None) ->
     sub.add_parser("current-revision", help="ревизия схемы в базе")
     sub.add_parser("backup", help="сделать бэкап базы (хранится одна последняя копия)")
     sub.add_parser("restore", help="восстановить базу из последнего бэкапа")
+    decrypt_p = sub.add_parser("decrypt", help="расшифровать файл бэкапа из Telegram паролем BACKUP_PASSWORD")
+    decrypt_p.add_argument("source", help="файл habit-bot-….db.enc")
+    decrypt_p.add_argument("target", help="куда записать базу, например bot.db")
     render_p = sub.add_parser("render", help="текст оповещения из каталога ошибок")
     render_p.add_argument("code")
     render_p.add_argument("params", nargs="*", help="ключ=значение")
@@ -142,6 +145,21 @@ def main(argv: list[str] | None = None, env: Mapping[str, str] | None = None) ->
             data_dir_from_env(env).mkdir(parents=True, exist_ok=True)
             migrate(sync_url_from_env(env), args.to)
             print(f"Схема на ревизии {current_revision(db_path_from_env(env))}")
+        return 0
+
+    if args.command == "decrypt":
+        from habit_bot.platform.backup.crypto import WrongPassword, decrypt
+
+        password = env.get("BACKUP_PASSWORD", "")
+        if not password:
+            print("Задайте пароль: BACKUP_PASSWORD=… python -m habit_bot.ops decrypt …", file=sys.stderr)
+            return 2
+        try:
+            Path(args.target).write_bytes(decrypt(Path(args.source).read_bytes(), password))
+        except (OSError, WrongPassword) as err:
+            print(f"Не удалось расшифровать: {err}", file=sys.stderr)
+            return 1
+        print(f"База записана в {args.target}; проверка: {integrity_status(Path(args.target))}")
         return 0
 
     data_dir = data_dir_from_env(env)

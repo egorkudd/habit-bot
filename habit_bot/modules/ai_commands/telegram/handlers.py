@@ -57,11 +57,11 @@ def card_text(view: CommandView, page: int = 0) -> str:
     """«Понял так: 1. ➕ 24.10 Еда: …»; в заполнении — группы и страница по 10 пунктов."""
     lines = ["Понял так:"]
     ops = list(view.ops)
-    if view.mode == FILL and len(ops) > PAGE:
+    if view.mode == FILL:  # раздел 3.12: карточка сгруппирована по видам — «Рецепты: 4 · Цели: 2»
         groups = Counter(GROUPS.get(op["group"], op["group"]) for op in ops)
         lines.append(" · ".join(f"{g}: {n}" for g, n in groups.items()))
-        pages = (len(ops) + PAGE - 1) // PAGE
-        lines.append(f"Страница {page + 1} из {pages}")
+        if len(ops) > PAGE:
+            lines.append(f"Страница {page + 1} из {(len(ops) + PAGE - 1) // PAGE}")
     start = page * PAGE if view.mode == FILL else 0
     shown = ops[start: start + PAGE] if view.mode == FILL else ops
     lines += [f"{i}. {op['line']}" for i, op in enumerate(shown, start + 1)]
@@ -89,8 +89,8 @@ def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable
         drops = [btn(actor, f"{'Пропустить' if op.get('duplicate') else 'Убрать'} {i}", "drop", f"{cid}_{i}")
                  for i, op in enumerate(visible, start + 1)] if len(ops) > 1 else []
         rows += fit_rows(drops, 4)
-        if view.mode == FILL and len(ops) > PAGE:
-            groups = list(dict.fromkeys(op["group"] for op in ops))
+        groups = list(dict.fromkeys(op["group"] for op in ops))
+        if view.mode == FILL and (len(ops) > PAGE or len(groups) > 1):
             rows += fit_rows([btn(actor, f"Убрать «{GROUPS.get(g, g)}»", "dropg", f"{cid}_{g}") for g in groups])
             pages = (len(ops) + PAGE - 1) // PAGE
             nav = []
