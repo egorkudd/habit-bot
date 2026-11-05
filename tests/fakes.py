@@ -14,13 +14,17 @@ from aiogram.methods import (
     AnswerCallbackQuery,
     DeleteMessage,
     DeleteMessages,
+    EditMessageMedia,
     EditMessageReplyMarkup,
     EditMessageText,
     GetMe,
+    SendDocument,
+    SendMediaGroup,
     SendMessage,
+    SendPhoto,
     TelegramMethod,
 )
-from aiogram.types import Chat, Message, User
+from aiogram.types import BufferedInputFile, Chat, Document, Message, PhotoSize, User
 
 from habit_bot.channels.telegram.ui.layout import row_problem
 
@@ -31,6 +35,9 @@ MAX_TEXT = 4096
 MAX_CALLBACK_DATA = 64
 MAX_BUTTON_TEXT = 64  # практический предел: длиннее Telegram обрезает или отклоняет
 MAX_TOAST = 200
+MAX_CAPTION = 1024
+MAX_PHOTO_BYTES = 10 * 1024 * 1024
+MAX_DOCUMENT_BYTES = 50 * 1024 * 1024
 HTML_TAGS = {"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre", "tg-spoiler",
              "blockquote", "span"}
 
@@ -60,8 +67,74 @@ def html_problem(text: str) -> str | None:
     return checker.errors[0] if checker.errors else None
 
 
+def photo_problem(file: Any) -> str | None:
+    """Фото: настоящая картинка, до 10 МБ, ширина + высота ≤ 10 000, стороны не больше 1:20."""
+    import io
+
+    from PIL import Image
+
+    if not isinstance(file, BufferedInputFile):
+        return "PHOTO_INVALID"
+    if len(file.data) > MAX_PHOTO_BYTES:
+        return "PHOTO_TOO_BIG"
+    try:
+        width, height = Image.open(io.BytesIO(file.data)).size
+    except Exception:
+        return "IMAGE_PROCESS_FAILED"
+    if width + height > 10_000 or max(width, height) > 20 * min(width, height):
+        return "PHOTO_INVALID_DIMENSIONS"
+    return None
+
+
+def document_problem(file: Any) -> str | None:
+    if not isinstance(file, BufferedInputFile) or not file.filename:
+        return "DOCUMENT_INVALID"
+    if not file.data:
+        return "file must be non-empty"
+    if len(file.data) > MAX_DOCUMENT_BYTES:
+        return "FILE_TOO_BIG"
+    return None
+
+
+def caption_problem(caption: Any, parse_mode: Any) -> str | None:
+    if caption is None:
+        return None
+    if len(str(caption)) > MAX_CAPTION:
+        return "MEDIA_CAPTION_TOO_LONG"
+    if parse_mode == "HTML":
+        return html_problem(str(caption))
+    return None
+
+
+def media_problem(method: TelegramMethod[Any]) -> str | None:
+    if isinstance(method, SendPhoto):
+        return photo_problem(method.photo) or caption_problem(method.caption, method.parse_mode)
+    if isinstance(method, SendDocument):
+        return document_problem(method.document) or caption_problem(method.caption, method.parse_mode)
+    if isinstance(method, EditMessageMedia):
+        media = method.media
+        if getattr(media, "type", None) == "photo":
+            return photo_problem(media.media) or caption_problem(media.caption, media.parse_mode)
+        return document_problem(media.media) or caption_problem(media.caption, media.parse_mode)
+    if isinstance(method, SendMediaGroup):
+        if not 2 <= len(method.media) <= 10:
+            return "Bad Request: media group must include 2-10 items"
+        kinds = {m.type for m in method.media}
+        if "document" in kinds and kinds != {"document"}:
+            return "Bad Request: documents can't be mixed with other media types"
+        for m in method.media:
+            problem = (document_problem(m.media) if m.type == "document" else photo_problem(m.media)) \
+                or caption_problem(m.caption, m.parse_mode)
+            if problem:
+                return problem
+    return None
+
+
 def telegram_limits_problem(method: TelegramMethod[Any]) -> str | None:
     """Ограничения Bot API, которые настоящий Telegram проверяет и отклоняет запрос с 400."""
+    media = media_problem(method)
+    if media:
+        return media
     text = getattr(method, "text", None)
     if isinstance(method, (SendMessage, EditMessageText)):
         if not text or not str(text).strip():
@@ -105,6 +178,12 @@ class FakeTelegramSession(BaseSession):
         self.message_ids: dict[int, int] = {}       # id(SendMessage) → message_id, который вернул «Telegram»
         self.deleted: set[tuple[int, int]] = set()  # (chat_id, message_id) удалённых сообщений
 
+    @property
+    def photo_messages(self) -> set[int]:
+        """Сообщения с картинкой: только их можно менять через editMessageMedia."""
+        return {self.message_ids[id(m)] for m in self.requests
+                if isinstance(m, SendPhoto) and id(m) in self.message_ids}
+
     async def close(self) -> None:
         return None
 
@@ -128,6 +207,39 @@ class FakeTelegramSession(BaseSession):
                 chat=Chat(id=chat_id, type="private"),
                 text=method.text,
             )
+        if isinstance(method, (SendPhoto, SendDocument)):
+            chat_id = int(method.chat_id)
+            if chat_id in self.blocked_chats:
+                raise TelegramForbiddenError(method=method, message="Forbidden: bot was blocked by the user")
+            self._message_id += 1
+            self.message_ids[id(method)] = self._message_id
+            extra: dict[str, Any] = {}
+            if isinstance(method, SendPhoto):
+                extra["photo"] = [PhotoSize(file_id=f"p{self._message_id}", file_unique_id=f"u{self._message_id}",
+                                            width=1, height=1)]
+            else:
+                extra["document"] = Document(file_id=f"d{self._message_id}", file_unique_id=f"u{self._message_id}",
+                                             file_name=method.document.filename)
+            return Message(message_id=self._message_id, date=datetime.now(UTC), chat=Chat(id=chat_id, type="private"),
+                           caption=method.caption, **extra)
+        if isinstance(method, SendMediaGroup):
+            chat_id = int(method.chat_id)
+            messages = []
+            for m in method.media:
+                self._message_id += 1
+                messages.append(Message(
+                    message_id=self._message_id, date=datetime.now(UTC), chat=Chat(id=chat_id, type="private"),
+                    caption=m.caption, document=Document(file_id=f"d{self._message_id}",
+                                                         file_unique_id=f"u{self._message_id}",
+                                                         file_name=m.media.filename)))
+            self.message_ids[id(method)] = messages[0].message_id
+            return messages
+        if isinstance(method, EditMessageMedia):
+            if method.chat_id is not None and (int(method.chat_id), method.message_id) in self.deleted:
+                raise TelegramBadRequest(method=method, message="Bad Request: message to edit not found")
+            if method.message_id not in self.photo_messages:
+                raise TelegramBadRequest(method=method, message="Bad Request: there is no media in the message to edit")
+            return True
         if isinstance(method, (EditMessageText, EditMessageReplyMarkup)):
             if method.chat_id is not None and int(method.chat_id) in self.blocked_chats:
                 raise TelegramForbiddenError(method=method, message="Forbidden: bot was blocked by the user")
@@ -179,6 +291,26 @@ class FakeTelegramSession(BaseSession):
 
     def markup_removals(self) -> list[EditMessageReplyMarkup]:
         return [m for m in self.requests if isinstance(m, EditMessageReplyMarkup)]
+
+    def photos(self, chat_id: int) -> list[bytes]:
+        """Картинки, которые бот прислал или поставил вместо старых, — по порядку."""
+        found = []
+        for m in self.requests:
+            if isinstance(m, SendPhoto) and int(m.chat_id) == chat_id:
+                found.append(m.photo.data)
+            elif isinstance(m, EditMessageMedia) and m.chat_id is not None and int(m.chat_id) == chat_id:
+                found.append(m.media.media.data)
+        return found
+
+    def documents(self, chat_id: int) -> list[tuple[str, bytes]]:
+        """Файлы (имя, содержимое), присланные в чат: по одному и группой."""
+        found: list[tuple[str, bytes]] = []
+        for m in self.requests:
+            if isinstance(m, SendDocument) and int(m.chat_id) == chat_id:
+                found.append((m.document.filename or "", m.document.data))
+            elif isinstance(m, SendMediaGroup) and int(m.chat_id) == chat_id:
+                found += [(x.media.filename or "", x.media.data) for x in m.media]
+        return found
 
 
 def message_update(update_id: int, user_id: int, text: str, first_name: str = "Егор") -> dict[str, Any]:
@@ -287,14 +419,14 @@ class TgChat:
         return [i for i in self.typed if not self.session.is_deleted(self.tg_id, i)]
 
     def message_id_of(self, m: Any) -> int | None:
-        if isinstance(m, SendMessage):
+        if isinstance(m, (SendMessage, SendPhoto, SendDocument)):
             return self.session.message_ids.get(id(m))
         return getattr(m, "message_id", None)
 
     def _mine(self) -> list[Any]:
         """Отправленные и изменённые сообщения этого чата, которые ещё не удалены, — в порядке запросов."""
         return [m for m in self.session.requests
-                if isinstance(m, (SendMessage, EditMessageText, EditMessageReplyMarkup))
+                if isinstance(m, (SendMessage, EditMessageText, EditMessageReplyMarkup, SendPhoto, EditMessageMedia))
                 and getattr(m, "chat_id", None) is not None and int(m.chat_id) == self.tg_id
                 and not self.session.is_deleted(self.tg_id, self.message_id_of(m) or 0)]
 
@@ -303,6 +435,10 @@ class TgChat:
         for m in reversed(self._mine()):
             if isinstance(m, (SendMessage, EditMessageText)):
                 return str(m.text)
+            if isinstance(m, SendPhoto):
+                return str(m.caption or "")
+            if isinstance(m, EditMessageMedia):
+                return str(m.media.caption or "")
         return ""
 
     def on_screen(self) -> list[str]:
@@ -311,11 +447,20 @@ class TgChat:
         for m in self._mine():
             if isinstance(m, (SendMessage, EditMessageText)):
                 texts[self.message_id_of(m) or 0] = str(m.text)
+            elif isinstance(m, SendPhoto):
+                texts[self.message_id_of(m) or 0] = str(m.caption or "")
+            elif isinstance(m, EditMessageMedia):
+                texts[self.message_id_of(m) or 0] = str(m.media.caption or "")
         return list(texts.values())
 
     async def press_data(self, data: str, message_id: int = 500) -> None:
         update = callback_update(self._next_id(), self.tg_id, data, message_id)
         update["callback_query"]["from"]["first_name"] = self.first_name
+        if message_id in self.session.photo_messages:  # нажатие под картинкой: в сообщении фото, а не текст
+            message = update["callback_query"]["message"]
+            del message["text"]
+            message["photo"] = [{"file_id": "p", "file_unique_id": "u", "width": 1, "height": 1}]
+            message["caption"] = "…"
         await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
 
     def find_button_at(self, label: str) -> tuple[str, int]:
@@ -324,9 +469,9 @@ class TgChat:
         current: dict[int, Any] = {}
         order: list[int] = []
         for m in self._mine():
-            if isinstance(m, EditMessageText) and m.reply_markup is None:
+            if isinstance(m, (EditMessageText, EditMessageMedia)) and m.reply_markup is None:
                 current[self.message_id_of(m) or 0] = None
-            elif isinstance(m, (SendMessage, EditMessageReplyMarkup, EditMessageText)):
+            elif isinstance(m, (SendMessage, EditMessageReplyMarkup, EditMessageText, SendPhoto, EditMessageMedia)):
                 current[self.message_id_of(m) or 0] = m.reply_markup
             key = self.message_id_of(m) or 0
             if key in order:

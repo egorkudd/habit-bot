@@ -1,0 +1,230 @@
+"""Поведенческие сценарии: «📊 Итоги» — картинка дня по выбранной привычке и обзор-светофор (раздел 3.8, часть 10).
+
+Модель подключена (FakeLlm), но при построении статистики к ней не уходит ни одного запроса."""
+
+import io
+from collections.abc import AsyncIterator
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from typing import Any
+
+import pytest
+from PIL import Image
+
+from habit_bot.modules.food.domain.nutrition import Nutrients
+from habit_bot.modules.food.domain.other_line import OtherLine
+from habit_bot.modules.stats.domain.periods import Kind
+from habit_bot.modules.workouts.domain.training import Kind as WorkoutKind
+from habit_bot.modules.workouts.domain.training import SetValue
+from habit_bot.platform.stats.domain.traffic import Color
+from tests.conftest import ADMIN_ID, OTHER_ID
+from tests.fakes import FakeLlm
+from tests.scenarios.conftest import finish_guest_onboarding, invite_guest, pass_onboarding
+from tests.scenarios.harness import Persona, World
+
+STALE = "Это меню устарело. Вот главное меню 👇"
+OCT22 = date(2026, 10, 22)
+# Еда 22.10 из критериев приёмки: 2 947 ккал / Б 189 / Ж 112 / У 289, расход 760 ₽, 3 блюда без цены.
+MEALS_22 = [
+    ("Коктейль", (322, 26, 9, 39), 140), ("Творог ужин", (421, "52.4", "15.6", "17.8"), 250),
+    ("Куриное бедро", (500, 46, 34, 0), 370), ("Плов", (600, 20, 20, 80), None),
+    ("Паста", (700, 30, 20, 100), None), ("Каша", ("404.24", "14.6", "13.4", "52.2"), None),
+]
+
+
+@pytest.fixture
+async def stats_world(settings: Any, fake_session: Any, clock: Any, geocoder: Any) -> AsyncIterator[World]:
+    clock.current = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)  # регистрация до примера 22.10
+    w = await World(settings, fake_session, clock, geocoder, llm=FakeLlm()).start()
+    yield w
+    await w.stop()
+
+
+@pytest.fixture
+async def me(stats_world: World) -> Persona:
+    user = stats_world.person(ADMIN_ID, "Егор")
+    await pass_onboarding(user)
+    return user
+
+
+async def actor_of(world: World) -> Any:
+    return await world.service("users.sign_in").execute(ADMIN_ID, "")
+
+
+async def eat_22(world: World) -> None:
+    actor = await actor_of(world)
+    for name, values, price in MEALS_22:
+        await world.service("food").log_other(actor, OtherLine(name, Nutrients.of(*values),
+                                                               Decimal(price) if price else None), day=OCT22)
+
+
+def png_size(data: bytes) -> tuple[int, int]:
+    return Image.open(io.BytesIO(data)).size
+
+
+def has_color(data: bytes, rgb: tuple[int, int, int]) -> bool:
+    image = Image.open(io.BytesIO(data)).convert("RGB")
+    return any(c == rgb for _, c in image.getcolors(maxcolors=1 << 20) or [])
+
+
+async def test_s104_food_day_picture_and_text(stats_world: World, me: Persona) -> None:
+    """S-104. Раздел 9: «Итоги» → «Еда» — картинка с 4 полосами и таблицей блюд; за 22.10 жиры 112 / 80 красные
+    (140%), углеводы 289 / 360 жёлтые (80%), расход 760 ₽, 3 блюда без цены; «Текстом» — та же таблица
+    моноширинным блоком; ни одного запроса к ИИ."""
+    await eat_22(stats_world)
+    stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
+    assert await me.tap("📊 Итоги") == "📊 Еда · 22.10 (чт)"
+    assert me.labels()[:2] == ["▸ 🍽 Еда •", "🤸 Зарядка"]
+    assert "◀ 21.10" in me.labels() and "23.10 ▶" not in me.labels()  # будущее не листается
+    picture = me.session.photos(ADMIN_ID)[-1]
+    assert png_size(picture)[0] == 760
+    assert has_color(picture, (214, 69, 69)) and has_color(picture, (232, 170, 20))  # красный и жёлтый
+    data = await stats_world.service("stats").day(await actor_of(stats_world), "food", OCT22)
+    assert [(b.label, b.color) for b in data.bars] == [
+        ("Ккал", Color.GREEN), ("Белки", Color.GREEN), ("Жиры", Color.RED), ("Углев", Color.YELLOW)]
+    text = await me.tap("📝 Текстом")
+    assert text.startswith("<pre>Еда · 22.10 (чт)\nКкал   ████████████ 105%  2 947 / 2 800  🟢\n")
+    assert "Жиры   ████████████ 140%  112 / 80  🔴" in text
+    assert "Углев  █████████▌░░  80%  289 / 360  🟡" in text
+    assert "Расход: 760 ₽ · 3 блюда без цены" in text
+    assert "Коктейль         322    26     9    39" in text
+    assert stats_world.llm.requests == []
+
+
+async def test_s105_choice_remembered_and_days_flipped(stats_world: World, me: Persona) -> None:
+    """S-105. Бот запоминает последнюю выбранную привычку — и после перезапуска; «◀ / ▶» листают дни в том же
+    сообщении; день без записей — «Записей нет»."""
+    await me.tap("📊 Итоги")
+    first = me.find_button_at("◀ 14.10")[1]
+    assert await me.tap("🤸 Зарядка") == "📊 Зарядка · 15.10 (чт)"
+    assert await me.tap("◀ 14.10") == "📊 Зарядка · 14.10 (ср)"
+    assert me.find_button_at("15.10 ▶")[1] == first  # то же сообщение, картинка заменена
+    assert "Записей нет" in await me.tap("📝 Текстом")
+    await stats_world.restart()
+    assert await me.tap("📊 Итоги") == "📊 Зарядка · 15.10 (чт)"
+    assert "▸ 🤸 Зарядка" in me.labels()
+
+
+async def test_s106_every_section_has_its_picture(stats_world: World, me: Persona) -> None:
+    """S-106. Раздел 3.8.1: зарядка — «упражнение × зарядка» с ▲▼ к прошлому дню; тренировка — подходы, тоннаж,
+    рекорд 🏆 и сравнение с прошлой; бег — темп, скорость, сравнение; своя привычка — факт / цель, отметки, серия."""
+    actor = await actor_of(stats_world)
+    warmup = stats_world.service("warmup")
+    await warmup.use_default_set(actor)
+    templates = {t.short: t.public_id for t in await warmup.templates(actor)}
+    await warmup.record(actor, {templates["Отжимания"]: 50, templates["Планка"]: 345}, day=date(2026, 10, 14))
+    await warmup.record(actor, {templates["Отжимания"]: 55, templates["Планка"]: 360}, day=date(2026, 10, 15))
+    await warmup.record(actor, {templates["Отжимания"]: 60, templates["Планка"]: 360}, day=date(2026, 10, 15))
+    workouts = stats_world.service("workouts")
+    squat = next(e for e in await workouts.exercises(actor, await workouts.filters(actor, WorkoutKind.GYM))
+                 if e.name == "Присед со штангой")
+    await workouts.log_sets(actor, date(2026, 10, 13), [(squat.public_id, [SetValue(reps=8, weight=Decimal(105))] * 4)])
+    await workouts.log_sets(actor, date(2026, 10, 15), [(squat.public_id, [SetValue(reps=8, weight=Decimal(110))] * 4)])
+    runs = stats_world.service("runs")
+    await runs.record(actor, distance_km=Decimal("5"), seconds=28 * 60, day=date(2026, 10, 13))
+    await runs.record(actor, distance_km=Decimal("5.2"), seconds=28 * 60 + 40, day=date(2026, 10, 15))
+    habits = stats_world.service("habits")
+    eyes = await habits.from_template(actor, "eyes")
+    await habits.mark(actor, eyes.public_id, day=date(2026, 10, 15))
+    stats_world.clock.advance(hours=3)
+    await habits.mark(actor, eyes.public_id, day=date(2026, 10, 15))
+
+    await me.tap("📊 Итоги")  # первая привычка с записями — зарядка
+    text = await me.tap("📝 Текстом")
+    assert "Отжимания     55    60      ▲ +10" in text and "Планка      6:00  6:00    ▲ +0:15" in text
+    assert "Зарядок" in text and "2 / 2  🟢" in text
+    await me.tap("🏋️ Тренировка •")
+    text = await me.tap("📝 Текстом")
+    assert "Присед со штангой  110 кг 4×8  3 520 кг" in text
+    assert "🏆 Рекорд: Присед со штангой 110 кг (было 105 кг)" in text and "▲ +160 кг к прошлой (13.10)" in text
+    await me.tap("🏃 Бег •")
+    text = await me.tap("📝 Текстом")
+    assert "5,2 км     28:40  5:31  10,88 км/ч" in text and "▲ на 0:05 быстрее прошлого" in text
+    assert "🏆 Самая длинная дистанция: 5,2 км" in text
+    await me.tap("👁 Глаза •")
+    text = await me.tap("📝 Текстом")
+    assert "Глаза" in text and "2 / 3  🟡" in text and "Отметки: 12:00 +1 · 15:00 +1" in text
+    assert stats_world.llm.requests == []
+
+
+async def test_s107_week_traffic_light_with_day_off(stats_world: World, me: Persona) -> None:
+    """S-107. Раздел 9: «Неделя» присылает одну картинку-светофор по всем целям; клетки «Выходного» серые;
+    справа — % зелёных и серия; «◀» — прошлая неделя, будущие дни пустые; «Текстом» — значки по дням."""
+    await eat_22(stats_world)
+    actor = await actor_of(stats_world)
+    stats_world.set_time(datetime(2026, 10, 24, 12, 0, tzinfo=UTC))
+    await stats_world.service("days").toggle_day_off(actor, date(2026, 10, 24))
+    food = stats_world.service("food")
+    await food.log_other(actor, OtherLine("Ужин", Nutrients.of(2700, 150, 85, 350), None), day=date(2026, 10, 21))
+    await food.log_other(actor, OtherLine("Ужин", Nutrients.of(2000, 100, 60, 250), None), day=date(2026, 10, 24))
+    stats_world.set_time(datetime(2026, 10, 23, 12, 0, tzinfo=UTC))
+    await me.tap("📊 Итоги")
+    assert await me.tap("Неделя") == "📊 Неделя · 19.10–25.10"
+    assert me.labels() == ["◀", "📝 Текстом", "▸ Неделя", "Месяц", "3 месяца", "📊 День"]  # ▶ — в будущее нет
+    overview = await stats_world.service("stats").overview(actor, Kind.WEEK)
+    kcal = next(r for r in overview.rows if r.label == "Калории")
+    assert kcal.cells == (Color.GRAY, Color.GRAY, Color.GREEN, Color.GREEN, Color.GRAY, Color.EMPTY, Color.EMPTY)
+    assert (kcal.green, kcal.streak) == (100, 2)
+    text = await me.tap("📝 Текстом")
+    assert "Калории  ··●●·    100% · серия 2" in text
+    assert await me.tap("◀") == "📊 Неделя · 12.10–18.10"
+    assert "▶" in me.labels()
+    stats_world.set_time(datetime(2026, 10, 26, 12, 0, tzinfo=UTC))
+    after = await stats_world.service("stats").overview(actor, Kind.WEEK, -1)
+    assert next(r for r in after.rows if r.label == "Калории").cells[5] is Color.GRAY  # 24.10 — выходной
+    assert stats_world.llm.requests == []
+
+
+async def test_s108_month_quarter_and_rules(stats_world: World, me: Persona) -> None:
+    """S-108. «Месяц» и «3 месяца» — одна картинка, клетки помельче, подписи вмещаются; в тексте за 3 месяца —
+    только % и серия; привычки, зарядка, тренировки и вес — по правилам раздела 4.10."""
+    actor = await actor_of(stats_world)
+    stats_world.set_time(datetime(2026, 10, 21, 12, 0, tzinfo=UTC))
+    habits = stats_world.service("habits")
+    eyes = await habits.from_template(actor, "eyes")
+    for day, times in ((15, 3), (16, 1), (17, 0)):
+        for _ in range(times):
+            await habits.mark(actor, eyes.public_id, day=date(2026, 10, day))
+    warmup = stats_world.service("warmup")
+    await warmup.use_default_set(actor)
+    plank = next(t.public_id for t in await warmup.templates(actor) if t.short == "Планка")
+    await warmup.record(actor, {plank: 345}, day=date(2026, 10, 15))
+    profiles = stats_world.service("users.profiles")
+    stats_world.set_time(datetime(2026, 10, 13, 9, 0, tzinfo=UTC))
+    await profiles.update_profile(actor, weight_kg=Decimal("74.5"))
+    stats_world.set_time(datetime(2026, 10, 20, 9, 0, tzinfo=UTC))
+    await profiles.update_profile(actor, weight_kg=Decimal("75.5"))  # набор массы — вес растёт
+    await stats_world.service("workouts").log_sets(actor, date(2026, 10, 14), [])
+    stats_world.set_time(datetime(2026, 10, 21, 12, 0, tzinfo=UTC))
+    await me.tap("📊 Итоги")
+    assert await me.tap("Месяц") == "📊 Месяц · октябрь 2026"
+    assert png_size(me.session.photos(ADMIN_ID)[-1])[0] < 1300
+    assert await me.tap("3 месяца") == "📊 3 месяца · август–октябрь 2026"
+    text = await me.tap("📝 Текстом")
+    assert "👁 Глаза" in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
+    month = await stats_world.service("stats").overview(actor, Kind.MONTH)
+    rows = {r.label: r.cells for r in month.rows}
+    assert rows["👁 Глаза"][13:17] == (Color.GRAY, Color.GREEN, Color.RED, Color.RED)  # до анкеты; 3/3, 1/3, 0/3
+    assert rows["Зарядка"][14] is Color.YELLOW and rows["Зарядка"][15] is Color.RED  # 1 из 2, ни одной
+    assert rows["Вес"][19] is Color.GREEN and rows["Вес"][12] is Color.GRAY  # неделя 19.10 тяжелее прошлой
+    assert rows["Тренировки"][13] is Color.RED and rows["Тренировки"][20] is Color.EMPTY  # 1 из 3; неделя идёт
+    assert stats_world.llm.requests == []
+
+
+async def test_s109_foreign_and_old_buttons(stats_world: World, me: Persona) -> None:
+    """S-109. Изоляция: гость не может нажать кнопки «Итогов» владельца; кнопка удалённой привычки — «Записей
+    нет» не ломает экран: показывается выбор заново."""
+    actor = await actor_of(stats_world)
+    eyes = await stats_world.service("habits").from_template(actor, "eyes")
+    await me.tap("📊 Итоги")
+    week = me.find_button("Неделя")
+    habit_button = me.find_button("👁 Глаза")
+    guest = await invite_guest(stats_world, me, OTHER_ID, "Аня")
+    await finish_guest_onboarding(guest)
+    await guest.press_data(week)
+    assert guest.last() == "Эта кнопка не ваша — ничего не изменено. Вот главное меню 👇"
+    await stats_world.service("habits").delete(actor, eyes.public_id)
+    await me.press_data(habit_button)
+    assert me.last() == "📊 Еда · 15.10 (чт)"
+    await guest.tap("📊 Итоги")
+    assert guest.last() == "📊 Еда · 15.10 (чт)" and "👁 Глаза" not in guest.labels()

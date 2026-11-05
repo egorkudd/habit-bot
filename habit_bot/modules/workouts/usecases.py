@@ -491,6 +491,15 @@ class Workouts:
                 WorkoutSession.deleted_at.is_(None)).order_by(WorkoutSession.id))).scalars().all()
             return [await self._view(uow.session, r) for r in rows]
 
+    async def sessions_between(self, actor: Actor, start: date, end: date) -> list[SessionView]:
+        """Завершённые тренировки за период — для итогов (рекорды, сравнение) и экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(select(WorkoutSession).where(
+                WorkoutSession.user_id == actor.user_id, WorkoutSession.day >= start, WorkoutSession.day <= end,
+                WorkoutSession.status == DONE, WorkoutSession.deleted_at.is_(None))
+                .order_by(WorkoutSession.day, WorkoutSession.id))).scalars().all()
+            return [await self._view(uow.session, r) for r in rows]
+
     async def count_between(self, actor: Actor, start: date, end: date) -> int:
         async with self._uow() as uow:
             return int((await uow.session.execute(select(func.count(WorkoutSession.id)).where(

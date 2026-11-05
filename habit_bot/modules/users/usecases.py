@@ -398,6 +398,14 @@ class Profiles:
                 for g in rows
             ]
 
+    async def weights_between(self, actor: Actor, start: date, end: date) -> dict[date, Decimal]:
+        """Взвешивания за период — для светофора «Вес» и экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(select(BodyWeight.day, BodyWeight.weight_kg).where(
+                BodyWeight.user_id == actor.user_id, BodyWeight.deleted_at.is_(None), BodyWeight.day >= start,
+                BodyWeight.day <= end))).all()
+            return {day: Decimal(str(kg)) for day, kg in rows}
+
     async def goal_on(self, actor: Actor, day: date) -> GoalView | None:
         """Цель, действовавшая в эту дату; для дней раньше первой цели — первая (раздел 4.2)."""
         history = await self.goals(actor)

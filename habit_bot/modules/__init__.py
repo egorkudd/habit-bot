@@ -8,5 +8,6 @@ KNOWN_MODULES: dict[str, str] = {
     "habits": "habit_bot.modules.habits.module:HabitsModule",
     "runs": "habit_bot.modules.runs.module:RunsModule",
     "workouts": "habit_bot.modules.workouts.module:WorkoutsModule",
+    "stats": "habit_bot.modules.stats.module:StatsModule",
     "ai_commands": "habit_bot.modules.ai_commands.module:AiCommandsModule",
 }
