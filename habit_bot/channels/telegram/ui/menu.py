@@ -96,28 +96,35 @@ class MenuRegistry:
         clean = text.strip()
         return next((e for e in self._entries.values() if e.place is Place.HOME and e.label == clean), None)
 
-    def entries(self, place: Place, actor: Actor, layout: Sequence[str] | None = None) -> list[MenuEntry]:
-        """Пункты места. ``layout`` — выбранные пользователем кнопки главного экрана в его порядке."""
+    def entries(self, place: Place, actor: Actor, layout: Sequence[str] | None = None,
+                extra: Sequence[MenuEntry] = ()) -> list[MenuEntry]:
+        """Пункты места. ``layout`` — выбранные пользователем кнопки главного экрана в его порядке;
+        ``extra`` — кнопки самого пользователя (свои привычки), они встают на экран только по ``layout``."""
         visible = [e for e in self._entries.values() if e.place is place and (actor.is_admin or not e.admin_only)]
         visible.sort(key=lambda e: (e.key == MORE_KEY, e.order))
         if place is Place.HOME and layout is not None:
-            by_key = {e.key: e for e in visible}
+            by_key = {e.key: e for e in [*visible, *extra]}
             chosen = [by_key[k] for k in dict.fromkeys(layout) if k in by_key and k != MORE_KEY]
             visible = [*chosen, by_key[MORE_KEY]]
         if place is Place.HOME and len(visible) > self.HOME_LIMIT:
             visible = [*visible[: self.HOME_LIMIT - 1], visible[-1]]
         return visible
 
-    def choosable(self, actor: Actor) -> list[MenuEntry]:
-        """Что можно поставить на главный экран: всё, кроме «Ещё» (её скрыть нельзя)."""
+    def choosable(self, actor: Actor, extra: Sequence[MenuEntry] = ()) -> list[MenuEntry]:
+        """Что можно поставить на главный экран: всё, кроме «Ещё» (её скрыть нельзя), и свои привычки."""
         visible = [e for e in self._entries.values()
                    if e.place is Place.HOME and e.key != MORE_KEY and (actor.is_admin or not e.admin_only)]
-        return sorted(visible, key=lambda e: e.order)
+        return [*sorted(visible, key=lambda e: e.order), *extra]
+
+    def defaults(self, actor: Actor) -> list[str]:
+        """Кнопки главного экрана по умолчанию — когда пользователь его ещё не настраивал."""
+        return [e.key for e in self.choosable(actor)][: self.HOME_LIMIT - 1]
 
     def home_keyboard(
         self, actor: Actor, layout: Sequence[str] | None = None, other_day: date | None = None,
+        extra: Sequence[MenuEntry] = (),
     ) -> ReplyKeyboardMarkup:
-        entries = self.entries(Place.HOME, actor, layout)
+        entries = self.entries(Place.HOME, actor, layout, extra)
         chosen = [KeyboardButton(text=e.label) for e in entries if e.key != MORE_KEY]
         more = next(e for e in entries if e.key == MORE_KEY)
         last = [KeyboardButton(text=HOME_LABEL), KeyboardButton(text=more.label)]

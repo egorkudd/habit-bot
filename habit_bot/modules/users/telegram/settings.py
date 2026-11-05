@@ -196,7 +196,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
 
     async def home_editor(actor: Actor, state: FSMContext, chosen: list[str]) -> Any:
         token = await dialog_token(state)
-        entries = {e.key: e for e in flow.screens.menu.choosable(actor)}
+        entries = {e.key: e for e in await flow.screens.choosable(actor)}
         order = [k for k in chosen if k in entries] + [k for k in entries if k not in chosen]
         rows = []
         for key in order:
@@ -213,7 +213,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         chosen = list((await state.get_data()).get("layout", []))
         key, toast = callback_data.value, None
         if callback_data.a == "hm_r":
-            chosen = [e.key for e in flow.screens.menu.choosable(actor)]
+            chosen = flow.screens.menu.defaults(actor)
         elif callback_data.a == "hm_u" and key in chosen and chosen.index(key) > 0:
             i = chosen.index(key)
             chosen[i - 1], chosen[i] = chosen[i], chosen[i - 1]
@@ -232,7 +232,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     async def save_home(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
         chosen = list((await state.get_data()).get("layout", []))
-        default = [e.key for e in flow.screens.menu.choosable(actor)]
+        default = flow.screens.menu.defaults(actor)
         await flow.profiles.set_home_layout(actor, None if chosen == default else chosen)
         await state.clear()
         trail.result()
@@ -256,7 +256,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         elif callback_data.value == "home":
             await start_dialog(state, SettingsInput.home)
             layout = await flow.profiles.home_layout(actor)
-            chosen = list(layout) if layout is not None else [e.key for e in flow.screens.menu.choosable(actor)]
+            chosen = list(layout) if layout is not None else flow.screens.menu.defaults(actor)
             await state.update_data(layout=chosen)
             await bot.send_message(chat_id, HOME_TITLE.format(limit=HOME_CHOICES),
                                    reply_markup=await home_editor(actor, state, chosen))
