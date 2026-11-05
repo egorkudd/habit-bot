@@ -10,6 +10,7 @@ from habit_bot.modules.warmup.domain.warmup import (
     DEFAULT_STEP,
     Measure,
     apply_step,
+    format_minus_step,
     format_step,
     format_value,
     goal_progress,
@@ -17,7 +18,9 @@ from habit_bot.modules.warmup.domain.warmup import (
     ordinal,
     parse_step,
     parse_value,
+    parse_values_line,
     progress_line,
+    values_example,
 )
 
 
@@ -86,3 +89,17 @@ def test_goal_achieved_and_on_track() -> None:
                              today=date(2026, 11, 2), best=55, best_before_window=60)
     line = progress_line("Отжимания", Measure.REPS, on_track, date(2026, 12, 1))
     assert "⚠️" not in line and "за 14 дней −0,4/день" in line
+
+
+def test_values_line_and_minus_step() -> None:
+    exercises = [("Отжимания", Measure.REPS), ("Планка", Measure.SECONDS)]
+    assert parse_values_line(exercises, " 55   6:15 ") == [55, 375]
+    assert values_example([Measure.REPS, Measure.SECONDS]) == "20 1:00"
+    assert values_example([Measure.REPS, Measure.SECONDS], [0, 0]) == "20 1:00"
+    assert values_example([Measure.REPS, Measure.SECONDS], [50, 345]) == "50 5:45"
+    assert format_minus_step(Measure.SECONDS, 15) == "−15 сек"
+    assert format_minus_step(Measure.REPS, 5) == "−5"
+    for text, problem in (("55", "Не хватает: Планка"), ("55 6:15 7", "Лишнее значение: 7")):
+        with pytest.raises(AppError) as err:
+            parse_values_line(exercises, text)
+        assert err.value.user_text() == f"{problem}. Нужно значений: 2, по порядку набора. Например: 20 1:00"

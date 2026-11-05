@@ -10,6 +10,7 @@ from enum import StrEnum
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 from habit_bot.channels.telegram.ui.callbacks import MenuCb
+from habit_bot.channels.telegram.ui.layout import fit_rows, fits
 from habit_bot.kernel.domain.formatting import format_day
 from habit_bot.kernel.identity import Actor
 
@@ -21,6 +22,7 @@ class Place(StrEnum):
 
 
 MORE_KEY = "more"
+HOME_LABEL = "🏠 Домой"  # всегда рядом с «Ещё»: выйти из ввода и убрать его сообщения из чата
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +69,8 @@ def soon_text(entry: MenuEntry) -> str:
 
 
 class MenuRegistry:
-    """До 8 кнопок по 2 в ряд; «Ещё» всегда последняя и не скрывается (раздел 3.1)."""
+    """До 8 кнопок по 2 в ряд (длинные — по одной); последний ряд — «🏠 Домой» и «☰ Ещё», их не скрыть.
+    Разделы, убранные с главного экрана, остаются в «Ещё» (раздел 3.1)."""
 
     HOME_LIMIT = 8
     PER_ROW = 2
@@ -114,20 +117,33 @@ class MenuRegistry:
     def home_keyboard(
         self, actor: Actor, layout: Sequence[str] | None = None, other_day: date | None = None,
     ) -> ReplyKeyboardMarkup:
-        labels = [KeyboardButton(text=e.label) for e in self.entries(Place.HOME, actor, layout)]
-        rows = [labels[i : i + self.PER_ROW] for i in range(0, len(labels), self.PER_ROW)]
+        entries = self.entries(Place.HOME, actor, layout)
+        chosen = [KeyboardButton(text=e.label) for e in entries if e.key != MORE_KEY]
+        more = next(e for e in entries if e.key == MORE_KEY)
+        last = [KeyboardButton(text=HOME_LABEL), KeyboardButton(text=more.label)]
+        rows = fit_rows(chosen, self.PER_ROW)
+        if rows and len(rows[-1]) == 1 and fits([rows[-1][0].text, *(b.text for b in last)]):
+            rows[-1] += last  # одиночная кнопка встаёт третьей, если все три подписи помещаются
+        else:
+            rows.append(last)
         if other_day is not None:
             rows.insert(0, [KeyboardButton(text=return_label(other_day))])
         return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, is_persistent=True)
+
+    def hidden(self, actor: Actor, layout: Sequence[str] | None) -> list[MenuEntry]:
+        """Разделы главного экрана, которых на нём сейчас нет: их показывает «Ещё»."""
+        shown = {e.key for e in self.entries(Place.HOME, actor, layout)}
+        return [e for e in self.choosable(actor) if e.key not in shown]
 
     def settings_buttons(self, actor: Actor) -> list[InlineKeyboardButton]:
         return [InlineKeyboardButton(text=e.label, callback_data=MenuCb(o=actor.user_id, t=0, k=e.key).pack())
                 for e in self.entries(Place.SETTINGS, actor)]
 
-    def more_keyboard(self, actor: Actor) -> InlineKeyboardMarkup:
-        buttons = [
-            InlineKeyboardButton(text=e.label, callback_data=MenuCb(o=actor.user_id, t=0, k=e.key).pack())
-            for e in self.entries(Place.MORE, actor)
-        ]
-        rows = [buttons[i : i + self.PER_ROW] for i in range(0, len(buttons), self.PER_ROW)]
+    def more_keyboard(self, actor: Actor, layout: Sequence[str] | None = None) -> InlineKeyboardMarkup:
+        """Сначала разделы, убранные с главного экрана, затем пункты «Ещё»."""
+        def button(e: MenuEntry) -> InlineKeyboardButton:
+            return InlineKeyboardButton(text=e.label, callback_data=MenuCb(o=actor.user_id, t=0, k=e.key).pack())
+
+        rows = fit_rows([button(e) for e in self.hidden(actor, layout)], self.PER_ROW)
+        rows += fit_rows([button(e) for e in self.entries(Place.MORE, actor)], self.PER_ROW)
         return InlineKeyboardMarkup(inline_keyboard=rows)

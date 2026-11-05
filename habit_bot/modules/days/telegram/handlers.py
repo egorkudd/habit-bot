@@ -17,10 +17,13 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
 from habit_bot.channels.telegram.dialogs.policy import OTHER_DAY
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import MOVE_TTL_MINUTES, CancelCb, MenuCb, MoveCb
+from habit_bot.channels.telegram.ui.layout import inline
 from habit_bot.channels.telegram.ui.menu import is_return_label
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.days import (
+    MONTHS,
     days_ago,
     days_word,
     month_title,
@@ -86,14 +89,14 @@ def build_days_router(days: Days, screens: Screens) -> Router:
         rows = [buttons[i: i + 2] for i in range(0, len(buttons), 2)]
         rows.append([btn(actor, token, "🗓 Выбрать дату", "cal", f"{today.year:04d}{today.month:02d}"),
                      cancel(actor, token)])
-        return InlineKeyboardMarkup(inline_keyboard=rows)
+        return inline(rows)
 
     def calendar_keyboard(actor: Actor, token: int, year: int, month: int, today: date) -> InlineKeyboardMarkup:
         prev_y, prev_m = shift_month(year, month, -1)
         next_y, next_m = shift_month(year, month, 1)
-        rows = [[btn(actor, token, "◀", "cal", f"{prev_y:04d}{prev_m:02d}"),
-                 btn(actor, token, month_title(year, month), "noop"),
-                 btn(actor, token, "▶", "cal", f"{next_y:04d}{next_m:02d}")]]
+        # Название месяца — в тексте сообщения: в ряду из трёх кнопок «Октябрь 2026» обрезается.
+        rows = [[btn(actor, token, f"◀ {MONTHS[prev_m - 1]}", "cal", f"{prev_y:04d}{prev_m:02d}"),
+                 btn(actor, token, f"{MONTHS[next_m - 1]} ▶", "cal", f"{next_y:04d}{next_m:02d}")]]
         rows.append([btn(actor, token, w, "noop") for w in ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")])
         for week in month_weeks(year, month):
             row = []
@@ -106,7 +109,7 @@ def build_days_router(days: Days, screens: Screens) -> Router:
                     row.append(btn(actor, token, str(day.day), "day", iso(day)))
             rows.append(row)
         rows.append([cancel(actor, token)])
-        return InlineKeyboardMarkup(inline_keyboard=rows)
+        return inline(rows)
 
     async def show_card(bot: Bot, chat_id: int, actor: Actor, day: date, text: str) -> None:
         card = render_card(await days.card(actor, day))
@@ -125,8 +128,7 @@ def build_days_router(days: Days, screens: Screens) -> Router:
             token = await dialog_token(state)
             await bot.send_message(
                 chat_id, f"Это {days_word(days_ago(day, today))} назад ({format_day(day)}), всё верно?",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[btn(actor, token, "Да", "yes"),
-                                                                     cancel(actor, token)]]),
+                reply_markup=inline([[btn(actor, token, "Да", "yes"), cancel(actor, token)]]),
             )
             return
         await activate(bot, chat_id, actor, state, day)
@@ -134,6 +136,7 @@ def build_days_router(days: Days, screens: Screens) -> Router:
     async def activate(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date) -> None:
         await state.clear()
         await screens.dialogs.set_day(actor.user_id, OTHER_DAY, day, days.now())
+        trail.result()  # выбор дня (календарь, подтверждение) убирается, карточка дня остаётся
         await show_card(bot, chat_id, actor, day, entered(day))
 
     # --- «Вернуться к сегодня»: подключается первым, работает даже в середине ввода ---
@@ -143,8 +146,7 @@ def build_days_router(days: Days, screens: Screens) -> Router:
             await screens.home(bot, message.chat.id, actor, NOT_IN_MODE)
             return
         if await state.get_state() is not None:
-            markup = InlineKeyboardMarkup(inline_keyboard=[[btn(actor, 0, "Да", "exit"),
-                                                             btn(actor, 0, "Продолжить ввод", "stay")]])
+            markup = inline([[btn(actor, 0, "Да", "exit"), btn(actor, 0, "Продолжить ввод", "stay")]])
             await message.answer(UNSAVED, reply_markup=markup)
             return
         await screens.dialogs.clear(actor.user_id, OTHER_DAY)
@@ -177,7 +179,7 @@ def build_days_router(days: Days, screens: Screens) -> Router:
         month = min(max(month, 1), 12)
         if isinstance(query.message, Message):
             token = await dialog_token(state)
-            await query.message.edit_text(PICK_TITLE,
+            await query.message.edit_text(f"🗓 {month_title(year, month)}\n{PICK_TITLE}",
                                           reply_markup=calendar_keyboard(actor, token, year, month, today))
 
     @router.callback_query(StateFilter(OtherDay.pick), DayCb.filter(F.a == "noop"))
@@ -209,6 +211,7 @@ def build_days_router(days: Days, screens: Screens) -> Router:
         is_off = await days.toggle_day_off(actor, record_day)
         text = (f"🛌 {format_day(record_day)} — выходной: цели не проверяются, серии не прерываются."
                 if is_off else f"Отметка «Выходной» за {format_day(record_day)} снята.")
+        trail.result()
         await show_card(bot, query.from_user.id, actor, record_day, text)
 
     # --- перенос записи «📅 На вчера» ---
@@ -222,6 +225,9 @@ def build_days_router(days: Days, screens: Screens) -> Router:
             await screens.refuse_button(bot, query, actor, "UI-STALE")
             return
         await screens.close_buttons(query, toast=f"Перенесено на {format_day(result.new_day)}")
+        if query.message is not None:
+            trail.discard(query.message.message_id)  # карточка с прежней датой вводит в заблуждение
+        trail.result()
         for day in (result.new_day, result.old_day):
             await show_card(bot, query.from_user.id, actor, day, f"Итоги {format_day(day)}:")
 

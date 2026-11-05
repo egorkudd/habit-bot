@@ -1,5 +1,5 @@
-"""«🤸 Зарядка» в Telegram (раздел 3.3): черновик со значениями прошлой зарядки, «Как в прошлый раз», «+шаг»,
-«Изменить» с «−» / «+» и точным числом, «Записать»; настройки набора, шагов, целей."""
+"""«🤸 Зарядка» в Telegram (раздел 3.3): черновик со значениями прошлой зарядки, «+шаг», «Изменить» с «−» / «+»,
+все значения одной строкой, «Записать»; настройки набора, шагов, целей."""
 
 from __future__ import annotations
 
@@ -17,7 +17,9 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb, move_button
+from habit_bot.channels.telegram.ui.layout import fit_rows, inline
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_day
 from habit_bot.kernel.domain.parsing import parse_date
@@ -27,17 +29,21 @@ from habit_bot.modules.days.public import Days
 from habit_bot.modules.warmup.domain.warmup import (
     Measure,
     apply_step,
+    format_minus_step,
     format_step,
     format_value,
     ordinal,
     parse_step,
     parse_value,
+    parse_values_line,
+    values_example,
 )
 from habit_bot.modules.warmup.usecases import ExerciseView, SessionView, Warmup
 
 KIND = "warmup"
 EMPTY_SET = "Набор зарядки пуст. Возьмите набор по умолчанию или добавьте свои упражнения."
-FIRST_TIME = "Первая зарядка — введите результаты: «−» / «+» или нажмите упражнение, чтобы ввести число."
+FIRST_TIME = "Первая зарядка — пришлите результаты одной строкой по порядку, например: {example}. Или «−» / «+»."
+LINE_HINT = "«+» прибавит шаг. Или пришлите все значения по порядку: {example}"
 SETTINGS_TITLE = "🤸 Настройки зарядки"
 GOAL_PROMPT = "Цель и дата одной строкой, например: {example} 03.12.2026"
 DayCard = Callable[[Actor, date], Awaitable[str]]
@@ -61,7 +67,6 @@ class WarmupEntryCb(CallbackData, prefix="we"):
 
 class WarmupInput(StatesGroup):
     draft = State()
-    value = State()
     step = State()
     new_name = State()
     new_measure = State()
@@ -84,56 +89,61 @@ def build_warmup_router(
         return int(days.now().timestamp() // 60)
 
     def pairs(buttons: list[InlineKeyboardButton]) -> list[list[InlineKeyboardButton]]:
-        return [buttons[i: i + 2] for i in range(0, len(buttons), 2)]
+        return fit_rows(buttons, 2)  # длинное название упражнения — одно в ряду
+
+    def plus(actor: Actor, token: int, e: ExerciseView) -> InlineKeyboardButton:
+        return wbtn(actor, token, f"{e.short} {format_step(e.measure, e.step)}", "inc", e.public_id)
+
+    def minus(actor: Actor, token: int, e: ExerciseView) -> InlineKeyboardButton:
+        return wbtn(actor, token, f"{e.short} {format_minus_step(e.measure, e.step)}", "dec", e.public_id)
 
     # --- черновик ---
-    def draft_text(exercises: list[ExerciseView], values: dict[str, int], day: date, number: int) -> str:
-        line = " · ".join(f"{e.short} {format_value(e.measure, values.get(e.public_id, 0))}" for e in exercises)
-        return f"🤸 Зарядка · {format_day(day)} · {ordinal(number)} за день\n{line}"
+    def draft_text(exercises: list[ExerciseView], values: dict[str, int], day: date, number: int,
+                   hint: str) -> str:
+        lines = [f"{e.short} — {format_value(e.measure, values.get(e.public_id, 0))}" for e in exercises]
+        return "\n".join([f"🤸 Зарядка · {format_day(day)} · {ordinal(number)} за день", *lines, "", hint])
 
-    def main_keyboard(actor: Actor, token: int, exercises: list[ExerciseView], has_last: bool,
-                      ) -> InlineKeyboardMarkup:
-        rows: list[list[InlineKeyboardButton]] = []
-        if has_last:
-            rows.append([wbtn(actor, token, "✅ Как в прошлый раз", "same")])
-        rows += pairs([wbtn(actor, token, f"{e.short} {format_step(e.measure, e.step)}", "inc", e.public_id)
-                       for e in exercises])
+    def main_keyboard(actor: Actor, token: int, exercises: list[ExerciseView]) -> InlineKeyboardMarkup:
+        rows = pairs([plus(actor, token, e) for e in exercises])
         rows.append([wbtn(actor, token, "✏️ Изменить", "edit"), wbtn(actor, token, "💾 Записать", "save")])
-        return InlineKeyboardMarkup(inline_keyboard=rows)
+        return inline(rows)
 
-    def edit_keyboard(actor: Actor, token: int, exercises: list[ExerciseView], values: dict[str, int],
-                      ) -> InlineKeyboardMarkup:
-        rows = [[wbtn(actor, token, "−", "dec", e.public_id),
-                 wbtn(actor, token, f"{e.short} {format_value(e.measure, values.get(e.public_id, 0))}", "val",
-                      e.public_id),
-                 wbtn(actor, token, "+", "inc", e.public_id)] for e in exercises]
+    def edit_keyboard(actor: Actor, token: int, exercises: list[ExerciseView]) -> InlineKeyboardMarkup:
+        """«Отжимания −5» / «Отжимания +5» — по два в ряд: в ряд из трёх название с числом не помещается."""
+        rows: list[list[InlineKeyboardButton]] = []
+        for e in exercises:
+            rows += pairs([minus(actor, token, e), plus(actor, token, e)])
         rows.append([wbtn(actor, token, "← Готово", "main"), wbtn(actor, token, "💾 Записать", "save")])
-        return InlineKeyboardMarkup(inline_keyboard=rows)
+        return inline(rows)
 
     async def render(actor: Actor, state: FSMContext, day: date) -> tuple[str, InlineKeyboardMarkup]:
         data = await state.get_data()
         exercises = await warmup.templates(actor)
         values = data.get("values", {})
         token = await dialog_token(state)
-        text = draft_text(exercises, values, day, await warmup.next_number(actor, day))
+        example = values_example([e.measure for e in exercises], [values.get(e.public_id, 0) for e in exercises])
+        hint = (FIRST_TIME if not data.get("has_last") else LINE_HINT).format(example=example)
+        text = draft_text(exercises, values, day, await warmup.next_number(actor, day), hint)
         if data.get("mode") == "edit":
-            if not data.get("has_last"):
-                text = f"{text}\n{FIRST_TIME}"
-            return text, edit_keyboard(actor, token, exercises, values)
-        return text, main_keyboard(actor, token, exercises, bool(data.get("has_last")))
+            return text, edit_keyboard(actor, token, exercises)
+        return text, main_keyboard(actor, token, exercises)
+
+    async def send_draft(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date) -> None:
+        text, markup = await render(actor, state, day)
+        sent = await bot.send_message(chat_id, text, reply_markup=markup)
+        await state.update_data(message=sent.message_id)
 
     async def open_screen(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date) -> None:
         if not await warmup.ensure_set(actor):
             await state.clear()
-            markup = InlineKeyboardMarkup(inline_keyboard=[[wbtn(actor, 0, "Взять набор по умолчанию", "defaults")],
+            markup = inline([[wbtn(actor, 0, "Взять набор по умолчанию", "defaults")],
                                                            [wbtn(actor, 0, "➕ Добавить упражнение", "add")]])
             await bot.send_message(chat_id, EMPTY_SET, reply_markup=markup)
             return
         last = await warmup.last_values(actor, day)
         await start_dialog(state, WarmupInput.draft, day)
         await state.update_data(values=last or {}, has_last=last is not None, mode="main" if last else "edit")
-        text, markup = await render(actor, state, day)
-        await bot.send_message(chat_id, text, reply_markup=markup)
+        await send_draft(bot, chat_id, actor, state, day)
 
     async def refresh(query: CallbackQuery, actor: Actor, state: FSMContext, day: date) -> None:
         await query.answer()
@@ -148,6 +158,13 @@ def build_warmup_router(
     @nav.message(F.text.func(is_label))
     async def open_warmup(message: Message, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
         await open_screen(bot, message.chat.id, actor, state, record_day)
+
+    @nav.callback_query(MenuCb.filter(F.k == KIND))
+    async def open_warmup_from_more(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext,
+                                    record_day: date) -> None:
+        """«🤸 Зарядка» убрана с главного экрана — открывается из «Ещё»."""
+        await screens.close_buttons(query)
+        await open_screen(bot, query.from_user.id, actor, state, record_day)
 
     @router.callback_query(WCb.filter(F.a == "defaults"))
     async def defaults(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
@@ -174,29 +191,16 @@ def build_warmup_router(
         await state.update_data(mode="edit" if callback_data.a == "edit" else "main")
         await refresh(query, actor, state, record_day)
 
-    @router.callback_query(StateFilter(WarmupInput.draft), WCb.filter(F.a == "val"))
-    async def ask_value(query: CallbackQuery, callback_data: WCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
-        exercise = next((e for e in await warmup.templates(actor) if e.public_id == callback_data.v), None)
-        await query.answer()
-        if exercise is None:
-            return
-        await state.update_data(editing=exercise.public_id)
-        await state.set_state(WarmupInput.value)
-        hint = "5:45, 5.45 или в секундах: 345" if exercise.measure is Measure.SECONDS else "числом"
-        await bot.send_message(query.from_user.id, f"{exercise.name}: сколько? {hint}.")
-
-    @router.message(StateFilter(WarmupInput.value), F.text)
-    async def exact_value(message: Message, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
+    @router.message(StateFilter(WarmupInput.draft), F.text)
+    async def values_line(message: Message, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
+        """Все значения одной строкой по порядку набора: «55 50 6:15 25»."""
+        exercises = await warmup.templates(actor)
+        parsed = parse_values_line([(e.name, e.measure) for e in exercises], message.text or "")
         data = await state.get_data()
-        exercise = next((e for e in await warmup.templates(actor) if e.public_id == data.get("editing")), None)
-        if exercise is None:
-            raise AppError("UI-STALE")
-        values = dict(data.get("values", {}))
-        values[exercise.public_id] = parse_value(exercise.measure, message.text or "", exercise.name)
-        await state.update_data(values=values, mode="edit")
-        await state.set_state(WarmupInput.draft)
-        text, markup = await render(actor, state, record_day)
-        await bot.send_message(message.chat.id, text, reply_markup=markup)
+        trail.discard(data.get("message"))  # прежний черновик заменяет новый — двух в чате не нужно
+        await state.update_data(values={e.public_id: v for e, v in zip(exercises, parsed, strict=True)},
+                                mode="main", has_last=True)
+        await send_draft(bot, message.chat.id, actor, state, record_day)
 
     async def saved(bot: Bot, chat_id: int, actor: Actor, session: SessionView, today: date) -> None:
         lines = await warmup.progress_lines(actor, today, {i.template_id for i in session.items if i.template_id})
@@ -204,22 +208,20 @@ def build_warmup_router(
         card = await render_card(actor, session.day) if render_card else ""
         text = f"🤸 Зарядка {ordinal(session.number)} за {format_day(session.day)}: {session.summary()}"
         body = "\n".join([html.escape(text), *(html.escape(line) for line in lines), card])
-        markup = InlineKeyboardMarkup(inline_keyboard=[[
+        markup = inline([[
             InlineKeyboardButton(text="Отменить", callback_data=WarmupEntryCb(
                 o=actor.user_id, t=0, i=session.public_id, m=minute()).pack()),
             move_button(actor.user_id, KIND, session.public_id, minute()),
         ]])
+        trail.result()  # черновик и вопросы удаляются, запись остаётся
         await bot.send_message(chat_id, body, parse_mode="HTML", reply_markup=markup)
 
-    @router.callback_query(StateFilter(WarmupInput.draft), WCb.filter(F.a.in_({"save", "same"})))
-    async def save(query: CallbackQuery, callback_data: WCb, bot: Bot, actor: Actor, state: FSMContext,
+    @router.callback_query(StateFilter(WarmupInput.draft), WCb.filter(F.a == "save"))
+    async def save(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext,
                    record_day: date, today: date, request_id: str | None) -> None:
         data = await state.get_data()
-        if callback_data.a == "same":
-            values = await warmup.last_values(actor, record_day) or {}
-        else:
-            # Записываются все упражнения с экрана, включая нули — как пользователь их видел.
-            values = {e.public_id: data.get("values", {}).get(e.public_id, 0) for e in await warmup.templates(actor)}
+        # Записываются все упражнения с экрана, включая нули — как пользователь их видел.
+        values = {e.public_id: data.get("values", {}).get(e.public_id, 0) for e in await warmup.templates(actor)}
         session = await warmup.record(actor, values, day=record_day, request_id=request_id)
         await state.clear()
         await screens.close_buttons(query)
@@ -235,6 +237,9 @@ def build_warmup_router(
             await screens.refuse_button(bot, query, actor, "UI-STALE")
             return
         await screens.close_buttons(query)
+        if query.message is not None:
+            trail.discard(query.message.message_id)
+        trail.result()
         await bot.send_message(query.from_user.id, f"Зарядка {ordinal(removed.number)} за "
                                                    f"{format_day(removed.day)} удалена.")
 
@@ -242,15 +247,15 @@ def build_warmup_router(
     async def settings_screen(bot: Bot, chat_id: int, actor: Actor) -> None:
         exercises = await warmup.templates(actor)
         goals = await warmup.goals(actor)
-        lines = [SETTINGS_TITLE,
-                 "Набор: " + (" · ".join(f"{e.short} ({format_step(e.measure, e.step)})" for e in exercises)
-                              or "пусто"),
-                 f"Зарядок в день: {await warmup.daily_goal(actor)}",
-                 "Личные цели: " + (" · ".join(f"{g.exercise.short} {format_value(g.exercise.measure, g.target)} к "
-                                               f"{format_day(g.target_date)}" for g in goals) or "нет")]
+        daily_goal = await warmup.daily_goal(actor)
+        lines = [SETTINGS_TITLE, "", "Набор и шаги:",
+                 *([f"• {e.short} {format_step(e.measure, e.step)}" for e in exercises] or ["• пусто"]),
+                 "", f"Зарядок в день: {daily_goal}", "", "Личные цели:",
+                 *([f"• {g.exercise.short} {format_value(g.exercise.measure, g.target)} к "
+                    f"{format_day(g.target_date)}" for g in goals] or ["• нет"])]
         rows = [[wbtn(actor, 0, "📋 Набор и шаги", "set"), wbtn(actor, 0, "🎯 Личные цели", "goals")],
-                [wbtn(actor, 0, f"Зарядок в день: {n}", "daily", str(n)) for n in (1, 2, 3)]]
-        await bot.send_message(chat_id, "\n".join(lines), reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+                [wbtn(actor, 0, f"{'✓ ' if n == daily_goal else ''}{n} в день", "daily", str(n)) for n in (1, 2, 3)]]
+        await bot.send_message(chat_id, "\n".join(lines), reply_markup=inline(rows))
 
     @router.callback_query(MenuCb.filter(F.k == "warmup_settings"))
     @router.callback_query(WCb.filter(F.a == "settings"))
@@ -265,12 +270,26 @@ def build_warmup_router(
         await settings_screen(bot, query.from_user.id, actor)
 
     async def set_screen(bot: Bot, chat_id: int, actor: Actor) -> None:
-        rows = [[wbtn(actor, 0, f"{e.short} {format_step(e.measure, e.step)}", "step", e.public_id),
-                 wbtn(actor, 0, "⬆", "up", e.public_id), wbtn(actor, 0, "✕", "rm", e.public_id)]
-                for e in await warmup.templates(actor)]
+        exercises = await warmup.templates(actor)
+        lines = ["📋 Набор зарядки — по порядку на экране:",
+                 *[f"{n}. {e.short} — шаг {format_step(e.measure, e.step)}" for n, e in enumerate(exercises, 1)],
+                 "", "Нажмите упражнение: шаг, порядок или убрать."]
+        rows = pairs([wbtn(actor, 0, e.short, "ex", e.public_id) for e in exercises])
         rows.append([wbtn(actor, 0, "➕ Добавить упражнение", "add"), wbtn(actor, 0, "← Настройки", "settings")])
-        await bot.send_message(chat_id, "📋 Набор зарядки: нажмите упражнение, чтобы изменить шаг.",
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+        await bot.send_message(chat_id, "\n".join(lines), reply_markup=inline(rows))
+
+    @router.callback_query(WCb.filter(F.a == "ex"))
+    async def exercise_menu(query: CallbackQuery, callback_data: WCb, bot: Bot, actor: Actor) -> None:
+        await screens.close_buttons(query)
+        exercise = next((e for e in await warmup.templates(actor) if e.public_id == callback_data.v), None)
+        if exercise is None:
+            await set_screen(bot, query.from_user.id, actor)
+            return
+        public_id = exercise.public_id
+        rows = [[wbtn(actor, 0, "✏️ Шаг", "step", public_id), wbtn(actor, 0, "⬆ Выше", "up", public_id),
+                 wbtn(actor, 0, "✕ Убрать", "rm", public_id)], [wbtn(actor, 0, "← Набор", "set")]]
+        step = format_step(exercise.measure, exercise.step)
+        await bot.send_message(query.from_user.id, f"{exercise.name}: шаг {step}", reply_markup=inline(rows))
 
     @router.callback_query(WCb.filter(F.a.in_({"set", "up", "rm"})))
     async def edit_set(query: CallbackQuery, callback_data: WCb, bot: Bot, actor: Actor) -> None:
@@ -291,7 +310,7 @@ def build_warmup_router(
         await state.update_data(exercise=exercise.public_id)
         hint = "в секундах или как 1:00" if exercise.measure is Measure.SECONDS else "числом повторов"
         await bot.send_message(query.from_user.id, f"Шаг для «{exercise.name}» — {hint}:",
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                               reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(WarmupInput.step), F.text)
     async def new_step(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
@@ -309,7 +328,7 @@ def build_warmup_router(
         await screens.close_buttons(query)
         token = await start_dialog(state, WarmupInput.new_name)
         await bot.send_message(query.from_user.id, "Название упражнения?",
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                               reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(WarmupInput.new_name), F.text)
     async def add_name(message: Message, actor: Actor, state: FSMContext) -> None:
@@ -319,7 +338,7 @@ def build_warmup_router(
         await state.update_data(name=name)
         await state.set_state(WarmupInput.new_measure)
         token = await dialog_token(state)
-        await message.answer("Что записывать?", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+        await message.answer("Что записывать?", reply_markup=inline([[
             wbtn(actor, token, "Повторы", "measure", Measure.REPS.value),
             wbtn(actor, token, "Время", "measure", Measure.SECONDS.value)], [cancel(actor, token)]]))
 
@@ -343,7 +362,7 @@ def build_warmup_router(
                       g.public_id)] for g in await warmup.goals(actor)]
         rows.append([wbtn(actor, 0, "➕ Новая цель", "goalnew"), wbtn(actor, 0, "← Настройки", "settings")])
         text = "🎯 Личные цели\n" + ("\n".join(lines) if lines else "Целей пока нет.")
-        await bot.send_message(query.from_user.id, text, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+        await bot.send_message(query.from_user.id, text, reply_markup=inline(rows))
 
     @router.callback_query(WCb.filter(F.a == "goalrm"))
     async def goal_remove(query: CallbackQuery, callback_data: WCb, bot: Bot, actor: Actor) -> None:
@@ -357,7 +376,7 @@ def build_warmup_router(
         token = await start_dialog(state, WarmupInput.goal_value)
         buttons = [wbtn(actor, token, e.short, "goalex", e.public_id) for e in await warmup.templates(actor)]
         await bot.send_message(query.from_user.id, "Для какого упражнения цель?",
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[*pairs(buttons),
+                               reply_markup=inline([*pairs(buttons),
                                                                                   [cancel(actor, token)]]))
 
     @router.callback_query(StateFilter(WarmupInput.goal_value), WCb.filter(F.a == "goalex"))
@@ -386,6 +405,7 @@ def build_warmup_router(
         await warmup.set_goal(actor, exercise.public_id, target=target, target_date=target_date)
         await state.clear()
         lines = await warmup.progress_lines(actor, today, {exercise.public_id})
+        trail.result()
         await message.answer("Цель сохранена.\n" + "\n".join(lines))
 
     return nav, router

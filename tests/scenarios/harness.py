@@ -40,7 +40,8 @@ class Persona(TgChat):
         """Двойное нажатие: Telegram доставляет то же нажатие повторно."""
         self.app = self.world.app
         self.mark()
-        update = callback_update(self._next_id(), self.tg_id, self.find_button(label))
+        data, message_id = self.find_button_at(label)
+        update = callback_update(self._next_id(), self.tg_id, data, message_id)
         for _ in range(2):
             await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, dict(update))
 
@@ -73,7 +74,7 @@ class Persona(TgChat):
 
     def _has_inline(self, label: str) -> bool:
         try:
-            self.find_button(label)
+            self.find_button_at(label)  # только кнопки, которые ещё видны в чате
         except AssertionError:
             return False
         return True

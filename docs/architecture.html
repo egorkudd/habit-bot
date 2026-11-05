@@ -298,7 +298,8 @@ footer{font-size:13px;color:var(--mute);border-top:1px solid var(--line);padding
     telegram/              всё, что знает про aiogram
       channel.py           TelegramChannel: Dispatcher, polling, middlewares
       dialogs/             DialogState, DialogStore, DbFsmStorage, сброс 15 мин, «Другой день», /check
-      ui/                  MenuRegistry, Screens, данные кнопок (o, t), проверка кнопок
+      ui/                  MenuRegistry, Screens, данные кнопок (o, t), проверка кнопок,
+                           layout (кнопки по ширине подписи), trail (чистый чат)
       render/              карточка дня, картинки статистики, карточка «Понял так»
       delivery.py          TelegramDelivery(DeliveryChannel)
     http/                  позже: FastAPI, токены, OpenAPI. Сейчас пакета нет
@@ -847,6 +848,19 @@ class FoodModule(Module):
   class DayCardView {
     +render(data: DayCardData) Screen
   }
+  class Layout {
+    &lt;&lt;ui/layout.py&gt;&gt;
+    +label_width(text) float
+    +fit_rows(buttons, max_cols) rows
+    +inline(rows) InlineKeyboardMarkup
+  }
+  class TrailMiddleware {
+    +result() / clean() / discard(id) / keep(id)
+  }
+  class TrailRecorder {
+    &lt;&lt;aiogram BaseRequestMiddleware&gt;&gt;
+    +запоминает отправленные в чат пользователя
+  }
 
   BaseMiddleware &lt;|-- ErrorMiddleware
   BaseMiddleware &lt;|-- AuthMiddleware
@@ -860,15 +874,33 @@ class FoodModule(Module):
   CallbackGuardMiddleware --&gt; Screens
   Screens --&gt; MenuRegistry
   DayCardView ..&gt; MenuRegistry
+  BaseMiddleware &lt;|-- TrailMiddleware
+  TrailMiddleware --&gt; DialogStore : область trail, 48 ч
+  TrailRecorder ..&gt; TrailMiddleware : номера сообщений апдейта
+  MenuRegistry ..&gt; Layout
 </pre></div>
 <p>Как это работает:</p>
 <ul>
-<li><strong>Порядок.</strong> Внешние middleware апдейта: ошибки → вход (модуль <code>users</code>) → бездействие. <code>ActivityMiddleware</code> сначала молча удаляет просроченный ввод пользователя, затем продлевает оставшийся и кладёт в обработчик <code>state</code> (FSMContext aiogram). Апдейты одного пользователя обрабатываются по очереди (<code>UserLocks</code>), поэтому два быстрых нажатия не перепишут ввод друг другу.</li>
+<li><strong>Порядок.</strong> Внешние middleware апдейта: чистый чат → ошибки → вход (модуль <code>users</code>) → бездействие. <code>ActivityMiddleware</code> сначала молча удаляет просроченный ввод пользователя, затем продлевает оставшийся и кладёт в обработчик <code>state</code> (FSMContext aiogram). Апдейты одного пользователя обрабатываются по очереди (<code>UserLocks</code>), поэтому два быстрых нажатия не перепишут ввод друг другу.</li>
 <li><strong>Хранилище.</strong> Встроенное хранилище aiogram выключено (<code>Dispatcher(disable_fsm=True)</code>). Ключ <code>DbFsmStorage</code> строится по <code>user_id</code> бота, а не по Telegram-ID: Telegram-ID хранится только в <code>Identity</code>. <code>destiny</code> ключа — область ввода: <code>default</code> → <code>dialog</code>, остальные — <code>other_day</code>, <code>workout</code>, <code>onboarding</code>.</li>
 <li><strong>Сброс.</strong> <code>InactivityPolicy</code> задаёт срок по области. Сброс идёт при каждом действии пользователя и фоновой задачей раз в минуту (<code>JobSpec</code> в <code>ModuleContext.jobs</code>), а также сразу при старте бота — поэтому срабатывает и после перезапуска. Для <code>workout</code> (часть 8) к сбросу добавится «завершить с записанными подходами», для <code>other_day</code> (часть 4) — отметка для «📅 Нет, за 24.10».</li>
 <li><strong>Устаревание кнопок.</strong> Новая строка <code>DialogState</code> получает случайный <code>token</code>; кнопки ввода несут его в поле <code>t</code>. После отмены, сброса или нового ввода (<code>start_dialog</code>) строки с этим номером нет, и <code>CallbackGuardMiddleware</code> отвечает <code>UI-STALE</code> с главным меню. Кнопки сохранённых записей (часть 5) несут <code>t = 0</code> и не устаревают.</li>
 <li><strong>Владелец.</strong> Поле <code>o</code> сверяется с нажавшим; при расхождении — <code>ACCESS-FOREIGN</code>, ничего не меняется. Это дополнительная защита канала: сценарии всё равно читают данные через <code>UserScopedRepository</code>.</li>
 <li><strong>Меню.</strong> <code>MenuRegistry</code> хранит пункты главного меню и «Ещё». Пока раздела нет, ядро отвечает «скоро» с номером части плана. Модуль, подключая раздел, вызывает <code>mark_ready(key)</code> и обрабатывает кнопку своим роутером. Переход в раздел меню закрывает незаконченный ввод.</li>
+<li><strong>Кнопки по ширине</strong> (правки 0.6.2). Telegram делит ряд поровну и обрезает подпись многоточием, а ширину не
+  сообщает. <code>ui/layout.py</code> считает ширину подписи в «знаках» (буква 1, цифра 0,85, пробел и скобки 0,5, эмодзи 2)
+  и бюджет на кнопку по числу кнопок в ряду (1 — 30, 2 — 15, 3 — 8,5…). <code>fit_rows</code> кладёт в ряд столько кнопок,
+  сколько помещается целиком, <code>inline(rows)</code> делит ряд экрана, если подпись в нём обрежется. Поддельный Telegram
+  в тестах отклоняет обрезанную подпись (<code>BUTTON_TEXT_TRUNCATED</code>), поэтому новый экран с длинными кнопками не
+  пройдёт «Проверку».</li>
+<li><strong>Чистый чат</strong> (правки 0.6.2). <code>TrailRecorder</code> — middleware сессии бота: запоминает номера сообщений, ушедших
+  в чат того, чьё действие обрабатывается (оповещения другим людям и сообщения фоновых задач не попадают).
+  <code>TrailMiddleware</code> — самый внешний: добавляет входящее сообщение пользователя и после ответа сохраняет след
+  в <code>DialogState</code> (область <code>trail</code>, 48 часов — дольше Telegram удалить не даст). Обработчик итога вызывает
+  <code>trail.result()</code> — след удаляется <code>deleteMessages</code> пачками по 100, итог остаётся; «🏠 Домой» и отмена —
+  <code>trail.clean()</code>; заменённая карточка — <code>trail.discard(id)</code>. Сообщение с клавиатурой внизу (<code>ReplyKeyboardMarkup</code>)
+  держится, пока не пришло следующее с клавиатурой: иначе клиент может спрятать клавиатуру. Ошибка следа
+  пишется в лог и не ломает ответ.</li>
 <li><strong>Разбор ввода</strong> — чистые функции <code>kernel/domain/parsing.py</code> и <code>formatting.py</code> (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.</li>
 </ul>
 <p><code>TgSession.started_at</code> (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в <code>DialogState</code>, и канал передаёт выбранную дату в сценарий явным параметром <code>day</code>.</p>
@@ -1350,7 +1382,11 @@ class FoodModule(Module):
 </tr>
 <tr>
 <td>6. Зарядка ✅</td>
-<td>Модуль <code>warmup</code>: <code>Warmup</code> (набор <code>warmup_template</code> с шагами и порядком, зарядки <code>warmup_session</code> + <code>warmup_item</code> с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели <code>warmup_goal</code> со строкой прогресса, цель «в день» <code>warmup_settings</code>, перенос через <code>add_mover</code>); домен <code>warmup.py</code> (шаги, разбор значений, темп). Черновик — ввод в области <code>dialog</code> с правкой одного сообщения</td>
+<td>Модуль <code>warmup</code>: <code>Warmup</code> (набор <code>warmup_template</code> с шагами и порядком, зарядки <code>warmup_session</code> + <code>warmup_item</code> с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели <code>warmup_goal</code> со строкой прогресса, цель «в день» <code>warmup_settings</code>, перенос через <code>add_mover</code>); домен <code>warmup.py</code> (шаги, разбор значений, темп). Черновик — ввод в области <code>dialog</code> с правкой одного сообщения; правки 0.6.2 — все значения одной строкой (<code>parse_values_line</code>), без отдельной «как в прошлый раз»</td>
+</tr>
+<tr>
+<td>Правки 0.6.2</td>
+<td><code>channels/telegram/ui/layout.py</code> (кнопки по ширине), <code>ui/trail.py</code> (чистый чат, область <code>trail</code>), «🏠 Домой» в <code>MenuRegistry.home_keyboard</code>, скрытые разделы в «Ещё» (<code>MenuRegistry.hidden</code>)</td>
 </tr>
 <tr>
 <td>7–8</td>

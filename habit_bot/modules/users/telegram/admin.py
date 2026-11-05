@@ -5,6 +5,7 @@ from __future__ import annotations
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import MenuCb
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_day
@@ -82,6 +83,7 @@ def build_admin_router(invites: Invites, screens: Screens) -> Router:
         invite = await invites.create(actor, max_uses=uses, days=days)
         until = f"до {format_day(invite.expires_day)}" if invite.expires_day else "без срока"
         link = await invite_link(bot, invite.code)
+        trail.result()  # ссылка остаётся в чате, чтобы её переслать
         await show_invites(
             bot, query.from_user.id, actor,
             f"Приглашение готово ({uses_label(uses)}, {until}). Перешлите ссылку тому, кого приглашаете:\n{link}",

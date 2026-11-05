@@ -8,7 +8,7 @@ from contextlib import suppress
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message, ReplyKeyboardMarkup
 
 from habit_bot.channels.telegram.dialogs.policy import OTHER_DAY
 from habit_bot.channels.telegram.dialogs.store import DialogStore
@@ -37,6 +37,10 @@ class Screens:
     async def home_keyboard(self, actor: Actor) -> ReplyKeyboardMarkup:
         other_day = await self.dialogs.day(actor.user_id, OTHER_DAY)
         return self.menu.home_keyboard(actor, await self.layout(actor), other_day)
+
+    async def more_keyboard(self, actor: Actor) -> InlineKeyboardMarkup:
+        """«Ещё»: разделы, убранные с главного экрана, и пункты «Ещё»."""
+        return self.menu.more_keyboard(actor, await self.layout(actor))
 
     async def home(self, bot: Bot, chat_id: int, actor: Actor, text: str, *, parse_mode: str | None = None) -> Message:
         return await bot.send_message(chat_id, text, reply_markup=await self.home_keyboard(actor),

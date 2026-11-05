@@ -9,6 +9,7 @@ from decimal import Decimal
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from habit_bot.channels.telegram.ui.layout import fit_rows, inline
 from habit_bot.kernel.domain.formatting import format_date, format_day, format_number
 from habit_bot.kernel.domain.parsing import parse_number_in_range
 from habit_bot.kernel.identity import Actor
@@ -58,14 +59,14 @@ def button(actor: Actor, token: int, text: str, action: str, value: str = "") ->
 
 
 def keyboard(rows: Sequence[Sequence[InlineKeyboardButton]]) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[list(row) for row in rows if row])
+    return inline(rows)
 
 
 def choice_rows(
     actor: Actor, token: int, options: dict[str, str], *, per_row: int = 2, action: str = "pick",
 ) -> list[list[InlineKeyboardButton]]:
     buttons = [button(actor, token, label, action, value) for value, label in options.items()]
-    return [buttons[i: i + per_row] for i in range(0, len(buttons), per_row)]
+    return fit_rows(buttons, per_row)
 
 
 def city_options() -> dict[str, str]:

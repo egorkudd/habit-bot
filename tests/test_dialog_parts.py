@@ -50,7 +50,7 @@ def test_policy_scopes() -> None:
     assert policy.ttl_for(ONBOARDING) is None
     assert policy.ttl_for("новая_область") == IDLE_TIMEOUT
     assert ONBOARDING not in policy.expiring_scopes()
-    assert policy.known_scopes() == {DIALOG, OTHER_DAY, WORKOUT, ONBOARDING, "lost_day"}
+    assert policy.known_scopes() == {DIALOG, OTHER_DAY, WORKOUT, ONBOARDING, "lost_day", "trail"}
 
 
 async def test_workout_and_onboarding_survive_15_minutes(app: Any) -> None:
@@ -93,7 +93,7 @@ async def test_store_rows_and_versions(app: Any) -> None:
 
         await store.set_state(user_id, OTHER_DAY, "x", NOW)
         await store.set_state(user_id, OTHER_DAY, "y", NOW)
-        row = (await uow.session.execute(select(DialogState))).scalar_one()
+        row = (await uow.session.execute(select(DialogState).where(DialogState.scope != "trail"))).scalar_one()
         assert row.version == 2
     assert await store.active_tokens(user_id) == {row.token}
     assert await store.clear(user_id, OTHER_DAY) is True
