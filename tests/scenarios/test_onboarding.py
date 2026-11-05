@@ -57,9 +57,10 @@ async def test_s10_old_buttons_in_onboarding(world: World) -> None:
     """S-10. Человек листает вверх и жмёт кнопку прошлого шага — бот повторяет текущий вопрос."""
     user = world.person(ADMIN_ID, "Егор")
     await user.say("/start")
+    name_button = user.find_button("Егор")  # бот уберёт её после нажатия, но нажатие могло уже уйти
     await user.tap("Егор")
     await user.tap("Мужской")
-    await user.press(user.first_name)  # кнопка имени с первого шага
+    await user.press_data(name_button)  # кнопка имени с первого шага
     assert user.last().startswith("Шаг 3/12. Дата рождения")
 
 

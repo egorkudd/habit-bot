@@ -18,7 +18,9 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
 from habit_bot.channels.telegram.dialogs.policy import LOST_DAY, OTHER_DAY
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb, move_button
+from habit_bot.channels.telegram.ui.layout import fit_rows, inline
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.days import quick_days
 from habit_bot.kernel.domain.formatting import format_day, format_number
@@ -113,7 +115,10 @@ def build_food_router(
         return int(days.now().timestamp() // 60)
 
     def rows_of(buttons: list[InlineKeyboardButton], per_row: int = 2) -> list[list[InlineKeyboardButton]]:
-        return [buttons[i: i + per_row] for i in range(0, len(buttons), per_row)]
+        return fit_rows(buttons, per_row)  # длинное название рецепта — одно в ряду, чтобы не обрезалось
+
+    def message_id(query: CallbackQuery) -> int | None:
+        return query.message.message_id if query.message is not None else None
 
     async def card(actor: Actor, day: date) -> str:
         render = day_card()
@@ -126,10 +131,11 @@ def build_food_router(
 
     async def show_entry(bot: Bot, chat_id: int, actor: Actor, entry: EntryView, *, other: bool = False,
                          prefix: str = "") -> None:
-        """Карточка новой записи: «×0,5», «×2», «Отменить», «📅 На вчера»; у «Другого» — «Сохранить как рецепт»."""
-        rows = [[ebtn(actor, "×0,5", "x05", entry.public_id), ebtn(actor, "×2", "x2", entry.public_id),
-                 ebtn(actor, "Отменить", "undo", entry.public_id),
-                 move_button(actor.user_id, KIND, entry.public_id, minute())]]
+        """Карточка новой записи — итог ввода: «×0,5», «×2», «Отменить», «📅 На вчера» (по 2 в ряд);
+        у «Другого» — «Сохранить как рецепт». Промежуточные сообщения ввода удаляются."""
+        rows = fit_rows([ebtn(actor, "×0,5", "x05", entry.public_id), ebtn(actor, "×2", "x2", entry.public_id),
+                         ebtn(actor, "Отменить", "undo", entry.public_id),
+                         move_button(actor.user_id, KIND, entry.public_id, minute())])
         lost = await screens.dialogs.get(actor.user_id, LOST_DAY)
         if lost is not None and lost.state == "on" and lost.other_day and lost.other_day != entry.day \
                 and await screens.dialogs.day(actor.user_id, OTHER_DAY) is None:
@@ -139,8 +145,9 @@ def build_food_router(
             rows.append([ebtn(actor, f"📅 Нет, за {format_day(lost.other_day)}", "lost", entry.public_id)])
         if other:
             rows.append([ebtn(actor, "💾 Сохранить как рецепт", "save", entry.public_id)])
+        trail.result()
         await send_card(bot, chat_id, actor, f"{prefix}🍽 {entry_line(entry)}", entry.day,
-                        InlineKeyboardMarkup(inline_keyboard=rows))
+                        inline(rows))
 
     # --- экран «Еда» ---
     async def food_screen(bot: Bot, chat_id: int, actor: Actor, day: date) -> None:
@@ -151,7 +158,7 @@ def build_food_router(
         rows.append([fbtn(actor, 0, "✍️ Другое", "other"), fbtn(actor, 0, "📋 Записи дня", "entries")])
         rows.append([fbtn(actor, 0, "📚 Каталог", "cat"), fbtn(actor, 0, "⚙️ Мои", "my")])
         title = (FOOD_TITLE if items else EMPTY_LIST).format(day=format_day(day))
-        await bot.send_message(chat_id, title, reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+        await bot.send_message(chat_id, title, reply_markup=inline(rows))
 
     def is_food_label(text: str | None) -> bool:
         entry = screens.menu.get("food")
@@ -161,6 +168,14 @@ def build_food_router(
     async def open_food(message: Message, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
         await state.clear()  # переход в раздел закрывает незаконченный ввод
         await food_screen(bot, message.chat.id, actor, record_day)
+
+    @nav.callback_query(MenuCb.filter(F.k == KIND))
+    async def open_food_from_more(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext,
+                                  record_day: date) -> None:
+        """«🍽 Еда» убрана с главного экрана — открывается из «Ещё»."""
+        await screens.close_buttons(query)
+        await state.clear()
+        await food_screen(bot, query.from_user.id, actor, record_day)
 
     # --- запись из своего списка ---
     @router.callback_query(FCb.filter(F.a == "log"))
@@ -182,7 +197,7 @@ def build_food_router(
         amounts = [fbtn(actor, token, f"{a} {unit}", "q", str(a)) for a in QUICK_AMOUNTS[item.unit]]
         question = f"{item.name}: сколько? Кнопкой или числом ({'граммы' if unit == 'г' else 'штуки'})."
         await bot.send_message(query.from_user.id, question,
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[amounts, [cancel(actor, token)]]))
+                               reply_markup=inline([amounts, [cancel(actor, token)]]))
 
     async def log_amount(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, record_day: date,
                          amount: Decimal, request_id: str | None) -> None:
@@ -210,7 +225,7 @@ def build_food_router(
         await screens.close_buttons(query)
         token = await start_dialog(state, FoodInput.other, record_day)
         await bot.send_message(query.from_user.id, OTHER_PROMPT,
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                               reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(FoodInput.other), F.text)
     async def other_line(message: Message, bot: Bot, actor: Actor, state: FSMContext, record_day: date,
@@ -234,11 +249,15 @@ def build_food_router(
             return
         if action in {"x05", "x2"}:
             await screens.close_buttons(query)
+            trail.discard(message_id(query))  # старая карточка с прежним количеством больше не нужна
             updated = await food.multiply(actor, entry_id, Decimal("0.5") if action == "x05" else Decimal(2))
             await show_entry(bot, chat_id, actor, updated)
         elif action in {"undo", "del"}:
             await screens.close_buttons(query)
             await food.delete_entry(actor, entry_id)
+            if action == "undo":
+                trail.discard(message_id(query))
+            trail.result()
             await send_card(bot, chat_id, actor, f"Запись «{current.name}» удалена.", current.day)
         elif action == "lost":
             lost_day = await screens.dialogs.day(actor.user_id, LOST_DAY)
@@ -248,12 +267,15 @@ def build_food_router(
             await screens.close_buttons(query, toast=f"Перенесено на {format_day(lost_day)}")
             await screens.dialogs.clear(actor.user_id, LOST_DAY)
             await days.move(actor, KIND, entry_id, lost_day)
+            trail.discard(message_id(query))
+            trail.result()
             await send_card(bot, chat_id, actor, f"«{current.name}» — за {format_day(lost_day)}.", lost_day)
         elif action == "save":
             await save_recipe(query, bot, actor, state, entry_id)
         elif action == "saveup":
             await screens.close_buttons(query)
             recipe = await food.save_other_as_recipe(actor, entry_id, overwrite=True)
+            trail.result()
             await bot.send_message(chat_id, f"Рецепт «{recipe.name}» обновлён: {values_text(recipe.nutrients,
                                                                                         recipe.price)}")
         elif action == "savenm":
@@ -261,13 +283,13 @@ def build_food_router(
             token = await start_dialog(state, FoodInput.recipe_name)
             await state.update_data(entry=entry_id)
             await bot.send_message(chat_id, "Как назвать рецепт?",
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                                   reply_markup=inline([[cancel(actor, token)]]))
         elif action == "open":
             await screens.close_buttons(query)
             rows = [[ebtn(actor, "✏️ Изменить количество", "qty", entry_id)],
                     [ebtn(actor, "🗑 Удалить", "del", entry_id), ebtn(actor, "📅 Перенести на дату", "mvd", entry_id)]]
             await bot.send_message(chat_id, f"🍽 {entry_line(current)}",
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+                                   reply_markup=inline(rows))
         elif action == "qty":
             await screens.close_buttons(query)
             token = await start_dialog(state, FoodInput.edit_qty)
@@ -278,7 +300,7 @@ def build_food_router(
                 unit = "г" if current.unit is Unit.GRAMS else "шт"
                 amounts = [fbtn(actor, token, f"{a} {unit}", "eq", str(a)) for a in QUICK_AMOUNTS[current.unit]]
             await bot.send_message(chat_id, f"{current.name}: новое количество?",
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=[amounts, [cancel(actor, token)]]))
+                                   reply_markup=inline([amounts, [cancel(actor, token)]]))
         else:  # mvd — перенести на дату
             await screens.close_buttons(query)
             token = await start_dialog(state, FoodInput.move_day)
@@ -286,7 +308,7 @@ def build_food_router(
             buttons = [fbtn(actor, token, label, "mvto", d.isoformat()) for label, d in quick_days(today, 4)
                        if d != current.day]
             await bot.send_message(chat_id, "На какой день перенести? Кнопкой или датой: 20.10.",
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=[*rows_of(buttons),
+                                   reply_markup=inline([*rows_of(buttons),
                                                                                       [cancel(actor, token)]]))
 
     async def save_recipe(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext, entry_id: str) -> None:
@@ -299,8 +321,9 @@ def build_food_router(
             rows = [[ebtn(actor, "Обновить", "saveup", entry_id),
                      ebtn(actor, "Сохранить под другим именем", "savenm", entry_id)]]
             await bot.send_message(query.from_user.id, err.user_text(),
-                                   reply_markup=InlineKeyboardMarkup(inline_keyboard=rows))
+                                   reply_markup=inline(rows))
             return
+        trail.result()
         await bot.send_message(query.from_user.id, f"Рецепт «{recipe.name}» сохранён — он теперь в списке «🍽 Еда».")
 
     @router.message(StateFilter(FoodInput.recipe_name), F.text)
@@ -308,12 +331,14 @@ def build_food_router(
         entry_id = (await state.get_data()).get("entry", "")
         recipe = await food.save_other_as_recipe(actor, entry_id, name=" ".join((message.text or "").split()))
         await state.clear()
+        trail.result()
         await message.answer(f"Рецепт «{recipe.name}» сохранён — он теперь в списке «🍽 Еда».")
 
     async def change_qty(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, amount: Decimal) -> None:
         entry_id = (await state.get_data()).get("entry", "")
         updated = await food.set_quantity(actor, entry_id, amount)
         await state.clear()
+        trail.result()
         await send_card(bot, chat_id, actor, f"Изменено: {entry_line(updated)}", updated.day)
 
     @router.callback_query(StateFilter(FoodInput.edit_qty), FCb.filter(F.a == "eq"))
@@ -333,6 +358,7 @@ def build_food_router(
         if result is None:
             await screens.home(bot, chat_id, actor, "Запись уже удалена.")
             return
+        trail.result()
         for shown in (result.new_day, result.old_day):
             await send_card(bot, chat_id, actor, f"Итоги {format_day(shown)}:", shown)
 
@@ -358,7 +384,7 @@ def build_food_router(
         buttons = [ebtn(actor, f"{e.name} · {format_number(e.nutrients.kcal)} ккал", "open", e.public_id)
                    for e in found]
         await send_card(bot, query.from_user.id, actor, f"📋 Записи еды за {format_day(record_day)} — выберите:",
-                        record_day, InlineKeyboardMarkup(inline_keyboard=rows_of(buttons, 1)))
+                        record_day, inline(rows_of(buttons, 1)))
 
     # --- каталог ---
     @router.callback_query(FCb.filter(F.a == "cat"))
@@ -366,7 +392,7 @@ def build_food_router(
         await screens.close_buttons(query)
         buttons = [fbtn(actor, 0, i.name, "ci", i.public_id) for i in await food.catalog()]
         await bot.send_message(query.from_user.id, "📚 Каталог — нажмите продукт:",
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=rows_of(buttons)))
+                               reply_markup=inline(rows_of(buttons)))
 
     @router.callback_query(FCb.filter(F.a == "ci"))
     async def catalog_item(query: CallbackQuery, callback_data: FCb, bot: Bot, actor: Actor) -> None:
@@ -374,7 +400,7 @@ def build_food_router(
         item = next((i for i in await food.catalog() if i.public_id == callback_data.v), None)
         if item is None:
             return
-        markup = InlineKeyboardMarkup(inline_keyboard=[[fbtn(actor, 0, "➕ Добавить к себе", "cadd", item.public_id)]])
+        markup = inline([[fbtn(actor, 0, "➕ Добавить к себе", "cadd", item.public_id)]])
         await bot.send_message(query.from_user.id, item_line(item), reply_markup=markup)
 
     @router.callback_query(FCb.filter(F.a == "cadd"))
@@ -382,7 +408,8 @@ def build_food_router(
         await screens.close_buttons(query)
         item, added = await food.add_from_catalog(actor, callback_data.v or "")
         text = f"«{item.name}» добавлен в ваш список." if added else f"«{item.name}» уже в вашем списке."
-        markup = InlineKeyboardMarkup(inline_keyboard=[[fbtn(actor, 0, "Записать сейчас", "log", item.public_id)]])
+        trail.result()
+        markup = inline([[fbtn(actor, 0, "Записать сейчас", "log", item.public_id)]])
         await bot.send_message(query.from_user.id, text, reply_markup=markup)
 
     # --- свои рецепты и продукты ---
@@ -417,6 +444,7 @@ def build_food_router(
         await screens.close_buttons(query)
         item = await food.update_item(actor, callback_data.v or "", active=callback_data.a == "ishow")
         state_text = "показан в списке" if item.active else "скрыт — прошлые записи остались"
+        trail.result()
         await bot.send_message(query.from_user.id, f"«{item.name}» {state_text}.")
 
     @router.callback_query(FCb.filter(F.a.in_({"ied", "inm"})))
@@ -430,7 +458,7 @@ def build_food_router(
         await state.update_data(item=item.public_id)
         prompt = VALUES_PROMPT.format(unit=UNIT_NAMES[item.unit]) if callback_data.a == "ied" else "Новое название?"
         await bot.send_message(query.from_user.id, prompt,
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                               reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(FoodInput.edit_values), F.text)
     async def edit_values(message: Message, actor: Actor, state: FSMContext) -> None:
@@ -438,6 +466,7 @@ def build_food_router(
         item = await food.update_item(actor, (await state.get_data()).get("item", ""), nutrients=nutrients,
                                       price=price)
         await state.clear()
+        trail.result()
         await message.answer(f"Сохранено: {item_line(item)}\nПрошлые записи не изменились.")
 
     @router.message(StateFilter(FoodInput.edit_name), F.text)
@@ -445,6 +474,7 @@ def build_food_router(
         item = await food.update_item(actor, (await state.get_data()).get("item", ""),
                                       name=" ".join((message.text or "").split())[:64])
         await state.clear()
+        trail.result()
         await message.answer(f"Сохранено: {item_line(item)}")
 
     @router.callback_query(FCb.filter(F.a == "new"))
@@ -452,7 +482,7 @@ def build_food_router(
         await screens.close_buttons(query)
         token = await start_dialog(state, FoodInput.new_name)
         await bot.send_message(query.from_user.id, "Название рецепта или продукта?",
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                               reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(FoodInput.new_name), F.text)
     async def new_name(message: Message, actor: Actor, state: FSMContext) -> None:
@@ -466,7 +496,7 @@ def build_food_router(
         token = await dialog_token(state)
         buttons = [fbtn(actor, token, label, "nu", unit) for unit, label in UNIT_BUTTONS.items()]
         await message.answer("Как записывать: порциями, на вес или в штуках?",
-                             reply_markup=InlineKeyboardMarkup(inline_keyboard=[buttons, [cancel(actor, token)]]))
+                             reply_markup=inline([buttons, [cancel(actor, token)]]))
 
     @router.callback_query(StateFilter(FoodInput.new_unit), FCb.filter(F.a == "nu"))
     async def new_unit(query: CallbackQuery, callback_data: FCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
@@ -476,7 +506,7 @@ def build_food_router(
         await state.set_state(FoodInput.new_values)
         token = await dialog_token(state)
         await bot.send_message(query.from_user.id, VALUES_PROMPT.format(unit=UNIT_NAMES[unit]),
-                               reply_markup=InlineKeyboardMarkup(inline_keyboard=[[cancel(actor, token)]]))
+                               reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(FoodInput.new_values), F.text)
     async def new_values(message: Message, actor: Actor, state: FSMContext) -> None:
@@ -486,6 +516,7 @@ def build_food_router(
         item = await food.create_item(actor, name=data["name"], kind=RECIPE if unit is Unit.PORTION else PRODUCT,
                                       unit=unit, nutrients=nutrients, price=price)
         await state.clear()
+        trail.result()
         await message.answer(f"Добавлено: {item_line(item)}\nОно уже в списке «🍽 Еда».")
 
     return nav, router

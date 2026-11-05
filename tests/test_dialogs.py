@@ -14,6 +14,8 @@ from habit_bot.kernel.identity import User
 from tests.conftest import ADMIN_ID, register_active
 from tests.fakes import callback_update, message_update
 
+NOT_TRAIL = select(DialogState).where(DialogState.scope != "trail")  # след сообщений — не ввод
+
 STALE = "Это меню устарело. Вот главное меню 👇"
 FOREIGN = "Эта кнопка не ваша — ничего не изменено. Вот главное меню 👇"
 
@@ -43,7 +45,7 @@ class Chat:
 
     async def states(self) -> list[DialogState]:
         async with self.app.ctx.uow() as uow:
-            return list((await uow.session.execute(select(DialogState))).scalars().all())
+            return list((await uow.session.execute(NOT_TRAIL)).scalars().all())
 
     async def token(self) -> int:
         (row,) = await self.states()
@@ -70,7 +72,7 @@ async def test_start_shows_main_menu(app: Any, fake_session: Any) -> None:
     """Раздел 3.1: клавиатура по умолчанию — Еда, Зарядка, Тренировка, Привычки, Итоги, Ещё; по 2 в ряд."""
     await _chat(app, fake_session)
     assert _labels(fake_session.last(ADMIN_ID).reply_markup) == [
-        ["🍽 Еда", "🤸 Зарядка"], ["🏋️ Тренировка", "✅ Привычки"], ["📊 Итоги", "☰ Ещё"],
+        ["🍽 Еда", "🤸 Зарядка"], ["🏋️ Тренировка", "✅ Привычки"], ["📊 Итоги", "🏠 Домой", "☰ Ещё"],
     ]
 
 

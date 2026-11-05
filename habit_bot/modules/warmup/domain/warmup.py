@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -70,6 +70,34 @@ def parse_value(measure: Measure, text: str, field: str = "Значение") ->
     if value != value.to_integral_value():
         raise AppError("INPUT-NUMBER", value=text.strip())
     return int(value)
+
+
+def format_minus_step(measure: Measure, step: int) -> str:
+    """«−5», «−15 сек», «−1:00» — подпись кнопки «убавить»."""
+    return "−" + format_step(measure, step)[1:]
+
+
+EXAMPLE_VALUE = {Measure.REPS: "20", Measure.SECONDS: "1:00"}
+
+
+def values_example(measures: Sequence[Measure], values: Sequence[int] | None = None) -> str:
+    """Пример строки со всеми значениями по порядку: «50 50 5:45 25»; без значений — «20 20 1:00 20»."""
+    if values is not None and any(values):
+        return " ".join(format_value(m, v) for m, v in zip(measures, values, strict=True))
+    return " ".join(EXAMPLE_VALUE[m] for m in measures)
+
+
+def parse_values_line(exercises: Sequence[tuple[str, Measure]], text: str) -> list[int]:
+    """Все значения зарядки одной строкой по порядку набора: «55 50 6:15 25»."""
+    parts = text.split()
+    example = values_example([m for _, m in exercises])
+    if len(parts) < len(exercises):
+        missing = ", ".join(name for name, _ in exercises[len(parts):])
+        raise AppError("INPUT-WARMUP-LINE", problem=f"Не хватает: {missing}", count=len(exercises), example=example)
+    if len(parts) > len(exercises):
+        raise AppError("INPUT-WARMUP-LINE", problem=f"Лишнее значение: {parts[len(exercises)]}",
+                       count=len(exercises), example=example)
+    return [parse_value(measure, part, name) for (name, measure), part in zip(exercises, parts, strict=True)]
 
 
 def parse_step(measure: Measure, text: str) -> int:

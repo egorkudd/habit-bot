@@ -13,10 +13,12 @@ from aiogram import Bot, F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, StepCb
+from habit_bot.channels.telegram.ui.layout import inline
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.clock import Clock
 from habit_bot.kernel.domain.formatting import format_date, format_duration, format_number
@@ -56,7 +58,7 @@ def build_input_check_router(clock: Clock, tz: tzinfo, screens: Screens) -> Rout
 
     async def ask(message: Message, actor: Actor, state: FSMContext, text: str) -> None:
         token = await dialog_token(state)
-        await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[cancel_row(actor, token)]))
+        await message.answer(text, reply_markup=inline([cancel_row(actor, token)]))
 
     @router.message(Command("check"))
     async def begin(message: Message, actor: Actor, state: FSMContext) -> None:
@@ -88,13 +90,15 @@ def build_input_check_router(clock: Clock, tz: tzinfo, screens: Screens) -> Rout
             seconds=data["seconds"], day=format_date(date.fromisoformat(data["day"])),
         )
         done = InlineKeyboardButton(text="✅ Готово", callback_data=StepCb(o=actor.user_id, t=token, a=DONE).pack())
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[done, *cancel_row(actor, token)]])
+        keyboard = inline([[done, *cancel_row(actor, token)]])
         await message.answer(text, reply_markup=keyboard)
 
     @router.callback_query(StateFilter(InputCheck.confirm), StepCb.filter(F.a == DONE))
     async def finish(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await state.clear()
         await screens.close_buttons(query)
+        if query.message is not None:
+            trail.keep(query.message.message_id)  # «Понял так…» — итог проверки, вопросы убираются
         await screens.home(bot, query.from_user.id, actor, FINISHED)
 
     return router

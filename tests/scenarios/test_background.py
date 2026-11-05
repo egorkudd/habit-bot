@@ -13,12 +13,14 @@ from habit_bot.channels.telegram.dialogs.models import DialogState
 from habit_bot.kernel.jobs import JobSpec
 from tests.scenarios.harness import Persona, World
 
+NOT_TRAIL = select(DialogState).where(DialogState.scope != "trail")  # след сообщений — не ввод
+
 REAL_WAIT_SECONDS = 75  # задача сброса запускается раз в минуту
 
 
 async def _states(world: World) -> list[DialogState]:
     async with world.app.ctx.uow() as uow:
-        return list((await uow.session.execute(select(DialogState))).scalars().all())
+        return list((await uow.session.execute(NOT_TRAIL)).scalars().all())
 
 
 async def test_s27_background_reset_really_runs(world: World, owner: Persona) -> None:

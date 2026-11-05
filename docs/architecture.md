@@ -147,7 +147,8 @@ habit_bot/
     telegram/              всё, что знает про aiogram
       channel.py           TelegramChannel: Dispatcher, polling, middlewares
       dialogs/             DialogState, DialogStore, DbFsmStorage, сброс 15 мин, «Другой день», /check
-      ui/                  MenuRegistry, Screens, данные кнопок (o, t), проверка кнопок
+      ui/                  MenuRegistry, Screens, данные кнопок (o, t), проверка кнопок,
+                           layout (кнопки по ширине подписи), trail (чистый чат)
       render/              карточка дня, картинки статистики, карточка «Понял так»
       delivery.py          TelegramDelivery(DeliveryChannel)
     http/                  позже: FastAPI, токены, OpenAPI. Сейчас пакета нет
@@ -633,6 +634,19 @@ classDiagram
   class DayCardView {
     +render(data: DayCardData) Screen
   }
+  class Layout {
+    <<ui/layout.py>>
+    +label_width(text) float
+    +fit_rows(buttons, max_cols) rows
+    +inline(rows) InlineKeyboardMarkup
+  }
+  class TrailMiddleware {
+    +result() / clean() / discard(id) / keep(id)
+  }
+  class TrailRecorder {
+    <<aiogram BaseRequestMiddleware>>
+    +запоминает отправленные в чат пользователя
+  }
 
   BaseMiddleware <|-- ErrorMiddleware
   BaseMiddleware <|-- AuthMiddleware
@@ -646,16 +660,34 @@ classDiagram
   CallbackGuardMiddleware --> Screens
   Screens --> MenuRegistry
   DayCardView ..> MenuRegistry
+  BaseMiddleware <|-- TrailMiddleware
+  TrailMiddleware --> DialogStore : область trail, 48 ч
+  TrailRecorder ..> TrailMiddleware : номера сообщений апдейта
+  MenuRegistry ..> Layout
 ```
 
 Как это работает:
 
-- **Порядок.** Внешние middleware апдейта: ошибки → вход (модуль `users`) → бездействие. `ActivityMiddleware` сначала молча удаляет просроченный ввод пользователя, затем продлевает оставшийся и кладёт в обработчик `state` (FSMContext aiogram). Апдейты одного пользователя обрабатываются по очереди (`UserLocks`), поэтому два быстрых нажатия не перепишут ввод друг другу.
+- **Порядок.** Внешние middleware апдейта: чистый чат → ошибки → вход (модуль `users`) → бездействие. `ActivityMiddleware` сначала молча удаляет просроченный ввод пользователя, затем продлевает оставшийся и кладёт в обработчик `state` (FSMContext aiogram). Апдейты одного пользователя обрабатываются по очереди (`UserLocks`), поэтому два быстрых нажатия не перепишут ввод друг другу.
 - **Хранилище.** Встроенное хранилище aiogram выключено (`Dispatcher(disable_fsm=True)`). Ключ `DbFsmStorage` строится по `user_id` бота, а не по Telegram-ID: Telegram-ID хранится только в `Identity`. `destiny` ключа — область ввода: `default` → `dialog`, остальные — `other_day`, `workout`, `onboarding`.
 - **Сброс.** `InactivityPolicy` задаёт срок по области. Сброс идёт при каждом действии пользователя и фоновой задачей раз в минуту (`JobSpec` в `ModuleContext.jobs`), а также сразу при старте бота — поэтому срабатывает и после перезапуска. Для `workout` (часть 8) к сбросу добавится «завершить с записанными подходами», для `other_day` (часть 4) — отметка для «📅 Нет, за 24.10».
 - **Устаревание кнопок.** Новая строка `DialogState` получает случайный `token`; кнопки ввода несут его в поле `t`. После отмены, сброса или нового ввода (`start_dialog`) строки с этим номером нет, и `CallbackGuardMiddleware` отвечает `UI-STALE` с главным меню. Кнопки сохранённых записей (часть 5) несут `t = 0` и не устаревают.
 - **Владелец.** Поле `o` сверяется с нажавшим; при расхождении — `ACCESS-FOREIGN`, ничего не меняется. Это дополнительная защита канала: сценарии всё равно читают данные через `UserScopedRepository`.
 - **Меню.** `MenuRegistry` хранит пункты главного меню и «Ещё». Пока раздела нет, ядро отвечает «скоро» с номером части плана. Модуль, подключая раздел, вызывает `mark_ready(key)` и обрабатывает кнопку своим роутером. Переход в раздел меню закрывает незаконченный ввод.
+- **Кнопки по ширине** (правки 0.6.2). Telegram делит ряд поровну и обрезает подпись многоточием, а ширину не
+  сообщает. `ui/layout.py` считает ширину подписи в «знаках» (буква 1, цифра 0,85, пробел и скобки 0,5, эмодзи 2)
+  и бюджет на кнопку по числу кнопок в ряду (1 — 30, 2 — 15, 3 — 8,5…). `fit_rows` кладёт в ряд столько кнопок,
+  сколько помещается целиком, `inline(rows)` делит ряд экрана, если подпись в нём обрежется. Поддельный Telegram
+  в тестах отклоняет обрезанную подпись (`BUTTON_TEXT_TRUNCATED`), поэтому новый экран с длинными кнопками не
+  пройдёт «Проверку».
+- **Чистый чат** (правки 0.6.2). `TrailRecorder` — middleware сессии бота: запоминает номера сообщений, ушедших
+  в чат того, чьё действие обрабатывается (оповещения другим людям и сообщения фоновых задач не попадают).
+  `TrailMiddleware` — самый внешний: добавляет входящее сообщение пользователя и после ответа сохраняет след
+  в `DialogState` (область `trail`, 48 часов — дольше Telegram удалить не даст). Обработчик итога вызывает
+  `trail.result()` — след удаляется `deleteMessages` пачками по 100, итог остаётся; «🏠 Домой» и отмена —
+  `trail.clean()`; заменённая карточка — `trail.discard(id)`. Сообщение с клавиатурой внизу (`ReplyKeyboardMarkup`)
+  держится, пока не пришло следующее с клавиатурой: иначе клиент может спрятать клавиатуру. Ошибка следа
+  пишется в лог и не ломает ответ.
 - **Разбор ввода** — чистые функции `kernel/domain/parsing.py` и `formatting.py` (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.
 
 `TgSession.started_at` (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в `DialogState`, и канал передаёт выбранную дату в сценарий явным параметром `day`.
@@ -1081,7 +1113,8 @@ sequenceDiagram
 | 3. Регистрация ✅ | Модуль `users`: `SignInTelegram` (вход по приглашению из ссылки `/start КОД`), `Invites`, `Profiles` (анкета, профиль, цели, удаление аккаунта — общая очистка всех таблиц с `user_id`), домен `kbju`, `city`, `invites`, `profile`; таблицы `users_profile`, `users_goal`, `users_invite`, `users_body_weight`; `platform/sources`: `OpenMeteoGeocoder` + `CachedGeocoder` (кэш 30 дней в `source_cache`). Анкета — область `onboarding`, её роутер подключается раньше меню (`add_router(first=True)`) |
 | 4. Дни ✅ | Модуль `days`: `Days` (выходные `days_status`, карточка дня `DayCardData` с разделами `add_card_section`, перенос записей `add_mover` / `EntryMover`); `kernel/domain/days.py` — подписи, календарь, давность. `ActivityMiddleware` кладёт в обработчик `today` и `record_day` (по времени сообщения, граница 04:00; в «Другом дне» — выбранная дата; ввод помнит дату начала `start_dialog(..., day)`). Области `other_day` и `lost_day` (отметка на 12 ч после сброса). `Screens.home` строит клавиатуру по выбору пользователя (`users_profile.home_buttons`) и с кнопкой «📅 23.10 ✕ Вернуться к сегодня» |
 | 5. Еда ✅ | Модуль `food`: `Food` (каталог `CATALOG` грузится при старте, свои рецепты и продукты `food_item`, записи `food_entry` с копией КБЖУ и цены, «Другое», множитель, перенос через `Days.add_mover`, строки карточки дня через `add_card_section`, повтор апдейта — `IdempotencyStore` по `update_id`); домен `nutrition`, `other_line`. Ядро: `kernel/purge.py` — окончательное удаление записей через 30 дней по колонке `deleted_at`. Канал: `channel.day_card`, `Place.SETTINGS`, `add_router(top=…)` для анкеты |
-| 6. Зарядка ✅ | Модуль `warmup`: `Warmup` (набор `warmup_template` с шагами и порядком, зарядки `warmup_session` + `warmup_item` с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели `warmup_goal` со строкой прогресса, цель «в день» `warmup_settings`, перенос через `add_mover`); домен `warmup.py` (шаги, разбор значений, темп). Черновик — ввод в области `dialog` с правкой одного сообщения |
+| 6. Зарядка ✅ | Модуль `warmup`: `Warmup` (набор `warmup_template` с шагами и порядком, зарядки `warmup_session` + `warmup_item` с копией названия, номер в дне, «как в прошлый раз» до даты записи, личные цели `warmup_goal` со строкой прогресса, цель «в день» `warmup_settings`, перенос через `add_mover`); домен `warmup.py` (шаги, разбор значений, темп). Черновик — ввод в области `dialog` с правкой одного сообщения; правки 0.6.2 — все значения одной строкой (`parse_values_line`), без отдельной «как в прошлый раз» |
+| Правки 0.6.2 | `channels/telegram/ui/layout.py` (кнопки по ширине), `ui/trail.py` (чистый чат, область `trail`), «🏠 Домой» в `MenuRegistry.home_keyboard`, скрытые разделы в «Ещё» (`MenuRegistry.hidden`) |
 | 7–8 | Модули `custom_habits`, `workouts` и `runs`. Каждый пишет сценарии с DTO, `HabitKind`, `StatsProvider`, экспорт и папку `telegram/`, а также сразу готовит `ai_actions.py` |
 | 9. ИИ | `platform/ai`: LlmRouter, BudgetGuard, AiActionRegistry, CommandService; модуль `ai_commands` |
 | 10. Итоги | `platform/stats` и `platform/export`; картинки в `channels/telegram/render`; модули `stats_views`, `admin`, `export`, `backup` |

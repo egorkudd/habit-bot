@@ -26,6 +26,7 @@ from habit_bot.channels.telegram.ui.guard import CallbackGuardMiddleware
 from habit_bot.channels.telegram.ui.menu import MenuRegistry
 from habit_bot.channels.telegram.ui.routes import build_core_router, build_fallback_router
 from habit_bot.channels.telegram.ui.screens import Screens
+from habit_bot.channels.telegram.ui.trail import TrailMiddleware, TrailRecorder
 from habit_bot.kernel.clock import Clock, SystemClock
 from habit_bot.kernel.config import Settings
 from habit_bot.kernel.db import UowFactory
@@ -156,6 +157,9 @@ class TelegramChannel:
         self.menu = MenuRegistry()
         self.screens = Screens(self.menu, self.dialogs)
         self._error_middleware = ErrorMiddleware(None)
+        # Чистый чат: самый внешний слой, чтобы в след попали и сообщения об ошибках.
+        self.bot.session.middleware(TrailRecorder())
+        self.dispatcher.update.outer_middleware(TrailMiddleware(self.dialogs, self.clock))
         self.dispatcher.update.outer_middleware(self._error_middleware)
         self.dispatcher.callback_query.middleware(CallbackGuardMiddleware(self.storage, self.screens))
         self.dispatcher.include_router(build_core_router(self.menu, self.screens))

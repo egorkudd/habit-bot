@@ -25,6 +25,7 @@ from aiogram.types import (
 
 from habit_bot.channels.telegram.dialogs.fsm import context_for, dialog_token
 from habit_bot.channels.telegram.dialogs.policy import ONBOARDING
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.routes import is_cancel_word
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_number
@@ -266,6 +267,7 @@ class OnboardingFlow:
         kit = [] if use_calculated else list(data.get("kit", []))
         goal = await self.profiles.complete_onboarding(actor, profile, targets=targets, source=source, starter_kit=kit)
         await state.clear()
+        trail.result()  # вопросы анкеты и ответы убираются, итог «Готово…» остаётся
         await self.screens.home(bot, chat_id, actor, f"Готово, {profile.name}! Норма с сегодняшнего дня:\n"
                                                      f"{targets_line(goal)}")
         after = keyboard([[button(actor, 0, "✍️ Заполнить с помощью ИИ", "after", "ai"),
@@ -457,6 +459,8 @@ def build_onboarding_router(flow: OnboardingFlow) -> Router:
             await flow.screens.close_buttons(query, toast=AI_SOON)
             return
         await flow.screens.close_buttons(query)
+        if query.message is not None:
+            trail.discard(query.message.message_id)
         await flow.screens.home(bot, query.from_user.id, actor, LATER_TEXT)
 
     # --- всё остальное во время анкеты: напомнить вопрос ---

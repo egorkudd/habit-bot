@@ -8,8 +8,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from habit_bot.channels.telegram.dialogs.policy import OTHER_DAY
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb
-from habit_bot.channels.telegram.ui.menu import MORE_KEY, MenuRegistry, soon_text
+from habit_bot.channels.telegram.ui.menu import HOME_LABEL, MORE_KEY, MenuRegistry, soon_text
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.identity import Actor
 
@@ -44,6 +45,7 @@ def build_core_router(menu: MenuRegistry, screens: Screens) -> Router:
         left_day = await screens.dialogs.clear(actor.user_id, OTHER_DAY)
         suffix = f" {BACK_TO_TODAY}" if left_day else ""
         text = CANCELLED + suffix if had_input or left_day else NOTHING_TO_CANCEL
+        trail.clean()  # вопросы отменённого ввода больше не нужны
         await screens.home(bot, chat_id, actor, text)
 
     @router.message(Command("cancel"))
@@ -56,13 +58,19 @@ def build_core_router(menu: MenuRegistry, screens: Screens) -> Router:
         await screens.close_buttons(query)
         await cancel(bot, query.from_user.id, actor, state)
 
+    @router.message(F.text == HOME_LABEL)
+    async def go_home(message: Message, state: FSMContext) -> None:
+        """«🏠 Домой»: выйти из ввода и убрать его сообщения. Режим «Другой день» остаётся — у него своя кнопка."""
+        await state.clear()
+        trail.clean()
+
     @router.message(F.text.func(soon_label))
     async def home_button(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
         entry = menu.by_label(message.text)
         assert entry is not None
         await state.clear()  # переход в другой раздел закрывает незаконченный ввод
         if entry.key == MORE_KEY:
-            await message.answer(MORE_TITLE, reply_markup=menu.more_keyboard(actor))
+            await message.answer(MORE_TITLE, reply_markup=await screens.more_keyboard(actor))
             return
         await screens.home(bot, message.chat.id, actor, soon_text(entry))
 

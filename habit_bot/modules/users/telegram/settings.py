@@ -12,6 +12,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, Message, ReplyKeyboardRemove
 
 from habit_bot.channels.telegram.dialogs.fsm import dialog_token, start_dialog
+from habit_bot.channels.telegram.ui import trail
 from habit_bot.channels.telegram.ui.callbacks import CancelCb, MenuCb
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_day
@@ -118,6 +119,8 @@ class SettingsFlow:
             await self.screens.home(bot, chat_id, actor, "Профиль появится после анкеты. Напишите /start.")
             return
         text = f"{prefix}\n\n{profile_card(view)}" if prefix else profile_card(view)
+        if prefix:
+            trail.result()  # «Сохранено ✅» — итог правки: вопросы и ответы убираются
         await bot.send_message(chat_id, text, reply_markup=profile_keyboard(actor))
 
     async def show_goals(self, bot: Bot, chat_id: int, actor: Actor, prefix: str = "") -> None:
@@ -127,6 +130,7 @@ class SettingsFlow:
         text = "🎯 Цели КБЖУ (новые сверху):\n" + "\n".join(f"• {line}" for line in lines)
         if prefix:
             text = f"{prefix}\n\n{text}"
+            trail.result()
         markup = keyboard([[button(actor, 0, "✏️ Ввести вручную", "goal", "manual"),
                             button(actor, 0, "🔄 Пересчитать по профилю", "goal", "calc")]])
         await bot.send_message(chat_id, text, reply_markup=markup)
@@ -231,6 +235,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         default = [e.key for e in flow.screens.menu.choosable(actor)]
         await flow.profiles.set_home_layout(actor, None if chosen == default else chosen)
         await state.clear()
+        trail.result()
         await flow.screens.home(bot, query.from_user.id, actor, HOME_SAVED)
 
     @router.callback_query(MenuCb.filter(F.k == "settings"))
@@ -392,6 +397,7 @@ def build_settings_router(flow: SettingsFlow) -> Router:
     async def delete(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext) -> None:
         await flow.screens.close_buttons(query)
         await flow.profiles.delete_account(actor)
+        trail.forget()  # данных пользователя больше нет — и следа сообщений тоже
         await bot.send_message(query.from_user.id, DELETED, reply_markup=ReplyKeyboardRemove())
 
     return router

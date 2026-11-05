@@ -106,8 +106,8 @@ async def test_cancel_on_every_step(app: Any, fake_session: Any, clock: Any) -> 
     await _menu(chat, actor, "other_day")
     assert await chat.press("✕ Отмена") == "Отменено, ничего не записано."
     await _menu(chat, actor, "other_day")
-    await chat.press("🗓 Выбрать дату")
-    assert chat.find_button("Октябрь 2026")
+    assert (await chat.press("🗓 Выбрать дату")).startswith("🗓 Октябрь 2026\n")
+    assert chat.labels()[:2] == ["◀ Сентябрь", "Ноябрь ▶"]
     assert await chat.press("✕ Отмена") == "Отменено, ничего не записано."
     assert await app.telegram.dialogs.day(actor.user_id, OTHER_DAY) is None
     await _menu(chat, actor, "other_day")
@@ -126,7 +126,7 @@ async def test_calendar_future_and_old_dates(app: Any, fake_session: Any, clock:
     calendar = [b.text for m in fake_session.edits() if m.reply_markup for row in m.reply_markup.inline_keyboard
                 for b in row]
     assert "26" not in calendar and "·" in calendar and "25" in calendar
-    await chat.press("◀")
+    await chat.press("◀ Сентябрь")
     assert (await chat.press("20")) == "Это 35 дней назад (20.09), всё верно?"
     assert (await chat.press("Да")).startswith("Записываю за 20.09.")
 
@@ -231,7 +231,7 @@ async def test_home_screen_settings(app: Any, fake_session: Any, clock: Any) -> 
     await chat.press("⬆")  # первая «⬆» — у «🤸 Зарядки»: она встаёт первой
     await chat.press("✅ Готово")
     assert chat.texts()[-1] == "Главный экран сохранён 👇"
-    assert chat.keyboard() == [["🤸 Зарядка", "🍽 Еда"], ["✅ Привычки", "📊 Итоги"], ["☰ Ещё"]]
+    assert chat.keyboard() == [["🤸 Зарядка", "🍽 Еда"], ["✅ Привычки", "📊 Итоги"], ["🏠 Домой", "☰ Ещё"]]
     assert await app.ctx.services["users.profiles"].home_layout(actor) == ["warmup", "food", "habits", "stats"]
 
     for i in range(5):
