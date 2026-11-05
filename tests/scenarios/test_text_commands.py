@@ -230,3 +230,45 @@ async def test_s101_approximate_dish_and_everything_else(ai_world: World, me: Pe
     assert not await ai_world.service("days").is_day_off(actor, date(2026, 11, 2))
     assert (await ai_world.service("users.profiles").profile(actor)).weight_kg == Decimal(75)
     assert await ai_world.service("workouts").day_sessions(actor, date(2026, 11, 3)) == []
+
+
+async def test_s102_stale_card_buttons_and_failed_line(ai_world: World, me: Persona) -> None:
+    """S-102. Старые кнопки отменённой карточки («Убрать», «Дальше», «Исправить», ответ на вопрос) — «меню
+    устарело»; убрать единственный пункт — ничего не записано; запись удалили кнопками между карточкой и
+    «Выполнить всё» — в итоге «Не получилось» с причиной, остальное выполнено."""
+    await me.say("творог")
+    option = me.find_button("Творог ужин")
+    await me.tap("✕ Отмена")
+    await me.press_data(option)
+    assert me.last() == STALE
+    await me.say(PHRASE)
+    stale = [me.find_button(label) for label in ("Убрать 1", "✏️ Исправить")]
+    await me.tap("✕ Отмена")
+    for data in stale:
+        await me.press_data(data)
+        assert me.last() == STALE
+    ai_world.llm.replies["две вещи"] = {"actions": [*GOLDEN[6]["reply"]["actions"], *GOLDEN[13]["reply"]["actions"]]}
+    await me.say("две вещи")
+    actor = await ai_world.service("users.sign_in").execute(ADMIN_ID, "")
+    cocktail = next(e for e in await ai_world.service("food").entries(actor, date(2026, 11, 3)) if e.name == "Коктейль")
+    await ai_world.service("food").delete_entry(actor, cocktail.public_id)
+    result = await me.tap("✅ Выполнить всё")
+    assert result.startswith("Готово:\n1. ✅ 03.11 💊 Витамины ×1\n\nНе получилось:\n• ✏️ 03.11 Еда: Коктейль")
+
+
+async def test_s103_fill_page_after_cancel(ai_world: World, me: Persona) -> None:
+    """S-103. Заполнение: «Дальше ▶» и «◀ Назад» листают ту же карточку; «Убрать «Рецепты»» убирает все пункты —
+    ничего не записано, старая «Дальше ▶» — «меню устарело»."""
+    ai_world.llm.replies["Рецепты списком"] = {"actions": [
+        {"type": "recipe.create", "name": f"Блюдо {i}", "kcal": 100 + i, "protein": 1, "fat": 1, "carbs": 1}
+        for i in range(1, 13)]}
+    await me.tap("☰ Ещё")
+    await me.tap("⚙️ Настройки")
+    await me.tap("✍️ Заполнить с помощью ИИ")
+    await me.say("Рецепты списком")
+    nxt = me.find_button("Дальше ▶")
+    assert "Страница 2 из 2" in await me.tap("Дальше ▶")
+    assert "Страница 1 из 2" in await me.tap("◀ Назад")
+    assert await me.tap("Убрать «Рецепты»") == "Все пункты убраны — ничего не записано."
+    await me.press_data(nxt)
+    assert me.last() == STALE

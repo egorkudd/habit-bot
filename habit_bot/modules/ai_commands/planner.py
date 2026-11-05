@@ -200,7 +200,7 @@ class Planner:
             raise _Skip(f"Зарядка: {ordinal(x.number)} за {format_day(x.day)} не найдена")
         item = find(x.exercise, list(session.items))
         if item is None:
-            raise _Skip(f"Зарядка: в {ordinal(x.number)} за {format_day(x.day)} нет «{x.exercise}»")
+            raise _Skip(f"Зарядка: {ordinal(x.number)} за {format_day(x.day)} — нет «{x.exercise}»")
         value = parse_value(item.measure, x.value, item.name)
         line = (f"✏️ {format_day(x.day)} Зарядка {ordinal(x.number)}: {item.name} "
                 f"{_warmup_value(item.measure, item.value)} → {_warmup_value(item.measure, value)}")

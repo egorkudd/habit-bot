@@ -162,7 +162,7 @@ def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable
             return
         await screens.close_buttons(query)
         executed = await commands.execute(actor, callback_data.v)
-        if executed is None:
+        if executed is None:  # pragma: no cover — гонка двух одновременных нажатий: второе уже ничего не делает
             return
         done = executed.done
         lines = ["Готово:", *[f"{i}. {line}" for i, line in enumerate(done.lines, 1)]]
@@ -243,7 +243,7 @@ def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable
         command_id = (await state.get_data()).get("command", "")
         await state.clear()
         previous = await commands.command(actor, command_id)
-        if previous is None:
+        if previous is None:  # pragma: no cover — ввод уточнения без команды в состоянии
             raise AppError("UI-STALE")
         await commands.cancel(actor, command_id)
         await parse(bot, message.chat.id, actor, f"{previous.text}\nУточнение: {message.text or ''}", previous.mode,
