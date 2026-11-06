@@ -324,3 +324,24 @@ async def test_s128_day_off_and_today_progress(stats_world: World, me: Persona) 
     assert "👁 Глаза  ●в◐      100% · серия 1" in await me.tap("📝 Текстом")
     await me.tap("📊 День")
     assert "· 20.10 (вт) · выходной\n" in await me.tap("◀ 20.10")
+
+
+async def test_s129_schedule_and_day_off_in_workouts(stats_world: World, me: Persona) -> None:
+    """S-129. Привычка по расписанию «пн, ср»: во вторник клетка бледная (не по плану), а не белая; в строке
+    «Тренировки» выходной без тренировки — «в», а не белая клетка."""
+    actor = await actor_of(stats_world)
+    eyes = await stats_world.service("habits").from_template(actor, "eyes")
+    await stats_world.service("habits").update(actor, eyes.public_id, weekdays=[0, 2])
+    workouts = stats_world.service("workouts")
+    squat = next(e for e in await workouts.exercises(actor, await workouts.filters(actor, WorkoutKind.GYM))
+                 if e.name == "Присед со штангой")
+    stats_world.set_time(datetime(2026, 10, 21, 9, 0, tzinfo=UTC))  # ср
+    await stats_world.service("days").toggle_day_off(actor, date(2026, 10, 20))
+    await workouts.log_sets(actor, date(2026, 10, 19), [(squat.public_id, [SetValue(reps=8, weight=Decimal(100))])])
+    await stats_world.service("habits").mark(actor, eyes.public_id, day=date(2026, 10, 19))
+    rows = {r.label: r for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows}
+    assert rows["Тренировки"].cells[:3] == (Color.PARTIAL, Color.OFF, Color.NONE)
+    stats_world.set_time(datetime(2026, 10, 23, 9, 0, tzinfo=UTC))  # пт; вт выходной снят
+    await stats_world.service("days").toggle_day_off(actor, date(2026, 10, 20))
+    rows = {r.label: r for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows}
+    assert rows["👁 Глаза"].cells[1] is Color.SKIP and rows["👁 Глаза"].cells[3] is Color.SKIP

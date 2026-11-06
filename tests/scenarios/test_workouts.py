@@ -332,3 +332,20 @@ async def test_s90_weekly_goal_in_habits_and_settings(world: World, owner: Perso
     await owner.tap("✅ лёгкая")
     await owner.tap("✅ Привычки")
     assert "🏋️ Тренировки за неделю 1/4" in _labels(owner)
+
+
+async def test_s130_band_exercise_screen(world: World, owner: Persona) -> None:
+    """S-130. Упражнение с резиной: на экране «Резина: средняя» (по умолчанию) и кнопки резин; выбор другой
+    отмечается «✅», подходы записываются с выбранной резиной."""
+    await owner.tap("🏋️ Тренировка")
+    await owner.tap("🌳 Площадка")
+    assert "✅ Резина: да" in _labels(owner)
+    await owner.tap("▶ Начать")
+    await owner.tap("➕ Упражнение")
+    await owner.tap("📚 Все по группам")
+    await _group(owner, "С резиной")
+    assert "Резина: средняя" in await owner.tap("Тяга резины к лицу")
+    assert {"✅ средняя", "лёгкая", "тяжёлая"} <= set(_labels(owner))
+    assert "Резина: тяжёлая" in await owner.tap("тяжёлая")
+    assert "✅ тяжёлая" in _labels(owner)
+    assert (await owner.say("3×15")).startswith("✅ Тяга резины к лицу: тяжёлая 3×15")
