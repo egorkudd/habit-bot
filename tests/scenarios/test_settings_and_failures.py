@@ -51,7 +51,7 @@ async def test_s25_user_blocked_the_bot(world: World, owner: Persona) -> None:
     world.session.blocked_chats.add(ADMIN_ID)
     await owner.tap("📊 Итоги")
     world.session.blocked_chats.clear()
-    assert (await owner.tap("📊 Итоги")).startswith("📊 Итоги — скоро")
+    assert await owner.tap("📊 Итоги") == "📊 Еда · 03.11 (вт)"
 
 
 async def test_s26_city_service_down(world: World, owner: Persona) -> None:

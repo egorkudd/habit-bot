@@ -6,7 +6,7 @@ import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -367,6 +367,31 @@ class Habits:
         """Привычки на день с выполнением, в порядке пользователя."""
         async with self._uow() as uow:
             return [await self._day_habit(uow.session, h, day) for h in await self._rows(uow.session, actor)]
+
+    async def facts_between(self, actor: Actor, start: date, end: date) -> dict[str, dict[date, Decimal]]:
+        """Выполнение каждой привычки по дням периода одним запросом — для светофора."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(Habit.public_id, HabitEntry.day, HabitEntry.value).join(Habit, Habit.id == HabitEntry.habit_id)
+                .where(HabitEntry.user_id == actor.user_id, HabitEntry.deleted_at.is_(None),
+                       HabitEntry.day >= start, HabitEntry.day <= end)
+            )).all()
+        result: dict[str, dict[date, Decimal]] = {}
+        for public_id, day, value in rows:
+            days = result.setdefault(public_id.hex, {})
+            days[day] = days.get(day, Decimal(0)) + Decimal(str(value))
+        return result
+
+    async def day_entries(self, actor: Actor, public_id: str, day: date) -> list[tuple[datetime, Decimal]]:
+        """Отметки привычки за день со временем — для картинки «Итоги»."""
+        async with self._uow() as uow:
+            habit = await self._own(uow.session, actor, public_id)
+            if habit is None:
+                return []
+            rows = (await uow.session.execute(select(HabitEntry).where(
+                HabitEntry.habit_id == habit.id, HabitEntry.day == day, HabitEntry.deleted_at.is_(None))
+                .order_by(HabitEntry.logged_at))).scalars().all()
+            return [(r.logged_at, Decimal(str(r.value))) for r in rows]
 
     async def mark_many(self, actor: Actor, public_ids: Sequence[str], *, day: date,
                         request_id: str | None = None) -> list[MarkResult]:

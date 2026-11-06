@@ -116,6 +116,14 @@ class Runs:
                 .order_by(RunEntry.id))).scalars().all()
             return [_value(r) for r in rows]
 
+    async def runs_between(self, actor: Actor, start: date, end: date) -> list[tuple[date, RunValue]]:
+        """Забеги за период по порядку — для итогов (сравнение, рекорды) и экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(select(RunEntry).where(
+                RunEntry.user_id == actor.user_id, RunEntry.day >= start, RunEntry.day <= end,
+                RunEntry.deleted_at.is_(None)).order_by(RunEntry.day, RunEntry.id))).scalars().all()
+            return [(r.day, _value(r)) for r in rows]
+
     async def count_between(self, actor: Actor, start: date, end: date) -> int:
         """Забеги за период — для цели «тренировок в неделю» (бег считается тренировкой)."""
         async with self._uow() as uow:

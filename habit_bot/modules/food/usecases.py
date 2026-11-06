@@ -393,6 +393,18 @@ class Food:
     async def totals(self, actor: Actor, day: date) -> DayTotals:
         return day_totals((e.nutrients, e.price) for e in await self.entries(actor, day))
 
+    async def daily_totals(self, actor: Actor, start: date, end: date) -> dict[date, DayTotals]:
+        """Итоги по дням периода одним запросом — для светофора и экспорта (дни без записей не попадают)."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(FoodEntry).where(FoodEntry.user_id == actor.user_id, FoodEntry.day >= start,
+                                        FoodEntry.day <= end, FoodEntry.deleted_at.is_(None))
+            )).scalars().all()
+        by_day: dict[date, list[EntryView]] = {}
+        for row in rows:
+            by_day.setdefault(row.day, []).append(entry_view(row))
+        return {d: day_totals((e.nutrients, e.price) for e in found) for d, found in by_day.items()}
+
     async def save_other_as_recipe(
         self, actor: Actor, entry_public_id: str, *, name: str | None = None, overwrite: bool = False,
     ) -> ItemView:

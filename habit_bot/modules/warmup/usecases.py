@@ -274,6 +274,16 @@ class Warmup:
             )).scalars().all()
             return [await self._view(uow.session, r) for r in rows]
 
+    async def sessions_between(self, actor: Actor, start: date, end: date) -> list[SessionView]:
+        """Зарядки за период по дням и номерам — для итогов и экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(WarmupSession).where(WarmupSession.user_id == actor.user_id, WarmupSession.day >= start,
+                                            WarmupSession.day <= end, WarmupSession.deleted_at.is_(None))
+                .order_by(WarmupSession.day, WarmupSession.number)
+            )).scalars().all()
+            return [await self._view(uow.session, r) for r in rows]
+
     async def set_value(self, actor: Actor, session_public_id: str, name: str, value: int) -> int | None:
         """Исправить значение упражнения в записанной зарядке («планка во 2-й зарядке 6:15, а не 6:00»).
         Возвращает прежнее значение; ``None`` — такого упражнения в зарядке нет."""
