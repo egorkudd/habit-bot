@@ -6,9 +6,12 @@ from typing import Any
 
 from sqlalchemy import select
 
+from habit_bot.modules.food.domain.nutrition import Nutrients
+from habit_bot.modules.food.domain.other_line import OtherLine
 from habit_bot.modules.habits.domain.habits import Measure
 from habit_bot.modules.habits.models import HabitEntry
 from habit_bot.modules.habits.telegram.handlers import home_key
+from habit_bot.modules.stats.domain.periods import Kind
 from tests.conftest import ADMIN_ID, OTHER_ID
 from tests.fakes import message_update
 from tests.scenarios.conftest import finish_guest_onboarding, invite_guest, pass_onboarding
@@ -446,3 +449,34 @@ async def test_s77_from_more_and_archive_delete(world: World, owner: Persona) ->
     await owner.tap("🗑 Да, удалить")
     await owner.press_data(yes)
     assert owner.last() == "Привычка уже удалена."
+
+
+async def test_s125_builtin_habits_to_archive(world: World, owner: Persona) -> None:
+    """S-125. Все привычки можно убрать в архив, и встроенные тоже: «🍽 Еда», «🤸 Зарядка», «🏋️ Тренировки за
+    неделю». В архиве их нет в «✅ Привычки» и в светофоре «Итогов»; раздел «🍽 Еда» и записи остаются; «↩» в архиве
+    возвращает."""
+    await owner.tap("☰ Ещё")
+    await owner.tap("⚙️ Настройки")
+    text = await owner.tap("✅ Свои привычки")
+    assert "Встроенные: 🍽 Еда, 🤸 Зарядка, 🏋️ Тренировки за неделю — их тоже можно убрать в архив." in text
+    assert (await owner.tap("🍽 Еда")).startswith("🍽 Еда — встроенная привычка")
+    assert (await owner.tap("🗄 В архив")).startswith("🍽 Еда — в архиве")
+    await owner.tap("✅ Привычки")
+    assert not any(label.startswith("🍽 Еда") for label in owner.labels())
+    assert any(label.startswith("🤸 Зарядка") for label in owner.labels())
+    assert (await owner.tap("🍽 Еда")).startswith("🍽 Еда за 03.11.")  # раздел работает как раньше
+    actor = await world.service("users.sign_in").execute(ADMIN_ID, "")
+    await world.service("food").log_other(actor, OtherLine("Торт", Nutrients.of(350, 5, 20, 40), None),
+                                          day=date(2026, 11, 3))
+    rows = [r.label for r in (await world.service("stats").overview(actor, Kind.WEEK)).rows]
+    assert "Калории" not in rows and "Белки" not in rows
+    await owner.tap("☰ Ещё")
+    await owner.tap("⚙️ Настройки")
+    await owner.tap("✅ Свои привычки")
+    assert "Встроенные: 🤸 Зарядка, 🏋️ Тренировки за неделю" in owner.last()
+    await owner.tap("🗄 Архив (1)")
+    assert (await owner.tap("↩ 🍽 Еда")) == "🍽 Еда снова в списке привычек."
+    rows = [r.label for r in (await world.service("stats").overview(actor, Kind.WEEK)).rows]
+    assert "Калории" in rows
+    await owner.tap("✅ Привычки")
+    assert any(label.startswith("🍽 Еда") for label in owner.labels())

@@ -271,7 +271,8 @@ def build_habits_router(
     async def list_markup(actor: Actor, day: date, *, expanded: bool = False) -> tuple[str, InlineKeyboardMarkup]:
         items = await habits.day(actor, day)
         rows: list[tuple[bool, InlineKeyboardButton]] = []
-        for builtin in builtins():
+        hidden = await habits.archived_builtins(actor)
+        for builtin in [b for b in builtins() if b.key not in hidden]:
             fact, goal = await builtin.progress(actor, day)
             done = is_done(fact, goal)
             label = f"{'✅ ' if done else ''}{builtin.label} {progress_label(fact, goal)}"
@@ -416,13 +417,18 @@ def build_habits_router(
     async def settings_screen(bot: Bot, chat_id: int, actor: Actor) -> None:
         await habits.apply_starter(actor)
         items = await habits.habits(actor)
-        archived = await habits.habits(actor, archived=True)
+        hidden = await habits.archived_builtins(actor)
+        archived = [*await habits.habits(actor, archived=True), *[b for b in builtins() if b.key in hidden]]
+        shown = [b for b in builtins() if b.key not in hidden]
         layout = await screens.layout(actor) or []
         lines = ["⚙️ Свои привычки — нажмите, чтобы изменить:", ""]
         lines += [f"{n}. {habit_line(h)}{' · 🏠' if home_key(h) in layout else ''}" for n, h in enumerate(items, 1)]
         if not items:
             lines.append("Пока нет ни одной.")
+        if shown:
+            lines += ["", "Встроенные: " + ", ".join(b.label for b in shown) + " — их тоже можно убрать в архив."]
         rows = fit_rows([hbtn(actor, 0, h.label, "open", h.public_id) for h in items])
+        rows += fit_rows([hbtn(actor, 0, b.label, "b_open", b.key) for b in shown])
         rows.append([hbtn(actor, 0, "➕ Новая", "new"), *([hbtn(actor, 0, f"🗄 Архив ({len(archived)})", "arch")]
                                                          if archived else [])])
         await bot.send_message(chat_id, "\n".join(lines), reply_markup=inline(rows))
@@ -497,12 +503,43 @@ def build_habits_router(
                            f"{habit.label} — в архиве, история сохранена." if archived
                            else f"{habit.label} снова в списке привычек.")
 
+    def builtin_of(key: str | None) -> Builtin | None:
+        return next((b for b in builtins() if b.key == key), None)
+
+    @router.callback_query(HCb.filter(F.a == "b_open"))
+    async def open_builtin(query: CallbackQuery, callback_data: HCb, bot: Bot, actor: Actor) -> None:
+        builtin = builtin_of(callback_data.v)
+        if builtin is None:
+            await screens.refuse_button(bot, query, actor, "UI-STALE")
+            return
+        await screens.close_buttons(query)
+        text = (f"{builtin.label} — встроенная привычка: цель задаётся в своём разделе.\n"
+                "В архиве она не показывается в «✅ Привычки» и в светофоре «📊 Итоги»; раздел и записи остаются.")
+        await bot.send_message(query.from_user.id, text, reply_markup=inline([
+            [hbtn(actor, 0, "🗄 В архив", "b_archive", builtin.key), hbtn(actor, 0, "← Привычки", "settings")]]))
+
+    @router.callback_query(HCb.filter(F.a.in_({"b_archive", "b_restore"})))
+    async def archive_builtin(query: CallbackQuery, callback_data: HCb, bot: Bot, actor: Actor) -> None:
+        builtin = builtin_of(callback_data.v)
+        if builtin is None:
+            await screens.refuse_button(bot, query, actor, "UI-STALE")
+            return
+        await screens.close_buttons(query)
+        archived = callback_data.a == "b_archive"
+        await habits.set_builtin_archived(actor, builtin.key, archived)
+        trail.result()
+        await screens.home(bot, query.from_user.id, actor,
+                           f"{builtin.label} — в архиве: в «✅ Привычки» и светофоре её нет, записи остаются."
+                           if archived else f"{builtin.label} снова в списке привычек.")
+
     @router.callback_query(HCb.filter(F.a == "arch"))
     async def archive_list(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
         await screens.close_buttons(query)
         items = await habits.habits(actor, archived=True)
-        rows = [[hbtn(actor, 0, f"↩ {h.label}", "restore", h.public_id), hbtn(actor, 0, "🗑", "delask", h.public_id)]
-                for h in items]
+        hidden = await habits.archived_builtins(actor)
+        rows = [[hbtn(actor, 0, f"↩ {b.label}", "b_restore", b.key)] for b in builtins() if b.key in hidden]
+        rows += [[hbtn(actor, 0, f"↩ {h.label}", "restore", h.public_id), hbtn(actor, 0, "🗑", "delask", h.public_id)]
+                 for h in items]
         rows.append([hbtn(actor, 0, "← Привычки", "settings")])
         await bot.send_message(query.from_user.id, "🗄 Архив привычек: «↩» вернуть, «🗑» удалить с историей.",
                                reply_markup=inline(rows))

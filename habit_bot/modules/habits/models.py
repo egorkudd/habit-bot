@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Date, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Date, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from habit_bot.kernel.db import Base, PublicIdMixin, SoftDeleteMixin, TimestampMixin, UtcDateTime, VersionedMixin
@@ -47,3 +47,15 @@ class HabitEntry(PublicIdMixin, TimestampMixin, SoftDeleteMixin, Base):
     logged_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
     value: Mapped[float] = mapped_column(Float, nullable=False)
     source: Mapped[str] = mapped_column(String(10), nullable=False)  # button / list / many / text
+
+
+class BuiltinArchive(Base):
+    """Встроенная привычка списка («🍽 Еда», «🤸 Зарядка», «🏋️ Тренировки за неделю») убрана в архив: не видна в
+    «✅ Привычки» и в светофоре «Итогов». Раздел и его записи остаются."""
+
+    __tablename__ = "habits_builtin_archive"
+    __table_args__ = (UniqueConstraint("user_id", "key", name="uq_habits_builtin_archive_user_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    key: Mapped[str] = mapped_column(String(16), nullable=False)

@@ -85,8 +85,8 @@ class WorkoutSet(PublicIdMixin, TimestampMixin, SoftDeleteMixin, Base):
 
 
 class WorkoutSettings(Base):
-    """Цель «тренировок в неделю» (по умолчанию 3), резинки, «Показывать все упражнения», прошлый ответ
-    «Резинка с собой?»."""
+    """Цель «тренировок в неделю» (по умолчанию 3), резины, «Показывать все упражнения», прошлый ответ
+    «Резина с собой?»."""
 
     __tablename__ = "workouts_settings"
     __table_args__ = (UniqueConstraint("user_id", name="uq_workouts_settings_user_id"),)

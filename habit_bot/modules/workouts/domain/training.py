@@ -102,7 +102,7 @@ class Measure(StrEnum):
 
 
 MEASURE_LABELS = {Measure.WEIGHT_REPS: "Вес × повторы", Measure.REPS: "Повторы", Measure.TIME: "Время",
-                  Measure.BAND_REPS: "Резинка × повторы"}
+                  Measure.BAND_REPS: "Резина × повторы"}
 
 
 class Suggest(StrEnum):
@@ -132,7 +132,7 @@ GROUP_LABELS = {
     Group.LEGS: "Ноги", Group.HINGE: "Тяга бедром", Group.CHEST: "Грудь, жимы", Group.BACK: "Спина, тяги",
     Group.SHOULDERS: "Плечи", Group.ARMS: "Руки", Group.CORE: "Кор", Group.BAR: "Турник и перекладина",
     Group.DIPS: "Брусья", Group.BENCH: "Лавка и стенка", Group.STANDING: "Стоя, без инвентаря",
-    Group.BAND: "С резинкой",
+    Group.BAND: "С резиной",
 }
 
 
@@ -183,7 +183,7 @@ class Filters:
 
 
 def offered(e: ExerciseSpec, f: Filters) -> bool:
-    """Предлагать ли упражнение (раздел 3.4.1): место, оборудование, резинка, «лёжа на земле», отягощение, пол.
+    """Предлагать ли упражнение (раздел 3.4.1): место, оборудование, резина, «лёжа на земле», отягощение, пол.
 
     Фильтр по полу влияет только на подбор: «Показывать все упражнения» его снимает.
     """
@@ -201,7 +201,7 @@ def offered(e: ExerciseSpec, f: Filters) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class SetValue:
-    """Один подход: вес (кг), повторы или секунды, резинка."""
+    """Один подход: вес (кг), повторы или секунды, резина."""
 
     reps: int | None = None
     seconds: int | None = None
@@ -262,7 +262,7 @@ def kg(value: Decimal) -> str:
 
 
 def format_sets(measure: Measure, sets: Sequence[SetValue], per_dumbbell: bool = False) -> str:
-    """«110 кг 4×8», «110 кг 8, 8, 7», «2×20 кг 3×10», «4×12», «3×0:45», «средняя резинка 3×15»."""
+    """«110 кг 4×8», «110 кг 8, 8, 7», «2×20 кг 3×10», «4×12», «3×0:45», «средняя резина 3×15»."""
     if not sets:
         return "нет подходов"
     counts = [s.seconds if measure is Measure.TIME else s.reps for s in sets]
@@ -277,7 +277,7 @@ def format_sets(measure: Measure, sets: Sequence[SetValue], per_dumbbell: bool =
         return ", ".join(f"{format_number(s.weight or 0)}×{s.reps}" for s in sets) + " кг"
     if measure is Measure.BAND_REPS:
         bands = {s.band for s in sets}
-        band = BAND_LABELS[sets[0].band] if len(bands) == 1 and sets[0].band else "резинка"
+        band = BAND_LABELS[sets[0].band] if len(bands) == 1 and sets[0].band else "резина"
         return f"{band} {reps}"
     return reps
 

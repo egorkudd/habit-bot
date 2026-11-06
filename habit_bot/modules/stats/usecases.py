@@ -267,7 +267,8 @@ class Stats:
         def row(label: str, cells: Sequence[Color]) -> TrafficRow:
             return TrafficRow(label, tuple(cells), t.green_share(cells), t.current_streak(cells))
 
-        if self.s.food is not None:
+        hidden = await self.s.habits.archived_builtins(actor) if self.s.habits is not None else set()
+        if self.s.food is not None and FOOD not in hidden:
             totals = await self.s.food.daily_totals(actor, p.start, p.end)
             if totals:
                 goals = {d: await self.s.profiles.goal_on(actor, d) for d in days if d in totals}
@@ -282,7 +283,7 @@ class Stats:
                         kcal.append(fixed or Color.GRAY)
                         prot.append(fixed or Color.GRAY)
                 rows += [row("Калории", kcal), row("Белки", prot)]
-        if self.s.warmup is not None:
+        if self.s.warmup is not None and WARMUP not in hidden:
             sessions = await self.s.warmup.sessions_between(actor, p.start, p.end)
             if sessions:
                 goal = await self.s.warmup.daily_goal(actor)
@@ -290,7 +291,7 @@ class Stats:
                 for x in sessions:
                     count[x.day] = count.get(x.day, 0) + 1
                 rows.append(row("Зарядка", [frame(d) or t.warmup(count.get(d, 0), goal) for d in days]))
-        if self.s.workouts is not None:
+        if self.s.workouts is not None and WORKOUT not in hidden:
             trained = await self._weekly_workouts(actor, p, today, registered)
             if trained is not None:
                 rows.append(row("Тренировки", trained))

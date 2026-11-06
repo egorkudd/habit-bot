@@ -50,7 +50,7 @@ OUTDOOR_GROUPS = {Group.BAR: 10, Group.DIPS: 5, Group.BENCH: 8, Group.STANDING: 
 
 
 def test_catalog_size_and_groups() -> None:
-    """Раздел 3.4.1 и 6.1: не меньше 70 для зала, 35 для площадки и 15 с резинкой; минимум по группам."""
+    """Раздел 3.4.1 и 6.1: не меньше 70 для зала, 35 для площадки и 15 с резиной; минимум по группам."""
     assert len(EXERCISES) >= 120 and len(BY_KEY) == len(EXERCISES)  # ключи без повторов
     band = [e for e in EXERCISES if e.equipment is Equipment.BAND]
     gym = [e for e in EXERCISES if e.place is not Place.OUTDOOR and e.equipment is not Equipment.BAND]
@@ -124,7 +124,7 @@ def test_format_sets() -> None:
     assert format_sets(Measure.TIME, [SetValue(seconds=45)] * 3) == "3×0:45"
     assert format_sets(Measure.BAND_REPS, [SetValue(reps=15, band=Band.MEDIUM)] * 3) == "средняя 3×15"
     assert format_sets(Measure.BAND_REPS, [SetValue(reps=15, band=Band.MEDIUM), SetValue(reps=12)]) == (
-        "резинка 15, 12")
+        "резина 15, 12")
     assert format_sets(Measure.REPS, []) == "нет подходов"
     assert week_start(date(2026, 11, 8)) == date(2026, 11, 2) == week_start(date(2026, 11, 2))
     assert duration_label(70) == "70 мин"
