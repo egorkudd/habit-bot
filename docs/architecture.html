@@ -1410,6 +1410,10 @@ class FoodModule(Module):
 <td>Модуль <code>export</code>: домен <code>csv_format.py</code> (BOM, точка, ISO-даты, README) и <code>tables.py</code> (состав файлов раздела 3.12), <code>period.py</code> («01.10–22.10»); <code>Export</code> собирает строки из сервисов модулей (новые выборки <code>Food.entries_between</code>, <code>Habits.entries_between</code>, <code>Runs.entries_between</code>) и складывает ZIP в памяти. Вместо <code>platform/export</code> и <code>ExportTable</code> — пока один модуль, как и «Итоги». Кнопки хранят период и маску галочек (<code>ExCb</code>), без состояния диалога</td>
 </tr>
 <tr>
+<td>10. Админ и бэкап (шаг 3) ✅</td>
+<td>Модуль <code>admin</code>: <code>Admin</code> (пользователи с числом записей из таблиц дневника, блокировка, удаление через <code>Profiles.erase_user</code> — общий код с «Удалить аккаунт», расходы на ИИ из <code>ai_command</code>, счётчики каталога), <code>Food.add_catalog_item</code> / <code>set_catalog_active</code>. Модуль <code>backup</code>: <code>Backups</code> (копия через <code>ops.make_backup</code>, журнал <code>backup_log</code>, «раз в 2 дня» от последнего удачного — задача раз в час), <code>platform/backup/crypto.py</code> (scrypt + AES-256-GCM, <code>ops decrypt</code>). Новое место меню <code>Place.ADMIN</code>: кнопки «🛠 Админ» добавляют модули. Приёмка — <code>docs/acceptance-mvp.md</code></td>
+</tr>
+<tr>
 <td>v2–v3</td>
 <td><code>platform/delivery</code> и модуль <code>notifications</code> с провайдерами; новые модули <code>chat_digest</code>, <code>weekly_review</code>, <code>voice</code></td>
 </tr>

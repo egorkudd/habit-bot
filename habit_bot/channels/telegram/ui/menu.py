@@ -19,6 +19,7 @@ class Place(StrEnum):
     HOME = "home"   # клавиатура под полем ввода
     MORE = "more"   # кнопки под сообщением «Ещё»
     SETTINGS = "settings"  # кнопки в «⚙️ Настройки» от модулей («🍽 Рецепты и продукты»)
+    ADMIN = "admin"        # кнопки в «🛠 Админ» от модулей («👥 Пользователи», «💾 Бэкап»)
 
 
 MORE_KEY = "more"
@@ -142,9 +143,9 @@ class MenuRegistry:
         shown = {e.key for e in self.entries(Place.HOME, actor, layout)}
         return [e for e in self.choosable(actor) if e.key not in shown]
 
-    def settings_buttons(self, actor: Actor) -> list[InlineKeyboardButton]:
+    def settings_buttons(self, actor: Actor, place: Place = Place.SETTINGS) -> list[InlineKeyboardButton]:
         return [InlineKeyboardButton(text=e.label, callback_data=MenuCb(o=actor.user_id, t=0, k=e.key).pack())
-                for e in self.entries(Place.SETTINGS, actor)]
+                for e in self.entries(place, actor)]
 
     def more_keyboard(self, actor: Actor, layout: Sequence[str] | None = None) -> InlineKeyboardMarkup:
         """Сначала разделы, убранные с главного экрана, затем пункты «Ещё»."""

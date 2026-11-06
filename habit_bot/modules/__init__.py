@@ -10,5 +10,7 @@ KNOWN_MODULES: dict[str, str] = {
     "workouts": "habit_bot.modules.workouts.module:WorkoutsModule",
     "stats": "habit_bot.modules.stats.module:StatsModule",
     "export": "habit_bot.modules.export.module:ExportModule",
+    "admin": "habit_bot.modules.admin.module:AdminModule",
+    "backup": "habit_bot.modules.backup.module:BackupModule",
     "ai_commands": "habit_bot.modules.ai_commands.module:AiCommandsModule",
 }
