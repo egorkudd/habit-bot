@@ -689,7 +689,11 @@ classDiagram
   `trail.result()` — след удаляется `deleteMessages` пачками по 100, итог остаётся; «🏠 Домой» и отмена —
   `trail.clean()`; заменённая карточка — `trail.discard(id)`. Сообщение с клавиатурой внизу (`ReplyKeyboardMarkup`)
   держится, пока не пришло следующее с клавиатурой: иначе клиент может спрятать клавиатуру. Ошибка следа
-  пишется в лог и не ломает ответ.
+  пишется в лог и не ломает ответ. С 1.0.2 «🏠 Домой» — `trail.wipe()`: удаляется вся переписка за 48 часов по
+  журналу `ChatLog` (`ui/chat_log.py`, таблица `chat_messages`: номер чата, номер сообщения, «файл», время — без
+  содержимого). `TrailRecorder` пишет в журнал все отправленные сообщения (ответа — после него, в `_settle`;
+  фоновых задач — сразу), `TrailMiddleware` — входящие. Файлы (`document`) помечены `kept` и не удаляются; строки
+  старше 47 часов стираются при каждой записи.
 - **Разбор ввода** — чистые функции `kernel/domain/parsing.py` и `formatting.py` (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.
 
 `TgSession.started_at` (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в `DialogState`, и канал передаёт выбранную дату в сценарий явным параметром `day`.
@@ -1123,6 +1127,8 @@ sequenceDiagram
 | 10. Итоги (шаг 1) ✅ | `platform/stats`: данные `DayStats`, `Overview`, `TrafficRow`, `Bar`, `Table` и правила светофора `domain/traffic.py` (раздел 4.10); модуль `stats` (вместо `stats_views`): `Stats` собирает данные из сервисов модулей (новые выборки за период: `Food.daily_totals`, `Warmup.sessions_between`, `Workouts.sessions_between`, `Runs.runs_between`, `Habits.facts_between`, `Profiles.weights_between`), домен `periods.py`, таблица `stats_settings`. Картинки и текст — `channels/telegram/render/stats.py` (Pillow, без matplotlib и без `ImageCache`: картинка строится в памяти за десятки миллисекунд). Реестра `StatsProvider` пока нет — модуль `stats` знает разделы MVP сам; реестр появится, когда разделы начнут добавлять другие модули. Дальше: модули `export`, `admin`, `backup` |
 | 10. Экспорт (шаг 2) ✅ | Модуль `export`: домен `csv_format.py` (BOM, точка, ISO-даты, README) и `tables.py` (состав файлов раздела 3.12), `period.py` («01.10–22.10»); `Export` собирает строки из сервисов модулей (новые выборки `Food.entries_between`, `Habits.entries_between`, `Runs.entries_between`) и складывает ZIP в памяти. Вместо `platform/export` и `ExportTable` — пока один модуль, как и «Итоги». Кнопки хранят период и маску галочек (`ExCb`), без состояния диалога |
 | 10. Админ и бэкап (шаг 3) ✅ | Модуль `admin`: `Admin` (пользователи с числом записей из таблиц дневника, блокировка, удаление через `Profiles.erase_user` — общий код с «Удалить аккаунт», расходы на ИИ из `ai_command`, счётчики каталога), `Food.add_catalog_item` / `set_catalog_active`. Модуль `backup`: `Backups` (копия через `ops.make_backup`, журнал `backup_log`, «раз в 2 дня» от последнего удачного — задача раз в час), `platform/backup/crypto.py` (scrypt + AES-256-GCM, `ops decrypt`). Новое место меню `Place.ADMIN`: кнопки «🛠 Админ» добавляют модули. Приёмка — `docs/acceptance-mvp.md` |
+| Правки 1.0.1 | `ui/not_modified.py` (`IgnoreNotModified`: «message is not modified» — успех), `habits_builtin_archive` (архив встроенных привычек, миграция 0012), три оттенка «Итогов» в `platform/stats/domain/traffic.py`, «Текстом» в том же сообщении; `scripts/local_check.sh` и `deploy/update.sh` — пока GitHub Actions отключены |
+| Правки 1.0.2 | `ui/chat_log.py` (`ChatLog`, `chat_messages`, миграция 0013) и `trail.wipe()` — «🏠 Домой» чистит весь чат кроме файлов; `MenuEntry.habit` — еда, зарядка, тренировка не в «Ещё»; флаги `stats…TEXT_BUTTON`, `users…DELETE_BUTTON` |
 | v2–v3 | `platform/delivery` и модуль `notifications` с провайдерами; новые модули `chat_digest`, `weekly_review`, `voice` |
 | Следующие версии | `channels/http`, вход через привязку, push — раздел 10 |
 

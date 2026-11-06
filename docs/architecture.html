@@ -901,7 +901,10 @@ class FoodModule(Module):
   <code>trail.result()</code> — след удаляется <code>deleteMessages</code> пачками по 100, итог остаётся; «🏠 Домой» и отмена —
   <code>trail.clean()</code>; заменённая карточка — <code>trail.discard(id)</code>. Сообщение с клавиатурой внизу (<code>ReplyKeyboardMarkup</code>)
   держится, пока не пришло следующее с клавиатурой: иначе клиент может спрятать клавиатуру. Ошибка следа
-  пишется в лог и не ломает ответ.</li>
+  пишется в лог и не ломает ответ. С 1.0.2 «🏠 Домой» — <code>trail.wipe()</code>: удаляется вся переписка за 48 часов по
+  журналу <code>ChatLog</code> (<code>ui/chat_log.py</code>, таблица <code>chat_messages</code>: номер чата, номер сообщения, «файл», время — без
+  содержимого). <code>TrailRecorder</code> пишет в журнал все отправленные сообщения (ответа — после него, фоновых задач — сразу),
+  <code>TrailMiddleware</code> — входящие. Файлы помечены <code>kept</code> и не удаляются; строки старше 47 часов стираются при каждой записи.</li>
 <li><strong>Разбор ввода</strong> — чистые функции <code>kernel/domain/parsing.py</code> и <code>formatting.py</code> (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.</li>
 </ul>
 <p><code>TgSession.started_at</code> (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в <code>DialogState</code>, и канал передаёт выбранную дату в сценарий явным параметром <code>day</code>.</p>
@@ -1412,6 +1415,14 @@ class FoodModule(Module):
 <tr>
 <td>10. Админ и бэкап (шаг 3) ✅</td>
 <td>Модуль <code>admin</code>: <code>Admin</code> (пользователи с числом записей из таблиц дневника, блокировка, удаление через <code>Profiles.erase_user</code> — общий код с «Удалить аккаунт», расходы на ИИ из <code>ai_command</code>, счётчики каталога), <code>Food.add_catalog_item</code> / <code>set_catalog_active</code>. Модуль <code>backup</code>: <code>Backups</code> (копия через <code>ops.make_backup</code>, журнал <code>backup_log</code>, «раз в 2 дня» от последнего удачного — задача раз в час), <code>platform/backup/crypto.py</code> (scrypt + AES-256-GCM, <code>ops decrypt</code>). Новое место меню <code>Place.ADMIN</code>: кнопки «🛠 Админ» добавляют модули. Приёмка — <code>docs/acceptance-mvp.md</code></td>
+</tr>
+<tr>
+<td>Правки 1.0.1</td>
+<td><code>ui/not_modified.py</code> (<code>IgnoreNotModified</code>: «message is not modified» — успех), <code>habits_builtin_archive</code> (архив встроенных привычек, миграция 0012), три оттенка «Итогов» в <code>platform/stats/domain/traffic.py</code>, «Текстом» в том же сообщении; <code>scripts/local_check.sh</code> и <code>deploy/update.sh</code> — пока GitHub Actions отключены</td>
+</tr>
+<tr>
+<td>Правки 1.0.2</td>
+<td><code>ui/chat_log.py</code> (<code>ChatLog</code>, <code>chat_messages</code>, миграция 0013) и <code>trail.wipe()</code> — «🏠 Домой» чистит весь чат кроме файлов; <code>MenuEntry.habit</code> — еда, зарядка, тренировка не в «Ещё»; флаги <code>TEXT_BUTTON</code> (итоги), <code>DELETE_BUTTON</code> (настройки)</td>
 </tr>
 <tr>
 <td>v2–v3</td>
