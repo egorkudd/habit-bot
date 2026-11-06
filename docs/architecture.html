@@ -904,7 +904,8 @@ class FoodModule(Module):
   пишется в лог и не ломает ответ. С 1.0.2 «🏠 Домой» — <code>trail.wipe()</code>: удаляется вся переписка за 48 часов по
   журналу <code>ChatLog</code> (<code>ui/chat_log.py</code>, таблица <code>chat_messages</code>: номер чата, номер сообщения, «файл», время — без
   содержимого). <code>TrailRecorder</code> пишет в журнал все отправленные сообщения (ответа — после него, фоновых задач — сразу),
-  <code>TrailMiddleware</code> — входящие. Файлы помечены <code>kept</code> и не удаляются; строки старше 47 часов стираются при каждой записи.</li>
+  <code>TrailMiddleware</code> — входящие. Файлы помечены <code>kept</code> и не удаляются; строки старше 47 часов стираются при каждой записи.
+  Ночная чистка — <code>TelegramChannel.nightly_clean</code> (задача <code>chat.nightly</code>, раз в минуту): всё, что прислано до последних 04:00, кроме файлов и последнего сообщения с клавиатурой (отметка <code>keyboard</code>).</li>
 <li><strong>Разбор ввода</strong> — чистые функции <code>kernel/domain/parsing.py</code> и <code>formatting.py</code> (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.</li>
 </ul>
 <p><code>TgSession.started_at</code> (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в <code>DialogState</code>, и канал передаёт выбранную дату в сценарий явным параметром <code>day</code>.</p>
@@ -1422,7 +1423,7 @@ class FoodModule(Module):
 </tr>
 <tr>
 <td>Правки 1.0.2</td>
-<td><code>ui/chat_log.py</code> (<code>ChatLog</code>, <code>chat_messages</code>, миграция 0013) и <code>trail.wipe()</code> — «🏠 Домой» чистит весь чат кроме файлов; <code>MenuEntry.habit</code> — еда, зарядка, тренировка не в «Ещё»; флаги <code>TEXT_BUTTON</code> (итоги), <code>DELETE_BUTTON</code> (настройки)</td>
+<td><code>ui/chat_log.py</code> (<code>ChatLog</code>, <code>chat_messages</code>, миграция 0013) и <code>trail.wipe()</code> — «🏠 Домой» чистит весь чат кроме файлов; ночная чистка в 04:00 (<code>nightly_clean</code>); <code>MenuEntry.habit</code> — еда, зарядка, тренировка не в «Ещё»; флаги <code>TEXT_BUTTON</code> (итоги), <code>DELETE_BUTTON</code> (настройки)</td>
 </tr>
 <tr>
 <td>v2–v3</td>
