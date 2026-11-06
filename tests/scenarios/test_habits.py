@@ -10,7 +10,7 @@ from habit_bot.modules.food.domain.nutrition import Nutrients
 from habit_bot.modules.food.domain.other_line import OtherLine
 from habit_bot.modules.habits.domain.habits import Measure
 from habit_bot.modules.habits.models import HabitEntry
-from habit_bot.modules.habits.telegram.handlers import home_key
+from habit_bot.modules.habits.telegram.handlers import HCb, home_key
 from habit_bot.modules.stats.domain.periods import Kind
 from tests.conftest import ADMIN_ID, OTHER_ID
 from tests.fakes import message_update
@@ -480,3 +480,7 @@ async def test_s125_builtin_habits_to_archive(world: World, owner: Persona) -> N
     assert "Калории" in rows
     await owner.tap("✅ Привычки")
     assert any(label.startswith("🍽 Еда") for label in owner.labels())
+    owner_id = actor.user_id
+    for action in ("b_open", "b_archive"):  # кнопка встроенной привычки, которой больше нет (модуль выключили)
+        await owner.press_data(HCb(o=owner_id, t=0, a=action, v="gone").pack())
+        assert owner.last() == "Это меню устарело. Вот главное меню 👇"
