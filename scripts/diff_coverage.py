@@ -29,7 +29,8 @@ def changed_lines(base: str) -> dict[str, set[int]]:
 
 
 def main() -> int:
-    data = json.load(open(sys.argv[1], encoding="utf-8"))["files"]
+    with open(sys.argv[1], encoding="utf-8") as file:
+        data = json.load(file)["files"]
     total = covered = 0
     report = []
     for path, lines in sorted(changed_lines(sys.argv[2] if len(sys.argv) > 2 else "origin/main").items()):

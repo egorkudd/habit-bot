@@ -26,7 +26,7 @@ run "1. Линтер: границы модулей" python scripts/check_bounda
 rm -f .coverage .coverage.*
 run "2–3. Все тесты (с поведенческими сценариями и фоновыми задачами)" \
   python -m pytest -q -p no:cacheprovider tests --cov --cov-report=
-coverage json -q -o coverage.json
+python -m coverage json -q -o coverage.json
 run "4. Покрытие: пороги" python scripts/coverage_gate.py coverage.json
 run "4. Покрытие нового кода против $base" python scripts/diff_coverage.py coverage.json "$base"
 run "5. Миграции" bash scripts/check_migrations.sh

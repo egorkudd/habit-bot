@@ -21,7 +21,8 @@ def main() -> int:
     found = []
     for name in files:
         try:
-            text = open(name, encoding="utf-8").read()
+            with open(name, encoding="utf-8") as file:
+                text = file.read()
         except (UnicodeDecodeError, OSError):
             continue
         for kind, pattern in PATTERNS.items():
