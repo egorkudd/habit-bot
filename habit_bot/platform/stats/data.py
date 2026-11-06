@@ -53,3 +53,4 @@ class Overview:
     title: str
     days: tuple[date, ...]
     rows: tuple[TrafficRow, ...] = field(default_factory=tuple)
+    today: date | None = None  # столбец сегодняшнего дня выделяется

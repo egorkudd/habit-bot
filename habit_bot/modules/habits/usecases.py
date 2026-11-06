@@ -30,7 +30,7 @@ from habit_bot.modules.habits.domain.habits import (
     is_scheduled,
     streak,
 )
-from habit_bot.modules.habits.models import Habit, HabitEntry
+from habit_bot.modules.habits.models import BuiltinArchive, Habit, HabitEntry
 from habit_bot.modules.users.public import Profiles
 
 log = logging.getLogger(__name__)
@@ -232,6 +232,22 @@ class Habits:
             if not archived:
                 habit.position = max((h.position for h in await self._rows(uow.session, actor)), default=0) + 1
             return habit_view(habit)
+
+    async def archived_builtins(self, actor: Actor) -> set[str]:
+        """Встроенные привычки списка, убранные в архив («food», «warmup», «workout»)."""
+        async with self._uow() as uow:
+            return set((await uow.session.execute(select(BuiltinArchive.key).where(
+                BuiltinArchive.user_id == actor.user_id))).scalars().all())
+
+    async def set_builtin_archived(self, actor: Actor, key: str, archived: bool) -> None:
+        """Встроенная привычка в архив и обратно: пропадает из «✅ Привычки» и светофора, раздел и записи остаются."""
+        async with self._uow() as uow:
+            row = (await uow.session.execute(select(BuiltinArchive).where(
+                BuiltinArchive.user_id == actor.user_id, BuiltinArchive.key == key))).scalar_one_or_none()
+            if archived and row is None:
+                uow.session.add(BuiltinArchive(user_id=actor.user_id, key=key[:16]))
+            elif not archived and row is not None:
+                await uow.session.delete(row)
 
     async def delete(self, actor: Actor, public_id: str) -> HabitView | None:
         """Удалить привычку вместе с историей."""

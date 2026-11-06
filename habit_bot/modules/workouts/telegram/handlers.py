@@ -86,7 +86,7 @@ class WorkoutInput(StatesGroup):
 
 
 class OutdoorInput(StatesGroup):
-    """Перед площадкой: «Резинка с собой?» и «Чего-то нет?» — обычный ввод (15 минут)."""
+    """Перед площадкой: «Резина с собой?» и «Чего-то нет?» — обычный ввод (15 минут)."""
 
     prepare = State()
 
@@ -220,13 +220,13 @@ def build_workouts_router(
     async def prepare_markup(actor: Actor, state: FSMContext, token: int) -> tuple[str, InlineKeyboardMarkup]:
         data = await state.get_data()
         band, missing = bool(data.get("band")), set(data.get("missing", []))
-        rows = [[btn(actor, token, f"{'✅ ' if band else ''}Резинка: да", "band", "1"),
-                 btn(actor, token, f"{'✅ ' if not band else ''}Резинка: нет", "band", "0")]]
+        rows = [[btn(actor, token, f"{'✅ ' if band else ''}Резина: да", "band", "1"),
+                 btn(actor, token, f"{'✅ ' if not band else ''}Резина: нет", "band", "0")]]
         rows += fit_rows([btn(actor, token, f"{'❌' if e.value in missing else '✅'} {label}", "miss", e.value)
                           for e, label in OUTDOOR_EQUIPMENT.items()])
         rows.append([btn(actor, token, "▶ Начать", "go"), cancel(actor, token)])
         absent = ", ".join(OUTDOOR_EQUIPMENT[Equipment(m)] for m in sorted(missing)) or "—"
-        text = (f"🌳 Площадка. Резинка с собой? (по умолчанию — прошлый ответ)\nЧего-то нет? Нажмите, чтобы "
+        text = (f"🌳 Площадка. Резина с собой? (по умолчанию — прошлый ответ)\nЧего-то нет? Нажмите, чтобы "
                 f"исключить на этот раз. Нет: {absent}")
         return text, inline(rows)
 
@@ -383,7 +383,7 @@ def build_workouts_router(
                              btn(actor, token, f"+{format_number(step)}", "w", "1")])
         if spec.measure is Measure.BAND_REPS:
             bands = settings.bands or tuple(Band)
-            lines.append(f"Резинка: {BAND_LABELS[band] if band else '—'}")
+            lines.append(f"Резина: {BAND_LABELS[band] if band else '—'}")
             rows.append([btn(actor, token, f"{'✅ ' if b is band else ''}{BAND_LABELS[b]}", "band", b.value)
                          for b in bands])
         unit = "секунды: 3×45 или 1:00 0:50" if spec.measure is Measure.TIME else "4×8 или по подходам: 8 8 7 6"
@@ -580,7 +580,7 @@ def build_workouts_router(
     async def settings_screen(bot: Bot, chat_id: int, actor: Actor, message: Message | None = None) -> None:
         s = await workouts.settings(actor)
         bands = ", ".join(BAND_LABELS[b] for b in s.bands) or "не указаны"
-        text = (f"🏋️ Тренировки\nТренировок в неделю: {s.weekly_goal}\nРезинки: {bands}\n"
+        text = (f"🏋️ Тренировки\nТренировок в неделю: {s.weekly_goal}\nРезины: {bands}\n"
                 f"Показывать все упражнения: {'да' if s.show_all else 'нет — подбор по полу из профиля'}")
         rows = [[btn(actor, 0, f"{'✅ ' if n == s.weekly_goal else ''}{n}", "goal", str(n)) for n in (2, 3, 4, 5)],
                 [btn(actor, 0, f"{'✅ ' if b in s.bands else ''}{BAND_LABELS[b]}", "sband", b.value) for b in Band],

@@ -31,7 +31,7 @@ WARMUPS = TableSpec("warmups", "warmups.csv", "Зарядка", "одно упр
 WORKOUTS = TableSpec("workouts", "workouts.csv", "Тренировки", "один подход", (
     C("date", "день", "YYYY-MM-DD"), C("workout_type", "gym — зал, outdoor — площадка, free — свободная"),
     C("exercise", "упражнение"), C("set_no", "номер подхода в упражнении"),
-    C("weight_kg", "вес (для гантелей — одной гантели)", "кг"), C("band", "резинка, если была"),
+    C("weight_kg", "вес (для гантелей — одной гантели)", "кг"), C("band", "резина, если была"),
     C("reps", "повторы"), C("seconds", "время подхода", "сек"), C("feeling", "самочувствие (появится в v2)"),
     C("duration_min", "длительность всей тренировки", "мин"),
 ))

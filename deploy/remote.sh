@@ -75,13 +75,17 @@ cmd_deploy() {
   prev=$(current_image)
 
   step "Подготовка"
-  login_ghcr
-  if ! docker pull -q "$image"; then
+  if docker image inspect "$image" >/dev/null 2>&1; then
+    : # образ собран на сервере (deploy/update.sh) — скачивать нечего
+  else
+    login_ghcr
+    if ! docker pull -q "$image"; then
+      docker logout ghcr.io >/dev/null 2>&1
+      result "fail step=Подготовка code=DEPLOY-FAIL rolled_back=none"
+      return 1
+    fi
     docker logout ghcr.io >/dev/null 2>&1
-    result "fail step=Подготовка code=DEPLOY-FAIL rolled_back=none"
-    return 1
   fi
-  docker logout ghcr.io >/dev/null 2>&1
 
   step "Проверка настроек"
   use_image "$image" "$APP/.env.new"
