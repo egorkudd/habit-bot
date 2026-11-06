@@ -133,16 +133,13 @@ async def test_s106_every_section_has_its_picture(stats_world: World, me: Person
     text = await me.tap("📝 Текстом")
     assert "Отжимания     55    60      ▲ +10" in text and "Планка      6:00  6:00    ▲ +0:15" in text
     assert "Зарядок" in text and "2 / 2  🟢" in text
-    await me.tap("🏋️ Тренировка •")
-    text = await me.tap("📝 Текстом")
+    text = await me.tap("🏋️ Тренировка •")  # в текстовом виде разделы сразу показывают текст
     assert "Присед со штангой  110 кг 4×8  3 520 кг" in text
     assert "🏆 Рекорд: Присед со штангой 110 кг (было 105 кг)" in text and "▲ +160 кг к прошлой (13.10)" in text
-    await me.tap("🏃 Бег •")
-    text = await me.tap("📝 Текстом")
+    text = await me.tap("🏃 Бег •")
     assert "5,2 км     28:40  5:31  10,88 км/ч" in text and "▲ на 0:05 быстрее прошлого" in text
     assert "🏆 Самая длинная дистанция: 5,2 км" in text
-    await me.tap("👁 Глаза •")
-    text = await me.tap("📝 Текстом")
+    text = await me.tap("👁 Глаза •")
     assert "Глаза" in text and "2 / 3  🟡" in text and "Отметки: 12:00 +1 · 15:00 +1" in text
     assert stats_world.llm.requests == []
 
@@ -160,15 +157,16 @@ async def test_s107_week_traffic_light_with_day_off(stats_world: World, me: Pers
     stats_world.set_time(datetime(2026, 10, 23, 12, 0, tzinfo=UTC))
     await me.tap("📊 Итоги")
     assert await me.tap("Неделя") == "📊 Неделя · 19.10–25.10"
-    assert me.labels() == ["◀", "📝 Текстом", "▸ Неделя", "Месяц", "3 месяца", "📊 День"]  # ▶ — в будущее нет
+    assert me.labels() == ["◀", "▸ Неделя", "Месяц", "3 месяца", "📝 Текстом", "📊 День"]  # ▶ — в будущее нет
     overview = await stats_world.service("stats").overview(actor, Kind.WEEK)
     kcal = next(r for r in overview.rows if r.label == "Калории")
     assert kcal.cells == (Color.GRAY, Color.GRAY, Color.GREEN, Color.GREEN, Color.GRAY, Color.EMPTY, Color.EMPTY)
     assert (kcal.green, kcal.streak) == (100, 2)
     text = await me.tap("📝 Текстом")
     assert "Калории  ··●●·    100% · серия 2" in text
-    assert await me.tap("◀") == "📊 Неделя · 12.10–18.10"
+    assert (await me.tap("◀")).startswith("<pre>Неделя · 12.10–18.10\n")  # текстовый вид сохраняется
     assert "▶" in me.labels()
+    assert await me.tap("🖼 Картинкой") == "📊 Неделя · 12.10–18.10"
     stats_world.set_time(datetime(2026, 10, 26, 12, 0, tzinfo=UTC))
     after = await stats_world.service("stats").overview(actor, Kind.WEEK, -1)
     assert next(r for r in after.rows if r.label == "Калории").cells[5] is Color.GRAY  # 24.10 — выходной
@@ -241,3 +239,28 @@ async def test_s124_pressing_open_section_again(stats_world: World, me: Persona)
     await me.tap("▸ Неделя")
     assert len(me.texts()) == sent
     assert await me.tap("📊 День") == "📊 Зарядка · 15.10 (чт)"
+
+
+async def test_s126_text_view_replaces_the_same_message(stats_world: World, me: Persona) -> None:
+    """S-126. «📝 Текстом» — отдельной строкой, не между стрелками; меняет текущее сообщение, а не присылает новое:
+    в чате остаётся одно сообщение «Итогов»; «◀ / ▶», разделы и периоды в текстовом виде меняют текст на месте;
+    «🖼 Картинкой» возвращает картинку."""
+    await eat_22(stats_world)
+    stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
+    await me.tap("📊 Итоги")
+    labels = me.labels()
+    assert labels[-5:] == ["◀ 21.10", "Неделя", "Месяц", "3 месяца", "📝 Текстом"]
+    before = [t for t in me.on_screen() if "Еда · " in t]
+    assert len(before) == 1
+    text = await me.tap("📝 Текстом")
+    assert text.startswith("<pre>Еда · 22.10 (чт)\nКкал ")
+    assert me.labels()[-1] == "🖼 Картинкой"
+    assert len([t for t in me.on_screen() if "Еда · " in t]) == 1  # картинка заменена текстом, не добавлен второй
+    message_id = me.find_button_at("◀ 21.10")[1]
+    assert (await me.tap("◀ 21.10")).startswith("<pre>Еда · 21.10 (ср)")
+    assert me.find_button_at("22.10 ▶")[1] == message_id  # тот же текст поменялся на месте
+    assert (await me.tap("Неделя")).startswith("<pre>Неделя · 19.10–25.10")
+    assert me.find_button_at("📊 День")[1] == message_id
+    assert await me.tap("🖼 Картинкой") == "📊 Неделя · 19.10–25.10"
+    assert len([t for t in me.on_screen() if "Неделя" in t or "Еда · " in t]) == 1
+    assert stats_world.llm.requests == []

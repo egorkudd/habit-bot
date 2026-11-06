@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import html
+from contextlib import suppress
 from datetime import date, timedelta
 
 from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
@@ -37,6 +39,14 @@ class StCb(CallbackData, prefix="st"):
     t: int
     a: str
     v: str
+    m: str = "p"  # вид: p — картинка, t — моноширинный текст
+
+
+PICTURE, TEXT = "p", "t"
+
+
+def mode_of(callback_data: StCb) -> str:
+    return TEXT if callback_data.m == TEXT else PICTURE
 
 
 def _day_code(day: date) -> str:
@@ -54,45 +64,69 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
     router = Router(name="stats")
     nav = Router(name="stats.nav")
 
-    def btn(actor: Actor, text: str, action: str, value: str) -> InlineKeyboardButton:
-        return InlineKeyboardButton(text=text, callback_data=StCb(o=actor.user_id, t=0, a=action, v=value).pack())
+    def btn(actor: Actor, text: str, action: str, value: str, mode: str = PICTURE) -> InlineKeyboardButton:
+        return InlineKeyboardButton(text=text, callback_data=StCb(o=actor.user_id, t=0, a=action, v=value,
+                                                                    m=mode).pack())
 
-    def day_markup(actor: Actor, key: str, day: date, sections: list[Section]) -> InlineKeyboardMarkup:
+    def switch(actor: Actor, action: str, value: str, mode: str) -> InlineKeyboardButton:
+        """«📝 Текстом» ↔ «🖼 Картинкой» — тот же экран в другом виде, в том же месте чата."""
+        other = TEXT if mode == PICTURE else PICTURE
+        return btn(actor, "📝 Текстом" if other == TEXT else "🖼 Картинкой", action, value, other)
+
+    def day_markup(actor: Actor, key: str, day: date, sections: list[Section], mode: str) -> InlineKeyboardMarkup:
         code = _day_code(day)
         choice = [btn(actor, ("▸ " if s.key == key else "") + s.label + (" •" if s.has_data else ""), "sec",
-                      f"{s.key}.{code}") for s in sections]
+                      f"{s.key}.{code}", mode) for s in sections]
         rows = fit_rows(choice, 3)
         move = [btn(actor, f"◀ {format_day(day - timedelta(days=1))}", "sec",
-                    f"{key}.{_day_code(day - timedelta(days=1))}"),
-                btn(actor, "📝 Текстом", "text", f"{key}.{code}")]
+                    f"{key}.{_day_code(day - timedelta(days=1))}", mode)]
         if day < stats.today():
             move.append(btn(actor, f"{format_day(day + timedelta(days=1))} ▶", "sec",
-                            f"{key}.{_day_code(day + timedelta(days=1))}"))
+                            f"{key}.{_day_code(day + timedelta(days=1))}", mode))
         rows.append(move)
-        rows.append([btn(actor, LABELS[k], "per", f"{k.value}0") for k in Kind])
+        rows.append([btn(actor, LABELS[k], "per", f"{k.value}0", mode) for k in Kind])
+        rows.append([switch(actor, "sec", f"{key}.{code}", mode)])
         return inline(rows)
 
-    def period_markup(actor: Actor, kind: Kind, shift: int) -> InlineKeyboardMarkup:
-        move = [btn(actor, "◀", "per", f"{kind.value}{shift - 1}"),
-                btn(actor, "📝 Текстом", "ptext", f"{kind.value}{shift}")]
+    def period_markup(actor: Actor, kind: Kind, shift: int, mode: str) -> InlineKeyboardMarkup:
+        move = [btn(actor, "◀", "per", f"{kind.value}{shift - 1}", mode)]
         if shift < 0:
-            move.append(btn(actor, "▶", "per", f"{kind.value}{shift + 1}"))
-        kinds = [btn(actor, ("▸ " if k is kind else "") + LABELS[k], "per", f"{k.value}0") for k in Kind]
-        return inline([move, kinds, [btn(actor, "📊 День", "sec", f"last.{_day_code(stats.today())}")]])
+            move.append(btn(actor, "▶", "per", f"{kind.value}{shift + 1}", mode))
+        kinds = [btn(actor, ("▸ " if k is kind else "") + LABELS[k], "per", f"{k.value}0", mode) for k in Kind]
+        return inline([move, kinds, [switch(actor, "per", f"{kind.value}{shift}", mode),
+                                     btn(actor, "📊 День", "sec", f"last.{_day_code(stats.today())}", mode)]])
 
-    async def send_photo(bot: Bot, chat_id: int, query: CallbackQuery | None, png: bytes, caption: str,
-                         markup: InlineKeyboardMarkup) -> None:
-        photo = BufferedInputFile(png, filename="stats.png")
+    async def show(bot: Bot, chat_id: int, query: CallbackQuery | None, *, png: bytes, text: str, caption: str,
+                   markup: InlineKeyboardMarkup, mode: str) -> None:
+        """Картинка или моноширинный текст — в том же сообщении. Сообщение с картинкой Telegram не превращает в
+        текстовое (и наоборот), поэтому при смене вида старое удаляется, а новое встаёт на его место."""
         message = query.message if query is not None else None
-        if isinstance(message, Message) and message.photo:
-            await bot.edit_message_media(InputMediaPhoto(media=photo, caption=caption), chat_id=chat_id,
-                                         message_id=message.message_id, reply_markup=markup)
+        old = message if isinstance(message, Message) else None
+        if mode == TEXT:
+            body = f"<pre>{html.escape(text)}</pre>"  # заголовок — первая строка таблицы
+            if old is not None and not old.photo:
+                await bot.edit_message_text(body, chat_id=chat_id, message_id=old.message_id, parse_mode="HTML",
+                                            reply_markup=markup)
+                return
+            await replace(bot, chat_id, old)
+            await bot.send_message(chat_id, body, parse_mode="HTML", reply_markup=markup)
             return
-        trail.result()
+        photo = BufferedInputFile(png, filename="stats.png")
+        if old is not None and old.photo:
+            await bot.edit_message_media(InputMediaPhoto(media=photo, caption=caption), chat_id=chat_id,
+                                         message_id=old.message_id, reply_markup=markup)
+            return
+        await replace(bot, chat_id, old)
         await bot.send_photo(chat_id, photo, caption=caption, reply_markup=markup)
 
+    async def replace(bot: Bot, chat_id: int, old: Message | None) -> None:
+        trail.result()
+        if old is not None:
+            with suppress(TelegramBadRequest):  # уже удалено или старше 48 часов — новое сообщение всё равно придёт
+                await bot.delete_message(chat_id, old.message_id)
+
     async def show_day(bot: Bot, chat_id: int, actor: Actor, query: CallbackQuery | None, key: str | None,
-                       day: date) -> None:
+                       day: date, mode: str = PICTURE) -> None:
         chosen, sections = await stats.choose(actor, day)
         if key is not None and key in {s.key for s in sections}:
             chosen = key
@@ -101,8 +135,8 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         if data is None:
             await screens.home(bot, chat_id, actor, NO_SECTIONS)
             return
-        await send_photo(bot, chat_id, query, day_png(data), f"📊 {data.title}",
-                         day_markup(actor, chosen, day, sections))
+        await show(bot, chat_id, query, png=day_png(data) if mode == PICTURE else b"", text=day_text(data),
+                   caption=f"📊 {data.title}", markup=day_markup(actor, chosen, day, sections, mode), mode=mode)
 
     def is_label(text: str | None) -> bool:
         entry = screens.menu.get(KEY)
@@ -124,17 +158,8 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         key, _, code = callback_data.v.partition(".")
         day = min(_parse_day(code, stats.today()), stats.today())
         await query.answer()
-        await show_day(bot, query.from_user.id, actor, query, None if key == "last" else key, day)
-
-    @router.callback_query(StCb.filter(F.a == "text"))
-    async def as_text(query: CallbackQuery, callback_data: StCb, bot: Bot, actor: Actor) -> None:
-        key, _, code = callback_data.v.partition(".")
-        data = await stats.day(actor, key, min(_parse_day(code, stats.today()), stats.today()))
-        if data is None:
-            await screens.refuse_button(bot, query, actor, "UI-STALE")
-            return
-        await query.answer()
-        await bot.send_message(query.from_user.id, f"<pre>{html.escape(day_text(data))}</pre>", parse_mode="HTML")
+        await show_day(bot, query.from_user.id, actor, query, None if key == "last" else key, day,
+                       mode_of(callback_data))
 
     def period_of(value: str) -> tuple[Kind, int]:
         try:
@@ -146,18 +171,12 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
     @router.callback_query(StCb.filter(F.a == "per"))
     async def overview(query: CallbackQuery, callback_data: StCb, bot: Bot, actor: Actor) -> None:
         kind, shift = period_of(callback_data.v)
+        mode = mode_of(callback_data)
         data = await stats.overview(actor, kind, shift)
         await query.answer()
-        await send_photo(bot, query.from_user.id, query, overview_png(data), f"📊 {data.title}",
-                         period_markup(actor, kind, shift))
-
-    @router.callback_query(StCb.filter(F.a == "ptext"))
-    async def overview_as_text(query: CallbackQuery, callback_data: StCb, bot: Bot, actor: Actor) -> None:
-        kind, shift = period_of(callback_data.v)
-        data = await stats.overview(actor, kind, shift)
-        await query.answer()
-        await bot.send_message(query.from_user.id, f"<pre>{html.escape(overview_text(data))}</pre>",
-                               parse_mode="HTML")
+        await show(bot, query.from_user.id, query, png=overview_png(data) if mode == PICTURE else b"",
+                   text=overview_text(data), caption=f"📊 {data.title}",
+                   markup=period_markup(actor, kind, shift, mode), mode=mode)
 
     return nav, router
 
