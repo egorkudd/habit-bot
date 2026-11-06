@@ -22,6 +22,7 @@ from habit_bot.channels.telegram.dialogs.fsm import DbFsmStorage
 from habit_bot.channels.telegram.dialogs.input_check import build_input_check_router
 from habit_bot.channels.telegram.dialogs.middleware import ActivityMiddleware
 from habit_bot.channels.telegram.dialogs.store import DialogStore
+from habit_bot.channels.telegram.ui.chat_log import ChatLog
 from habit_bot.channels.telegram.ui.guard import CallbackGuardMiddleware
 from habit_bot.channels.telegram.ui.menu import MenuRegistry
 from habit_bot.channels.telegram.ui.not_modified import IgnoreNotModified
@@ -159,9 +160,10 @@ class TelegramChannel:
         self.screens = Screens(self.menu, self.dialogs)
         self._error_middleware = ErrorMiddleware(None)
         # Чистый чат: самый внешний слой, чтобы в след попали и сообщения об ошибках.
-        self.bot.session.middleware(TrailRecorder())
+        self.chat_log = ChatLog(uow)
+        self.bot.session.middleware(TrailRecorder(self.chat_log, self.clock))
         self.bot.session.middleware(IgnoreNotModified())  # «−5» при нуле и двойные нажатия — не ошибка
-        self.dispatcher.update.outer_middleware(TrailMiddleware(self.dialogs, self.clock))
+        self.dispatcher.update.outer_middleware(TrailMiddleware(self.dialogs, self.clock, self.chat_log))
         self.dispatcher.update.outer_middleware(self._error_middleware)
         self.dispatcher.callback_query.middleware(CallbackGuardMiddleware(self.storage, self.screens))
         self.dispatcher.include_router(build_core_router(self.menu, self.screens))

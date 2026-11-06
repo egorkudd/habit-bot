@@ -14,6 +14,7 @@ from PIL import Image
 from habit_bot.modules.food.domain.nutrition import Nutrients
 from habit_bot.modules.food.domain.other_line import OtherLine
 from habit_bot.modules.stats.domain.periods import Kind
+from habit_bot.modules.stats.telegram import handlers as stats_ui
 from habit_bot.modules.workouts.domain.training import Kind as WorkoutKind
 from habit_bot.modules.workouts.domain.training import SetValue
 from habit_bot.platform.stats.domain.traffic import Color
@@ -33,7 +34,9 @@ MEALS_22 = [
 
 
 @pytest.fixture
-async def stats_world(settings: Any, fake_session: Any, clock: Any, geocoder: Any) -> AsyncIterator[World]:
+async def stats_world(settings: Any, fake_session: Any, clock: Any, geocoder: Any,
+                      monkeypatch: Any) -> AsyncIterator[World]:
+    monkeypatch.setattr(stats_ui, "TEXT_BUTTON", True)  # кнопка «📝 Текстом» спрятана с 1.0.2, вид работает
     clock.current = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)  # регистрация до примера 22.10
     w = await World(settings, fake_session, clock, geocoder, llm=FakeLlm()).start()
     yield w
@@ -345,3 +348,21 @@ async def test_s129_schedule_and_day_off_in_workouts(stats_world: World, me: Per
     await stats_world.service("days").toggle_day_off(actor, date(2026, 10, 20))
     rows = {r.label: r for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows}
     assert rows["👁 Глаза"].cells[1] is Color.SKIP and rows["👁 Глаза"].cells[3] is Color.SKIP
+
+
+async def test_s133_text_button_hidden(stats_world: World, me: Persona, monkeypatch: Any) -> None:
+    """S-133. Правки 1.0.2: кнопки «📝 Текстом» нет ни у картинки дня, ни у обзора; старая кнопка «Текстом» ещё
+    работает и предлагает «🖼 Картинкой», после чего кнопки снова нет."""
+    monkeypatch.setattr(stats_ui, "TEXT_BUTTON", False)
+    await eat_22(stats_world)
+    stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
+    await me.tap("📊 Итоги")
+    assert "📝 Текстом" not in me.labels() and me.labels()[-1] == "3 месяца"
+    await me.tap("Неделя")
+    assert me.labels()[-1] == "📊 День" and "📝 Текстом" not in me.labels()
+    actor = await actor_of(stats_world)
+    old = stats_ui.StCb(o=actor.user_id, t=0, a="per", v="w0", m="t").pack()
+    await me.press_data(old, message_id=me.message_id_of(me._mine()[-1]) or 500)
+    assert "🖼 Картинкой" in me.labels()
+    await me.tap("🖼 Картинкой")
+    assert "📝 Текстом" not in me.labels()

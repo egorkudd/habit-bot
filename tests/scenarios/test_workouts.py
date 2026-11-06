@@ -349,3 +349,17 @@ async def test_s130_band_exercise_screen(world: World, owner: Persona) -> None:
     assert "Резина: тяжёлая" in await owner.tap("тяжёлая")
     assert "✅ тяжёлая" in _labels(owner)
     assert (await owner.say("3×15")).startswith("✅ Тяга резины к лицу: тяжёлая 3×15")
+
+
+async def test_s131_weekly_goal_one(world: World, owner: Persona) -> None:
+    """S-131. Правки 1.0.2: цель «тренировок в неделю» можно поставить 1 — одна тренировка за неделю выполняет её
+    («✅ 🏋️ Тренировки за неделю 1/1»)."""
+    await owner.tap("☰ Ещё")
+    await owner.tap("⚙️ Настройки")
+    await owner.tap("🏋️ Тренировки")
+    assert _labels(owner)[:5] == ["1", "2", "✅ 3", "4", "5"]
+    assert "Тренировок в неделю: 1" in await owner.tap("1")
+    assert _labels(owner)[0] == "✅ 1"
+    await _history(world, day=TODAY)
+    await owner.tap("✅ Привычки")
+    assert "✅ 🏋️ Тренировки за неделю 1/1" in _labels(owner)

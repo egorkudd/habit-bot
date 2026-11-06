@@ -172,7 +172,7 @@ def build_food_router(
     @nav.callback_query(MenuCb.filter(F.k == KIND))
     async def open_food_from_more(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext,
                                   record_day: date) -> None:
-        """«🍽 Еда» убрана с главного экрана — открывается из «Ещё»."""
+        """«🍽 Еда» убрана с главного экрана — открывается из «✅ Привычки» (MenuCb с тем же ключом)."""
         await screens.close_buttons(query)
         await state.clear()
         await food_screen(bot, query.from_user.id, actor, record_day)

@@ -43,6 +43,8 @@ class StCb(CallbackData, prefix="st"):
 
 
 PICTURE, TEXT = "p", "t"
+# Кнопка «📝 Текстом» спрятана по просьбе владельца (1.0.2); текстовый вид работает — True возвращает кнопку.
+TEXT_BUTTON = False
 
 
 def mode_of(callback_data: StCb) -> str:
@@ -68,10 +70,13 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         return InlineKeyboardButton(text=text, callback_data=StCb(o=actor.user_id, t=0, a=action, v=value,
                                                                     m=mode).pack())
 
-    def switch(actor: Actor, action: str, value: str, mode: str) -> InlineKeyboardButton:
-        """«📝 Текстом» ↔ «🖼 Картинкой» — тот же экран в другом виде, в том же месте чата."""
+    def switch(actor: Actor, action: str, value: str, mode: str) -> list[InlineKeyboardButton]:
+        """«📝 Текстом» ↔ «🖼 Картинкой» — тот же экран в другом виде, в том же месте чата. Пока кнопка спрятана,
+        текстовый вид (открытый старой кнопкой) всё равно предлагает вернуться к картинке."""
+        if mode == PICTURE and not TEXT_BUTTON:
+            return []
         other = TEXT if mode == PICTURE else PICTURE
-        return btn(actor, "📝 Текстом" if other == TEXT else "🖼 Картинкой", action, value, other)
+        return [btn(actor, "📝 Текстом" if other == TEXT else "🖼 Картинкой", action, value, other)]
 
     def day_markup(actor: Actor, key: str, day: date, sections: list[Section], mode: str) -> InlineKeyboardMarkup:
         code = _day_code(day)
@@ -85,7 +90,8 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
                             f"{key}.{_day_code(day + timedelta(days=1))}", mode))
         rows.append(move)
         rows.append([btn(actor, LABELS[k], "per", f"{k.value}0", mode) for k in Kind])
-        rows.append([switch(actor, "sec", f"{key}.{code}", mode)])
+        if toggle := switch(actor, "sec", f"{key}.{code}", mode):
+            rows.append(toggle)
         return inline(rows)
 
     def period_markup(actor: Actor, kind: Kind, shift: int, mode: str) -> InlineKeyboardMarkup:
@@ -93,7 +99,7 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         if shift < 0:
             move.append(btn(actor, "▶", "per", f"{kind.value}{shift + 1}", mode))
         kinds = [btn(actor, ("▸ " if k is kind else "") + LABELS[k], "per", f"{k.value}0", mode) for k in Kind]
-        return inline([move, kinds, [switch(actor, "per", f"{kind.value}{shift}", mode),
+        return inline([move, kinds, [*switch(actor, "per", f"{kind.value}{shift}", mode),
                                      btn(actor, "📊 День", "sec", f"last.{_day_code(stats.today())}", mode)]])
 
     async def show(bot: Bot, chat_id: int, query: CallbackQuery | None, *, png: bytes, text: str, caption: str,

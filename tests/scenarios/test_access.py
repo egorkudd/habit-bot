@@ -1,8 +1,11 @@
 """Поведенческие сценарии: доступ и приглашения (раздел 3.0, 3.13)."""
 
+from typing import Any
+
 from sqlalchemy import func, select
 
 from habit_bot.kernel.identity import User
+from habit_bot.modules.users.telegram import settings as settings_ui
 from tests.conftest import OTHER_ID
 from tests.scenarios.conftest import finish_guest_onboarding, invite_guest
 from tests.scenarios.harness import Persona, World
@@ -90,8 +93,9 @@ async def test_s05_link_expires(world: World, owner: Persona) -> None:
     assert "(истекла 04.11)" in await guest.say(f"/start {code}")
 
 
-async def test_s06_owner_comes_back_after_deleting_guest(world: World, owner: Persona) -> None:
+async def test_s06_owner_comes_back_after_deleting_guest(world: World, owner: Persona, monkeypatch: Any) -> None:
     """S-06. Гость удалил аккаунт, затем пишет снова — «по приглашению»; по новой ссылке начинает с чистого листа."""
+    monkeypatch.setattr(settings_ui, "DELETE_BUTTON", True)  # кнопка спрятана с 1.0.2, удаление работает
     guest = await invite_guest(world, owner, OTHER_ID, "Аня")
     await finish_guest_onboarding(guest)
     await guest.tap("☰ Ещё")

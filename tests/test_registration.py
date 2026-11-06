@@ -9,6 +9,7 @@ from sqlalchemy import select
 from habit_bot.app import build_app
 from habit_bot.kernel.identity import Identity, User, UserStatus
 from habit_bot.modules.users.models import BodyWeight, Goal, Invite, Profile
+from habit_bot.modules.users.telegram import settings as settings_ui
 from habit_bot.modules.users.telegram.fields import UCb
 from tests.conftest import ADMIN_ID, OTHER_ID, register_active
 from tests.fakes import TgChat
@@ -294,8 +295,9 @@ async def test_goals_screen(app: Any, fake_session: Any, clock: Any) -> None:
     assert len(await profiles.goals(actor)) == 3
 
 
-async def test_delete_account(app: Any, fake_session: Any) -> None:
+async def test_delete_account(app: Any, fake_session: Any, monkeypatch: Any) -> None:
     """Раздел 9: удаление стирает все данные и Identity; последний администратор удалиться не может."""
+    monkeypatch.setattr(settings_ui, "DELETE_BUTTON", True)  # кнопка спрятана с 1.0.2, удаление работает
     admin = await register_active(app)
     invite = await app.ctx.services["users.invites"].create(admin, max_uses=1, days=1)
     guest = await register_active(app, OTHER_ID, invite_code=invite.code, name="Аня")

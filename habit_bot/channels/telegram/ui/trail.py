@@ -3,7 +3,8 @@
 Пока пользователь что-то вводит, его сообщения и вопросы бота копятся в «следе» (``DialogState``, область
 ``trail``). Обработчик, который показывает итог (запись еды, зарядку, сохранённую настройку), вызывает
 ``result()``: сообщения, отправленные после этого, остаются, а след удаляется. «🏠 Домой» вызывает ``clean()``:
-след удаляется без итога. Сообщение с клавиатурой внизу не удаляется, пока не пришло следующее с клавиатурой,
+след удаляется без итога, а с 1.0.2 — и вся переписка за 48 часов, кроме файлов (``wipe()``, журнал
+``ChatLog``). Сообщение с клавиатурой внизу не удаляется, пока не пришло следующее с клавиатурой,
 иначе клиент Telegram может спрятать клавиатуру.
 
 Оповещения администратору и сообщения фоновых задач в след не попадают: след ведётся только для сообщений в чат
@@ -29,6 +30,7 @@ from aiogram.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, Tel
 
 from habit_bot.channels.telegram.dialogs.policy import TRAIL
 from habit_bot.channels.telegram.dialogs.store import DialogStore
+from habit_bot.channels.telegram.ui.chat_log import ChatLog
 from habit_bot.kernel.clock import Clock
 
 log = logging.getLogger(__name__)
@@ -45,7 +47,9 @@ class _Update:
     keep: list[int] = field(default_factory=list)
     result: bool = False
     clean: bool = False
+    wipe: bool = False
     forget: bool = False
+    sent: list[tuple[int, bool]] = field(default_factory=list)  # для журнала чата: (сообщение, файл ли это)
 
 
 _current: ContextVar[_Update | None] = ContextVar("trail_update", default=None)
@@ -63,6 +67,13 @@ def clean() -> None:
     current = _current.get()
     if current is not None:
         current.clean = True
+
+
+def wipe() -> None:
+    """«🏠 Домой»: удалить всю переписку за 48 часов, кроме файлов и сообщения с клавиатурой этого ответа."""
+    current = _current.get()
+    if current is not None:
+        current.clean = current.wipe = True
 
 
 def forget() -> None:
@@ -88,7 +99,12 @@ def keep(message_id: int | None) -> None:
 
 
 class TrailRecorder(BaseRequestMiddleware):
-    """Сессия бота: запоминает номера сообщений, отправленных в чат текущего пользователя."""
+    """Сессия бота: запоминает номера сообщений, отправленных в чат текущего пользователя, и ведёт журнал чата
+    (все отправленные сообщения, в том числе фоновых задач)."""
+
+    def __init__(self, chat_log: ChatLog | None = None, clock: Clock | None = None) -> None:
+        self._log = chat_log
+        self._clock = clock
 
     async def __call__(
         self, make_request: NextRequestMiddlewareType[TelegramType], bot: Bot,
@@ -98,6 +114,7 @@ class TrailRecorder(BaseRequestMiddleware):
         current = _current.get()
         sent: object = response  # на деле сессия возвращает сам результат метода, а не Response
         request: object = method
+        await self._journal(current, sent)
         if current is None or not isinstance(request, SendMessage) or not isinstance(sent, Message):
             return response
         if sent.chat.id != current.chat_id:
@@ -107,6 +124,24 @@ class TrailRecorder(BaseRequestMiddleware):
         elif not current.result:
             current.transient.append(sent.message_id)
         return response
+
+    async def _journal(self, current: _Update | None, sent: object) -> None:
+        if self._log is None or self._clock is None:
+            return
+        messages = [m for m in (sent if isinstance(sent, list) else [sent])
+                    if isinstance(m, Message) and m.chat.type == "private"]
+        if not messages:
+            return
+        if current is not None and messages[0].chat.id == current.chat_id:
+            current.sent += [(m.message_id, m.document is not None) for m in messages]
+            return  # запишется после ответа: обработчик мог ещё не закончить свою транзакцию
+        try:  # фоновая задача или оповещение другому человеку
+            for kept in (False, True):
+                ids = [m.message_id for m in messages if (m.document is not None) is kept]
+                if ids:
+                    await self._log.record(messages[0].chat.id, ids, self._clock.now(), kept=kept)
+        except Exception:
+            log.warning("Не удалось записать сообщение в журнал чата", exc_info=True)
 
 
 def chat_of(update: Update) -> tuple[int | None, int | None]:
@@ -121,9 +156,10 @@ def chat_of(update: Update) -> tuple[int | None, int | None]:
 class TrailMiddleware(BaseMiddleware):
     """Самый внешний: ведёт след апдейта и после ответа удаляет лишнее."""
 
-    def __init__(self, store: DialogStore, clock: Clock) -> None:
+    def __init__(self, store: DialogStore, clock: Clock, chat_log: ChatLog | None = None) -> None:
         self._store = store
         self._clock = clock
+        self._log = chat_log
 
     async def __call__(
         self,
@@ -136,7 +172,8 @@ class TrailMiddleware(BaseMiddleware):
         chat_id, incoming = chat_of(event)
         if chat_id is None:
             return await handler(event, data)
-        current = _Update(chat_id=chat_id, transient=[incoming] if incoming is not None else [])
+        current = _Update(chat_id=chat_id, transient=[incoming] if incoming is not None else [],
+                          sent=[(incoming, False)] if incoming is not None else [])
         token = _current.set(current)
         try:
             return await handler(event, data)
@@ -164,9 +201,18 @@ class TrailMiddleware(BaseMiddleware):
         if current.result or current.clean:
             doomed += ids
             ids = []
+        if self._log is not None:
+            for kept in (False, True):
+                found = [i for i, is_file in current.sent if is_file is kept]
+                if found:
+                    await self._log.record(current.chat_id, found, now, kept=kept)
+            if current.wipe:
+                doomed += await self._log.deletable(current.chat_id, now)
         doomed = [i for i in doomed if i not in current.keep and i != holder]
         if doomed:
             await delete_all(bot, current.chat_id, doomed)
+            if self._log is not None:
+                await self._log.forget(current.chat_id, doomed)
         ids = ids[-TRAIL_LIMIT:]
         await self._store.set_data(user_id, TRAIL, {"ids": ids, "kb": holder} if ids or holder else {}, now)
 

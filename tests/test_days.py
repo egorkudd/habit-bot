@@ -242,6 +242,8 @@ async def test_home_screen_settings(app: Any, fake_session: Any, clock: Any) -> 
     for i in range(4):
         await chat.press(f"☐ Привычка {i}")
     assert fake_session.answers()[-1].text == "Не больше 7 кнопок — плюс «☰ Ещё»"
-    await chat.press("↩ По умолчанию")
-    await chat.press("✅ Готово")
-    assert await app.ctx.services["users.profiles"].home_layout(actor) is None
+    assert "↩ По умолчанию" not in chat.labels() and chat.labels()[-1] == "✅ Готово"
+    for i in range(3):
+        await chat.press(f"☑ Привычка {i}")
+    await chat.press("✅ Готово")  # раскладка как по умолчанию — хранить нечего
+    assert await app.ctx.services["users.profiles"].home_layout(actor) == ["warmup", "food", "habits", "stats"]

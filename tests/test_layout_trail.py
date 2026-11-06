@@ -68,11 +68,12 @@ def test_home_keyboard_rows_and_hidden_in_more() -> None:
     assert rows[-1] == [HOME_LABEL, "☰ Ещё"]
     rows = [[b.text for b in row] for row in menu.home_keyboard(actor, ["workout"]).keyboard]
     assert rows == [["🏋️ Тренировка"], [HOME_LABEL, "☰ Ещё"]]  # «Тренировка» третьей не помещается
-    assert [e.key for e in menu.hidden(actor, ["food", "stats"])] == ["warmup", "workout", "habits"]
+    # еда, зарядка и тренировка — привычки: убранные с экрана, они в «✅ Привычки», а не в «Ещё» (1.0.2)
+    assert [e.key for e in menu.hidden(actor, ["food", "stats"])] == ["habits"]
     assert menu.hidden(actor, None) == []
     more = [b.text for row in menu.more_keyboard(actor, ["food"]).inline_keyboard for b in row]
-    assert more[:4] == ["🤸 Зарядка", "🏋️ Тренировка", "✅ Привычки", "📊 Итоги"]
-    assert more[4:] == ["📅 Другой день", "✍️ Текстом", "🛌 Выходной", "⚙️ Настройки", "🛠 Админ"]
+    assert more[:2] == ["✅ Привычки", "📊 Итоги"]
+    assert more[2:] == ["📅 Другой день", "✍️ Текстом", "🛌 Выходной", "⚙️ Настройки", "🛠 Админ"]
     menu.add(MenuEntry("h1", "Очень длинная своя привычка", 100))
     assert ["Очень длинная своя привычка"] in [
         [b.text for b in row] for row in menu.more_keyboard(_actor(False), ["food"]).inline_keyboard]
@@ -264,3 +265,31 @@ async def test_trail_is_capped(env: _Env, monkeypatch: Any) -> None:
 
     await env.run(many, text=None)
     assert len((await env.saved())["ids"]) == 3
+
+
+async def test_chat_journal_failure_does_not_break_sending(caplog: Any) -> None:
+    """Журнал чата не смог записать сообщение фоновой задачи — сообщение всё равно ушло, в логе предупреждение."""
+    from datetime import UTC, datetime
+
+    from aiogram.methods import SendMessage
+    from aiogram.types import Chat, Message
+
+    from habit_bot.channels.telegram.ui.trail import TrailRecorder
+
+    class Broken:
+        async def record(self, *args: Any, **kwargs: Any) -> None:
+            raise RuntimeError("база занята")
+
+    class Clock:
+        def now(self) -> datetime:
+            return datetime(2026, 11, 6, tzinfo=UTC)
+
+    sent = Message(message_id=7, date=datetime.now(UTC), chat=Chat(id=1, type="private"), text="x")
+
+    async def make_request(bot: Any, method: Any) -> Any:
+        return sent
+
+    recorder = TrailRecorder(Broken(), Clock())  # type: ignore[arg-type]
+    assert await recorder(make_request, None, SendMessage(chat_id=1, text="x")) is sent  # type: ignore[arg-type]
+    assert "журнал чата" in caplog.text
+    assert await TrailRecorder()(make_request, None, SendMessage(chat_id=1, text="x")) is sent  # type: ignore[arg-type]

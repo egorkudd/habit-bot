@@ -35,12 +35,13 @@ class MenuEntry:
     admin_only: bool = False
     part: int | None = None   # в какой части плана (раздел 8.1) появится раздел; пока его нет — «скоро»
     ready: bool = False       # раздел уже обрабатывает свой модуль
+    habit: bool = False       # встроенная привычка: убранная с главного экрана — только в «✅ Привычки», не в «Ещё»
 
 
 DEFAULT_ENTRIES: tuple[MenuEntry, ...] = (
-    MenuEntry("food", "🍽 Еда", 10, part=5),
-    MenuEntry("warmup", "🤸 Зарядка", 20, part=6),
-    MenuEntry("workout", "🏋️ Тренировка", 30, part=8),
+    MenuEntry("food", "🍽 Еда", 10, part=5, habit=True),
+    MenuEntry("warmup", "🤸 Зарядка", 20, part=6, habit=True),
+    MenuEntry("workout", "🏋️ Тренировка", 30, part=8, habit=True),
     MenuEntry("habits", "✅ Привычки", 40, part=7),
     MenuEntry("stats", "📊 Итоги", 50, part=10),
     MenuEntry(MORE_KEY, "☰ Ещё", 1000, ready=True),
@@ -71,7 +72,8 @@ def soon_text(entry: MenuEntry) -> str:
 
 class MenuRegistry:
     """До 8 кнопок по 2 в ряд (длинные — по одной); последний ряд — «🏠 Домой» и «☰ Ещё», их не скрыть.
-    Разделы, убранные с главного экрана, остаются в «Ещё» (раздел 3.1)."""
+    Разделы, убранные с главного экрана, остаются в «Ещё» (раздел 3.1); еда, зарядка и тренировка — привычки:
+    их открывает «✅ Привычки», в «Ещё» их нет (правки 1.0.2)."""
 
     HOME_LIMIT = 8
     PER_ROW = 2
@@ -139,9 +141,10 @@ class MenuRegistry:
         return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, is_persistent=True)
 
     def hidden(self, actor: Actor, layout: Sequence[str] | None) -> list[MenuEntry]:
-        """Разделы главного экрана, которых на нём сейчас нет: их показывает «Ещё»."""
+        """Разделы главного экрана, которых на нём сейчас нет: их показывает «Ещё».
+        Привычки (еда, зарядка, тренировка) — нет: они в «✅ Привычки»."""
         shown = {e.key for e in self.entries(Place.HOME, actor, layout)}
-        return [e for e in self.choosable(actor) if e.key not in shown]
+        return [e for e in self.choosable(actor) if e.key not in shown and not e.habit]
 
     def settings_buttons(self, actor: Actor, place: Place = Place.SETTINGS) -> list[InlineKeyboardButton]:
         return [InlineKeyboardButton(text=e.label, callback_data=MenuCb(o=actor.user_id, t=0, k=e.key).pack())
