@@ -294,7 +294,7 @@ class Stats:
         if self.s.workouts is not None and WORKOUT not in hidden:
             trained = await self._weekly_workouts(actor, p, today, registered)
             if trained is not None:
-                rows.append(row("Тренировки", trained))
+                rows.append(trained)
         if self.s.habits is not None:
             facts = await self.s.habits.facts_between(actor, p.start, p.end)
             for h in await self.s.habits.habits(actor):
@@ -313,31 +313,42 @@ class Stats:
             rows.append(row("Вес", weight))
         return Overview(p.title, days, tuple(rows))
 
-    async def _weekly_workouts(self, actor: Actor, p: Period, today: date, registered: date) -> list[Color] | None:
-        """Тренировки и бег за неделю против цели «в неделю»; незаконченная неделя без выполненной цели —
-        пустая, а не красная."""
+    async def _weekly_workouts(self, actor: Actor, p: Period, today: date, registered: date) -> TrafficRow | None:
+        """Тренировки и бег против цели «в неделю» (раздел 4.10). День с тренировкой виден всегда: закончившаяся
+        неделя — цветом её итога, идущая — 🟢, если цель уже выполнена, иначе 🟡 «в процессе». Дни без тренировки —
+        серые (отдых не провал). % зелёных и серия — по неделям."""
         first, last = week_start(p.start), week_start(p.end)
-        goal = (await self.s.workouts.settings(actor)).weekly_goal
-        total = await self.s.workouts.count_between(actor, p.start, p.end)
+        trained: set[date] = {x.day for x in await self.s.workouts.sessions_between(actor, first, p.end)}
         if self.s.runs is not None:
-            total += await self.s.runs.count_between(actor, p.start, p.end)
-        if not total:
+            trained |= {day for day, _ in await self.s.runs.runs_between(actor, first, p.end)}
+        if not [d for d in trained if d >= p.start]:
             return None
-        colors: dict[date, Color] = {}
+        goal = (await self.s.workouts.settings(actor)).weekly_goal
+        weeks: dict[date, Color] = {}
         start = first
         while start <= last:
             end = start + timedelta(days=6)
             count = await self.s.workouts.count_between(actor, start, end)
             if self.s.runs is not None:
                 count += await self.s.runs.count_between(actor, start, end)
-            if start > today or (end >= today and count < goal):
-                colors[start] = Color.EMPTY
-            elif end < registered:
-                colors[start] = Color.GRAY
+            if start > today:
+                weeks[start] = Color.EMPTY
+            elif end >= today:  # неделя идёт
+                weeks[start] = Color.GREEN if count >= goal else (Color.YELLOW if count else Color.EMPTY)
             else:
-                colors[start] = t.weekly(count, goal)
+                weeks[start] = t.weekly(count, goal)
             start += timedelta(days=7)
-        return [Color.EMPTY if d > today else colors[week_start(d)] for d in p.days]
+        cells = []
+        for d in p.days:
+            if d > today:
+                cells.append(Color.EMPTY)
+            elif d in trained:  # тренировка видна, даже если записана задним числом до анкеты
+                cells.append(weeks[week_start(d)])
+            else:
+                cells.append(Color.GRAY)
+        finished = [c for s, c in sorted(weeks.items())
+                    if (s + timedelta(days=6) < today and s + timedelta(days=6) >= registered) or c is Color.GREEN]
+        return TrafficRow("Тренировки", tuple(cells), t.green_share(finished), t.current_streak(finished))
 
     async def _weekly_weight(self, actor: Actor, p: Period, today: date) -> list[Color] | None:
         """Средний вес недели к средней прошлой: в сторону цели — зелёный (раздел 4.10)."""

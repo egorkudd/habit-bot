@@ -205,7 +205,8 @@ async def test_s108_month_quarter_and_rules(stats_world: World, me: Persona) -> 
     assert rows["👁 Глаза"][13:17] == (Color.GRAY, Color.GREEN, Color.RED, Color.RED)  # до анкеты; 3/3, 1/3, 0/3
     assert rows["Зарядка"][14] is Color.YELLOW and rows["Зарядка"][15] is Color.RED  # 1 из 2, ни одной
     assert rows["Вес"][19] is Color.GREEN and rows["Вес"][12] is Color.GRAY  # неделя 19.10 тяжелее прошлой
-    assert rows["Тренировки"][13] is Color.RED and rows["Тренировки"][20] is Color.EMPTY  # 1 из 3; неделя идёт
+    assert rows["Тренировки"][13] is Color.RED  # 14.10: тренировка, а за неделю 1 из 3
+    assert rows["Тренировки"][14] is Color.GRAY and rows["Тренировки"][20] is Color.GRAY  # дни отдыха — серые
     assert stats_world.llm.requests == []
 
 
@@ -264,3 +265,34 @@ async def test_s126_text_view_replaces_the_same_message(stats_world: World, me: 
     assert await me.tap("🖼 Картинкой") == "📊 Неделя · 19.10–25.10"
     assert len([t for t in me.on_screen() if "Неделя" in t or "Еда · " in t]) == 1
     assert stats_world.llm.requests == []
+
+
+async def test_s127_workout_visible_in_unfinished_week(stats_world: World, me: Persona) -> None:
+    """S-127. Анкета на этой неделе, тренировка и бег сегодня: в «Неделе» и «Месяце» строка «Тренировки» видна —
+    день тренировки 🟡 «в процессе», пока цель недели (3) не выполнена; после 3-й тренировки за неделю — 🟢;
+    дни отдыха серые; через неделю итог недели остаётся на днях тренировок."""
+    from habit_bot.modules.workouts.domain.training import Kind as WorkoutKind
+    from habit_bot.modules.workouts.domain.training import SetValue
+
+    actor = await actor_of(stats_world)
+    workouts = stats_world.service("workouts")
+    squat = next(e for e in await workouts.exercises(actor, await workouts.filters(actor, WorkoutKind.GYM))
+                 if e.name == "Присед со штангой")
+    stats_world.set_time(datetime(2026, 10, 16, 9, 0, tzinfo=UTC))  # пт; неделя 12–18.10 идёт
+    await workouts.log_sets(actor, date(2026, 10, 16), [(squat.public_id, [SetValue(reps=8, weight=Decimal(100))])])
+    stats = stats_world.service("stats")
+    week = {r.label: r for r in (await stats.overview(actor, Kind.WEEK)).rows}
+    assert week["Тренировки"].cells == (Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY, Color.YELLOW, Color.EMPTY,
+                                        Color.EMPTY)
+    month = {r.label: r for r in (await stats.overview(actor, Kind.MONTH)).rows}
+    assert month["Тренировки"].cells[15] is Color.YELLOW
+    await me.tap("📊 Итоги")
+    await me.tap("Неделя")
+    assert "Тренировки  ····▲   " in await me.tap("📝 Текстом")
+    await stats_world.service("runs").record(actor, distance_km=Decimal(5), seconds=1700, day=date(2026, 10, 15))
+    await workouts.log_sets(actor, date(2026, 10, 16), [(squat.public_id, [SetValue(reps=8, weight=Decimal(100))])])
+    row = {r.label: r for r in (await stats.overview(actor, Kind.WEEK)).rows}["Тренировки"]
+    assert row.cells[3:5] == (Color.GREEN, Color.GREEN) and (row.green, row.streak) == (100, 1)
+    stats_world.set_time(datetime(2026, 10, 26, 9, 0, tzinfo=UTC))
+    row = {r.label: r for r in (await stats.overview(actor, Kind.WEEK, -2)).rows}["Тренировки"]  # 12–18.10
+    assert row.cells == (Color.GRAY, Color.GRAY, Color.GRAY, Color.GREEN, Color.GREEN, Color.GRAY, Color.GRAY)
