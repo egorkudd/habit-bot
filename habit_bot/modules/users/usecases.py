@@ -394,7 +394,8 @@ class Profiles:
             )).scalars().all()
             return [
                 GoalView(g.start_date, Decimal(str(g.kcal)), Decimal(str(g.protein)), Decimal(str(g.fat)),
-                         Decimal(str(g.carbs)), g.source, GoalMode(g.mode) if g.mode else None)
+                         Decimal(str(g.carbs)), g.source, GoalMode(g.mode) if g.mode else None,
+                         Decimal(str(g.target_weight)) if g.target_weight is not None else None)
                 for g in rows
             ]
 

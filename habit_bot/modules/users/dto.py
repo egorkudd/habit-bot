@@ -50,6 +50,7 @@ class GoalView:
     carbs: Decimal
     source: str
     mode: GoalMode | None = None
+    target_weight: Decimal | None = None
 
     @staticmethod
     def of(targets: Targets, start_date: date, source: str, mode: GoalMode | None) -> GoalView:

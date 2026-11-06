@@ -393,6 +393,16 @@ class Food:
     async def totals(self, actor: Actor, day: date) -> DayTotals:
         return day_totals((e.nutrients, e.price) for e in await self.entries(actor, day))
 
+    async def entries_between(self, actor: Actor, start: date, end: date) -> list[EntryView]:
+        """Записи еды за период по порядку — для экспорта."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(FoodEntry).where(FoodEntry.user_id == actor.user_id, FoodEntry.day >= start,
+                                        FoodEntry.day <= end, FoodEntry.deleted_at.is_(None))
+                .order_by(FoodEntry.day, FoodEntry.logged_at, FoodEntry.id)
+            )).scalars().all()
+            return [entry_view(e) for e in rows]
+
     async def daily_totals(self, actor: Actor, start: date, end: date) -> dict[date, DayTotals]:
         """Итоги по дням периода одним запросом — для светофора и экспорта (дни без записей не попадают)."""
         async with self._uow() as uow:
