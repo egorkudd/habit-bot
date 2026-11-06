@@ -366,3 +366,25 @@ async def test_s133_text_button_hidden(stats_world: World, me: Persona, monkeypa
     assert "🖼 Картинкой" in me.labels()
     await me.tap("🖼 Картинкой")
     assert "📝 Текстом" not in me.labels()
+
+
+async def test_s138_yesterday_before_onboarding_is_visible(stats_world: World, me: Persona) -> None:
+    """S-138. Правки 1.0.2: анкета пройдена сегодня (15.10), еда записана «📅 Другой день» → «Вчера» — в «Неделе» и
+    «Месяце» вчерашние «Калории» и «Белки» серые (часть цели), а не бледные «до анкеты»; день без записей до анкеты
+    остаётся бледным."""
+    await me.tap("☰ Ещё")
+    await me.tap("📅 Другой день")
+    await me.tap("Вчера (14.10)")
+    await stats_world.service("food").log_other(
+        await actor_of(stats_world), OtherLine("Каша", Nutrients.of(400, 15, 10, 60), None), day=date(2026, 10, 14))
+    stats = stats_world.service("stats")
+    for kind in (Kind.WEEK, Kind.MONTH):
+        data = await stats.overview(await actor_of(stats_world), kind)
+        rows = {r.label: r for r in data.rows}
+        i = data.days.index(date(2026, 10, 14))
+        assert rows["Калории"].cells[i] is Color.PARTIAL and rows["Белки"].cells[i] is Color.PARTIAL
+        assert rows["Калории"].cells[i - 1] is Color.SKIP
+    await me.tap("📊 Итоги")
+    await me.tap("Неделя")
+    picture = me.session.photos(ADMIN_ID)[-1]
+    assert png_size(picture)[0] >= 600

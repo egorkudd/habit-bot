@@ -259,13 +259,14 @@ class Stats:
         off = await self.s.days.days_off(actor, p.start, p.end)
         rows: list[TrafficRow] = []
 
-        def frame(day: date) -> Color | None:
-            """Клетка без оценки: будущее, выходной («в»), дни до анкеты."""
+        def frame(day: date, recorded: bool = False) -> Color | None:
+            """Клетка без оценки: будущее, выходной («в»), дни до анкеты. Запись задним числом за день до анкеты
+            оценивается как обычный день (правки 1.0.2) — иначе её не видно."""
             if day > today:
                 return Color.FUTURE
             if day in off:
                 return Color.OFF
-            if day < registered:
+            if day < registered and not recorded:
                 return Color.SKIP
             return None
 
@@ -284,8 +285,9 @@ class Stats:
                 for d in days:
                     goal = goals.get(d)
                     fact = totals[d].fact if d in totals else None
-                    kcal.append(frame(d) or t.kcal(fact.kcal if fact else None, goal.kcal if goal else None))
-                    prot.append(frame(d) or t.protein(fact.protein if fact else None, goal.protein if goal else None))
+                    fixed = frame(d, fact is not None)
+                    kcal.append(fixed or t.kcal(fact.kcal if fact else None, goal.kcal if goal else None))
+                    prot.append(fixed or t.protein(fact.protein if fact else None, goal.protein if goal else None))
                 rows += [row("Калории", kcal), row("Белки", prot)]
         if self.s.warmup is not None and WARMUP not in hidden:
             sessions = await self.s.warmup.sessions_between(actor, p.start, p.end)
@@ -294,7 +296,8 @@ class Stats:
                 count: dict[date, int] = {}
                 for x in sessions:
                     count[x.day] = count.get(x.day, 0) + 1
-                rows.append(row("Зарядка", [frame(d) or t.warmup(count.get(d, 0), goal) for d in days]))
+                rows.append(row("Зарядка", [frame(d, d in count) or t.warmup(count.get(d, 0), goal)
+                                            for d in days]))
         if self.s.workouts is not None and WORKOUT not in hidden:
             trained = await self._weekly_workouts(actor, p, today, registered)
             if trained is not None:
@@ -307,7 +310,7 @@ class Stats:
                 done = facts[h.public_id]
                 cells = []
                 for d in days:
-                    fixed = frame(d)
+                    fixed = frame(d, bool(done.get(d)))
                     if fixed is None and not is_scheduled(h.weekdays, d):
                         fixed = Color.SKIP
                     cells.append(fixed or t.habit(done.get(d, Decimal(0)), h.goal))
