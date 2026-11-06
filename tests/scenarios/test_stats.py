@@ -68,24 +68,24 @@ def has_color(data: bytes, rgb: tuple[int, int, int]) -> bool:
 
 
 async def test_s104_food_day_picture_and_text(stats_world: World, me: Persona) -> None:
-    """S-104. Раздел 9: «Итоги» → «Еда» — картинка с 4 полосами и таблицей блюд; за 22.10 жиры 112 / 80 красные
-    (140%), углеводы 289 / 360 жёлтые (80%), расход 760 ₽, 3 блюда без цены; «Текстом» — та же таблица
-    моноширинным блоком; ни одного запроса к ИИ."""
+    """S-104. Раздел 9: «Итоги» → «Еда» — картинка с 4 полосами и таблицей блюд; за 22.10 калории и белки —
+    выполнено (чёрные), жиры 112 / 80 (140%) и углеводы 289 / 360 (80%) — частично (серые); расход 760 ₽, 3 блюда
+    без цены; «Текстом» — та же таблица моноширинным блоком; ни одного запроса к ИИ."""
     await eat_22(stats_world)
     stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
     assert await me.tap("📊 Итоги") == "📊 Еда · 22.10 (чт)"
-    assert me.labels()[:2] == ["▸ 🍽 Еда •", "🤸 Зарядка"]
+    assert me.labels()[:2] == ["▸ 🍽 Еда", "🤸 Зарядка"]  # без точки «есть записи»
     assert "◀ 21.10" in me.labels() and "23.10 ▶" not in me.labels()  # будущее не листается
     picture = me.session.photos(ADMIN_ID)[-1]
     assert png_size(picture)[0] == 760
-    assert has_color(picture, (214, 69, 69)) and has_color(picture, (232, 170, 20))  # красный и жёлтый
+    assert has_color(picture, (33, 37, 41)) and has_color(picture, (160, 166, 173))  # выполнено и частично
     data = await stats_world.service("stats").day(await actor_of(stats_world), "food", OCT22)
     assert [(b.label, b.color) for b in data.bars] == [
-        ("Ккал", Color.GREEN), ("Белки", Color.GREEN), ("Жиры", Color.RED), ("Углев", Color.YELLOW)]
+        ("Ккал", Color.DONE), ("Белки", Color.DONE), ("Жиры", Color.PARTIAL), ("Углев", Color.PARTIAL)]
     text = await me.tap("📝 Текстом")
-    assert text.startswith("<pre>Еда · 22.10 (чт)\nКкал   ████████████ 105%  2 947 / 2 800  🟢\n")
-    assert "Жиры   ████████████ 140%  112 / 80  🔴" in text
-    assert "Углев  █████████▌░░  80%  289 / 360  🟡" in text
+    assert text.startswith("<pre>Еда · 22.10 (чт)\nКкал   ████████████ 105%  2 947 / 2 800  ●\n")
+    assert "Жиры   ████████████ 140%  112 / 80  ◐" in text
+    assert "Углев  █████████▌░░  80%  289 / 360  ◐" in text
     assert "Расход: 760 ₽ · 3 блюда без цены" in text
     assert "Коктейль         322    26     9    39" in text
     assert stats_world.llm.requests == []
@@ -132,15 +132,15 @@ async def test_s106_every_section_has_its_picture(stats_world: World, me: Person
     await me.tap("📊 Итоги")  # первая привычка с записями — зарядка
     text = await me.tap("📝 Текстом")
     assert "Отжимания     55    60      ▲ +10" in text and "Планка      6:00  6:00    ▲ +0:15" in text
-    assert "Зарядок" in text and "2 / 2  🟢" in text
-    text = await me.tap("🏋️ Тренировка •")  # в текстовом виде разделы сразу показывают текст
+    assert "Зарядок" in text and "2 / 2  ●" in text
+    text = await me.tap("🏋️ Тренировка")  # в текстовом виде разделы сразу показывают текст
     assert "Присед со штангой  110 кг 4×8  3 520 кг" in text
     assert "🏆 Рекорд: Присед со штангой 110 кг (было 105 кг)" in text and "▲ +160 кг к прошлой (13.10)" in text
-    text = await me.tap("🏃 Бег •")
+    text = await me.tap("🏃 Бег")
     assert "5,2 км     28:40  5:31  10,88 км/ч" in text and "▲ на 0:05 быстрее прошлого" in text
     assert "🏆 Самая длинная дистанция: 5,2 км" in text
-    text = await me.tap("👁 Глаза •")
-    assert "Глаза" in text and "2 / 3  🟡" in text and "Отметки: 12:00 +1 · 15:00 +1" in text
+    text = await me.tap("👁 Глаза")
+    assert "Глаза" in text and "2 / 3  ◐" in text and "Отметки: 12:00 +1 · 15:00 +1" in text
     assert stats_world.llm.requests == []
 
 
@@ -160,16 +160,16 @@ async def test_s107_week_traffic_light_with_day_off(stats_world: World, me: Pers
     assert me.labels() == ["◀", "▸ Неделя", "Месяц", "3 месяца", "📝 Текстом", "📊 День"]  # ▶ — в будущее нет
     overview = await stats_world.service("stats").overview(actor, Kind.WEEK)
     kcal = next(r for r in overview.rows if r.label == "Калории")
-    assert kcal.cells == (Color.GRAY, Color.GRAY, Color.GREEN, Color.GREEN, Color.GRAY, Color.EMPTY, Color.EMPTY)
-    assert (kcal.green, kcal.streak) == (100, 2)
+    assert kcal.cells == (Color.NONE, Color.NONE, Color.DONE, Color.DONE, Color.NONE, Color.FUTURE, Color.FUTURE)
+    assert (kcal.green, kcal.streak) == (50, 2)  # сегодня (23.10) ещё не закончилось — серию не обрывает
     text = await me.tap("📝 Текстом")
-    assert "Калории  ··●●·    100% · серия 2" in text
+    assert "Калории  ○○●●○    50% · серия 2" in text and "в выходной" in text
     assert (await me.tap("◀")).startswith("<pre>Неделя · 12.10–18.10\n")  # текстовый вид сохраняется
     assert "▶" in me.labels()
     assert await me.tap("🖼 Картинкой") == "📊 Неделя · 12.10–18.10"
     stats_world.set_time(datetime(2026, 10, 26, 12, 0, tzinfo=UTC))
     after = await stats_world.service("stats").overview(actor, Kind.WEEK, -1)
-    assert next(r for r in after.rows if r.label == "Калории").cells[5] is Color.GRAY  # 24.10 — выходной
+    assert next(r for r in after.rows if r.label == "Калории").cells[5] is Color.OFF  # 24.10 — выходной «в»
     assert stats_world.llm.requests == []
 
 
@@ -202,11 +202,12 @@ async def test_s108_month_quarter_and_rules(stats_world: World, me: Persona) -> 
     assert "👁 Глаза" in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
     month = await stats_world.service("stats").overview(actor, Kind.MONTH)
     rows = {r.label: r.cells for r in month.rows}
-    assert rows["👁 Глаза"][13:17] == (Color.GRAY, Color.GREEN, Color.RED, Color.RED)  # до анкеты; 3/3, 1/3, 0/3
-    assert rows["Зарядка"][14] is Color.YELLOW and rows["Зарядка"][15] is Color.RED  # 1 из 2, ни одной
-    assert rows["Вес"][19] is Color.GREEN and rows["Вес"][12] is Color.GRAY  # неделя 19.10 тяжелее прошлой
-    assert rows["Тренировки"][13] is Color.RED  # 14.10: тренировка, а за неделю 1 из 3
-    assert rows["Тренировки"][14] is Color.GRAY and rows["Тренировки"][20] is Color.GRAY  # дни отдыха — серые
+    # до анкеты — бледная; 3/3 — чёрная, 1/3 — серая, 0/3 — белая
+    assert rows["👁 Глаза"][13:17] == (Color.SKIP, Color.DONE, Color.PARTIAL, Color.NONE)
+    assert rows["Зарядка"][14] is Color.PARTIAL and rows["Зарядка"][15] is Color.NONE  # 1 из 2, ни одной
+    assert rows["Вес"][19] is Color.DONE and rows["Вес"][12] is Color.NONE  # неделя 19.10 тяжелее прошлой
+    assert rows["Тренировки"][13] is Color.PARTIAL  # 14.10: тренировка, а за неделю 1 из 3
+    assert rows["Тренировки"][14] is Color.NONE and rows["Тренировки"][20] is Color.NONE  # без тренировки — белые
     assert stats_world.llm.requests == []
 
 
@@ -269,8 +270,8 @@ async def test_s126_text_view_replaces_the_same_message(stats_world: World, me: 
 
 async def test_s127_workout_visible_in_unfinished_week(stats_world: World, me: Persona) -> None:
     """S-127. Анкета на этой неделе, тренировка и бег сегодня: в «Неделе» и «Месяце» строка «Тренировки» видна —
-    день тренировки 🟡 «в процессе», пока цель недели (3) не выполнена; после 3-й тренировки за неделю — 🟢;
-    дни отдыха серые; через неделю итог недели остаётся на днях тренировок."""
+    день тренировки серый, пока цель недели (3) не выполнена; после 3-й тренировки за неделю — чёрный;
+    дни без тренировки белые; через неделю итог недели остаётся на днях тренировок."""
     from habit_bot.modules.workouts.domain.training import Kind as WorkoutKind
     from habit_bot.modules.workouts.domain.training import SetValue
 
@@ -282,17 +283,44 @@ async def test_s127_workout_visible_in_unfinished_week(stats_world: World, me: P
     await workouts.log_sets(actor, date(2026, 10, 16), [(squat.public_id, [SetValue(reps=8, weight=Decimal(100))])])
     stats = stats_world.service("stats")
     week = {r.label: r for r in (await stats.overview(actor, Kind.WEEK)).rows}
-    assert week["Тренировки"].cells == (Color.GRAY, Color.GRAY, Color.GRAY, Color.GRAY, Color.YELLOW, Color.EMPTY,
-                                        Color.EMPTY)
+    assert week["Тренировки"].cells == (Color.SKIP, Color.SKIP, Color.SKIP, Color.NONE, Color.PARTIAL, Color.FUTURE,
+                                        Color.FUTURE)
     month = {r.label: r for r in (await stats.overview(actor, Kind.MONTH)).rows}
-    assert month["Тренировки"].cells[15] is Color.YELLOW
+    assert month["Тренировки"].cells[15] is Color.PARTIAL
     await me.tap("📊 Итоги")
     await me.tap("Неделя")
-    assert "Тренировки  ····▲   " in await me.tap("📝 Текстом")
+    assert "Тренировки  ···○◐  " in await me.tap("📝 Текстом")
     await stats_world.service("runs").record(actor, distance_km=Decimal(5), seconds=1700, day=date(2026, 10, 15))
     await workouts.log_sets(actor, date(2026, 10, 16), [(squat.public_id, [SetValue(reps=8, weight=Decimal(100))])])
     row = {r.label: r for r in (await stats.overview(actor, Kind.WEEK)).rows}["Тренировки"]
-    assert row.cells[3:5] == (Color.GREEN, Color.GREEN) and (row.green, row.streak) == (100, 1)
+    assert row.cells[3:5] == (Color.DONE, Color.DONE) and (row.green, row.streak) == (100, 1)
     stats_world.set_time(datetime(2026, 10, 26, 9, 0, tzinfo=UTC))
     row = {r.label: r for r in (await stats.overview(actor, Kind.WEEK, -2)).rows}["Тренировки"]  # 12–18.10
-    assert row.cells == (Color.GRAY, Color.GRAY, Color.GRAY, Color.GREEN, Color.GREEN, Color.GRAY, Color.GRAY)
+    assert row.cells == (Color.SKIP, Color.SKIP, Color.SKIP, Color.DONE, Color.DONE, Color.NONE, Color.NONE)
+
+
+async def test_s128_day_off_and_today_progress(stats_world: World, me: Persona) -> None:
+    """S-128. Выходной виден: в обзоре — клетка «в» во всех строках, на картинке дня — «· выходной» в заголовке.
+    Прогресс сегодняшнего дня виден в «Неделе» и «Месяце»: часть цели — серая клетка, сегодняшний столбец в рамке;
+    пока день не закончился, он не обрывает серию. На кнопках разделов нет точки."""
+    actor = await actor_of(stats_world)
+    eyes = await stats_world.service("habits").from_template(actor, "eyes")
+    stats_world.set_time(datetime(2026, 10, 21, 9, 0, tzinfo=UTC))  # ср
+    await stats_world.service("days").toggle_day_off(actor, date(2026, 10, 20))
+    for day, times in ((date(2026, 10, 19), 3), (date(2026, 10, 21), 1)):
+        for _ in range(times):
+            await stats_world.service("habits").mark(actor, eyes.public_id, day=day)
+    stats = stats_world.service("stats")
+    for kind in (Kind.WEEK, Kind.MONTH):
+        data = await stats.overview(actor, kind)
+        assert data.today == date(2026, 10, 21)
+        row = next(r for r in data.rows if r.label == "👁 Глаза")
+        i = data.days.index(date(2026, 10, 19))
+        assert row.cells[i:i + 3] == (Color.DONE, Color.OFF, Color.PARTIAL)  # 3/3, выходной, сегодня 1/3
+        assert row.streak == 1  # сегодня ещё идёт — серия с понедельника не оборвалась
+    await me.tap("📊 Итоги")
+    assert not any("•" in label for label in me.labels())
+    await me.tap("Неделя")
+    assert "👁 Глаза  ●в◐      100% · серия 1" in await me.tap("📝 Текстом")
+    await me.tap("📊 День")
+    assert "· 20.10 (вт) · выходной\n" in await me.tap("◀ 20.10")

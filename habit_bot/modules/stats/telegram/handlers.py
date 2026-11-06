@@ -75,7 +75,7 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
 
     def day_markup(actor: Actor, key: str, day: date, sections: list[Section], mode: str) -> InlineKeyboardMarkup:
         code = _day_code(day)
-        choice = [btn(actor, ("▸ " if s.key == key else "") + s.label + (" •" if s.has_data else ""), "sec",
+        choice = [btn(actor, ("▸ " if s.key == key else "") + s.label, "sec",
                       f"{s.key}.{code}", mode) for s in sections]
         rows = fit_rows(choice, 3)
         move = [btn(actor, f"◀ {format_day(day - timedelta(days=1))}", "sec",

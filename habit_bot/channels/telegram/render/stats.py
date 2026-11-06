@@ -13,11 +13,13 @@ from PIL import Image, ImageDraw, ImageFont
 
 from habit_bot.kernel.domain.formatting import format_number
 from habit_bot.platform.stats.data import Bar, DayStats, Overview, Table
-from habit_bot.platform.stats.domain.traffic import EMOJI, ICON, Color, percent
+from habit_bot.platform.stats.domain.traffic import ICON, LEGEND, Color, percent
 
 FONT_DIRS = ("/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/dejavu", "/usr/share/fonts/TTF")
-COLORS = {Color.GREEN: (46, 158, 91), Color.YELLOW: (232, 170, 20), Color.RED: (214, 69, 69),
-          Color.GRAY: (205, 208, 212), Color.EMPTY: (255, 255, 255)}
+# Три оттенка (правка 1.0.1): выполнено — чёрная, частично — серая, ничего — белая с рамкой.
+COLORS = {Color.DONE: (33, 37, 41), Color.PARTIAL: (160, 166, 173), Color.NONE: (255, 255, 255),
+          Color.OFF: (228, 232, 236), Color.SKIP: (246, 247, 248), Color.FUTURE: (255, 255, 255)}
+OUTLINE = {Color.NONE: (150, 156, 163), Color.FUTURE: (236, 238, 240)}
 INK, MUTED, LINE, PAPER, TRACK = (33, 37, 41), (110, 117, 125), (222, 226, 230), (255, 255, 255), (236, 238, 240)
 WIDTH, PAD = 760, 28
 BAR_CHARS = 12
@@ -166,8 +168,9 @@ def overview_png(data: Overview) -> bytes:
     for i, day in enumerate(data.days):
         if i % step == 0:
             label = f"{WEEKDAYS[day.weekday()]} {day.day}" if cell >= 40 else f"{day.day}"
-            draw.text((left + i * (cell + gap), top), label, font=font(14), fill=MUTED)
-    draw.text((left + grid_w + 16, top), "зелёных · серия", font=font(14), fill=MUTED)
+            bold = day == data.today
+            draw.text((left + i * (cell + gap), top), label, font=font(14, bold), fill=INK if bold else MUTED)
+    draw.text((left + grid_w + 16, top), "выполнено · серия", font=font(14), fill=MUTED)
     y = top + 26
     if not data.rows:
         draw.text((PAD, y + 4), "За этот период записей нет", font=font(20), fill=MUTED)
@@ -177,22 +180,31 @@ def overview_png(data: Overview) -> bytes:
             x0 = left + i * (cell + gap)
             y0 = y + (row_h - 8 - cell) // 2
             box = (x0, y0, x0 + cell, y0 + cell)
-            if color is Color.EMPTY:
-                draw.rounded_rectangle(box, radius=3, outline=LINE, fill=PAPER)
-            else:
-                draw.rounded_rectangle(box, radius=3, fill=COLORS[color])
-            if cell >= 22 and color in (Color.GREEN, Color.YELLOW, Color.RED):
-                symbol = ICON[color]
-                size = int(cell * 0.5)
-                w = _width(draw, symbol, size)
-                draw.text((x0 + (cell - w) / 2, y0 + cell * 0.18), symbol, font=font(size), fill=PAPER)
+            _cell(draw, box, color, cell)
         share = f"{row.green}%" if row.green is not None else "—"
         draw.text((left + grid_w + 16, y + (row_h - 30) // 2 + 2), f"{share} · {row.streak}", font=font(20),
                   fill=INK)
         y += row_h
-    legend = "● цель  ▲ близко  ✕ мимо  серым — нет данных или выходной"
-    draw.text((PAD, height - PAD - 22), legend, font=font(16), fill=MUTED)
+    if data.today in data.days and data.rows:  # сегодняшний день — в рамке, чтобы прогресс дня было видно сразу
+        i = data.days.index(data.today)
+        x0 = left + i * (cell + gap) - 2
+        draw.rounded_rectangle((x0, top + 22, x0 + cell + 4, y - 2), radius=4, outline=INK, width=2)
+    x = PAD
+    for color, text in ((Color.DONE, "выполнено"), (Color.PARTIAL, "частично"), (Color.NONE, "ничего"),
+                        (Color.OFF, "выходной")):
+        _cell(draw, (x, height - PAD - 20, x + 16, height - PAD - 4), color, 16)
+        draw.text((x + 22, height - PAD - 22), text, font=font(16), fill=MUTED)
+        x += 22 + _width(draw, text, 16) + 18
     return _png(image)
+
+
+def _cell(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], color: Color, size: int) -> None:
+    draw.rounded_rectangle(box, radius=3, fill=COLORS[color], outline=OUTLINE.get(color),
+                           width=1 if color in OUTLINE else 0)
+    if color is Color.OFF and size >= 14:
+        letter = int(size * 0.6)
+        w = _width(draw, "в", letter)
+        draw.text((box[0] + (size - w) / 2, box[1] + size * 0.12), "в", font=font(letter), fill=MUTED)
 
 
 # --- «Текстом»: та же таблица моноширинным блоком ---
@@ -204,7 +216,7 @@ def text_bar(bar: Bar) -> str:
     track = ("█" * whole + part.strip()).ljust(BAR_CHARS, "░")
     goal = f" / {_amount(bar.goal)}" if bar.goal else ""
     shown = f"{share}%" if share is not None else "—"
-    return f"{bar.label:<6} {track} {shown:>4}  {_amount(bar.fact)}{goal}  {EMOJI[bar.color]}"
+    return f"{bar.label:<6} {track} {shown:>4}  {_amount(bar.fact)}{goal}  {ICON[bar.color]}"
 
 
 def text_table(table: Table) -> list[str]:
@@ -250,5 +262,5 @@ def overview_text(data: Overview) -> str:
                      else f"{row.label}  {summary}")
         if len(weeks) > 1:
             lines += [f"  {w}" for w in weeks]
-    lines += ["", "● цель  ▲ близко  ✕ мимо  · нет данных"]
+    lines += ["", LEGEND]
     return "\n".join(lines)
