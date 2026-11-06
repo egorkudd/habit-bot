@@ -228,3 +228,20 @@ async def test_s53_foreign_warmup_button(world: World, owner: Persona) -> None:
     assert guest.last() == "Эта кнопка не ваша — ничего не изменено. Вот главное меню 👇"
     assert len(await _sessions(world)) == 2
     assert (await guest.tap("🤸 Зарядка")).startswith("Набор зарядки пуст.")
+
+
+async def test_s123_press_that_changes_nothing(world: World, owner: Persona) -> None:
+    """S-123. Нажатие, после которого экран не меняется («Отжимания −5» при 0, двойное «✏️ Изменить», «← Готово»
+    дважды): Telegram отвечает «message is not modified» — бот молчит, без ⚠️ E-xxxx и без оповещения
+    администратору; черновик продолжает работать."""
+    await owner.tap("🤸 Зарядка")
+    await owner.tap("Взять набор по умолчанию")
+    sent = len(owner.texts())
+    await owner.tap("Отжимания −5")  # уже 0 — ниже не уходит, экран тот же
+    await owner.tap("Мостик +5")
+    edit = owner.find_button("Мостик −5")
+    await owner.press_data(edit, owner.find_button_at("Мостик −5")[1])
+    await owner.press_data(edit, owner.find_button_at("Мостик −5")[1])  # второй раз — уже 0
+    assert len(owner.texts()) == sent  # ни ⚠️ пользователю, ни оповещения администратору (тот же чат)
+    assert "Мостик — 0" in owner.last()
+    assert (await owner.tap("💾 Записать")).startswith("🤸 Зарядка 1-я за 03.11")

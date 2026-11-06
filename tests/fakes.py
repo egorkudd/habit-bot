@@ -177,6 +177,24 @@ class FakeTelegramSession(BaseSession):
         self._message_id = 100
         self.message_ids: dict[int, int] = {}       # id(SendMessage) → message_id, который вернул «Telegram»
         self.deleted: set[tuple[int, int]] = set()  # (chat_id, message_id) удалённых сообщений
+        self.contents: dict[tuple[int, int], tuple[str, Any]] = {}  # текущие текст и кнопки сообщения
+
+    @staticmethod
+    def _markup(markup: Any) -> Any:
+        return markup.model_dump(exclude_none=True) if markup is not None else None
+
+    def _not_modified(self, method: Any) -> bool:
+        """Как настоящий Telegram: правка, после которой текст и кнопки те же, отклоняется."""
+        key = (int(method.chat_id), method.message_id)
+        old = self.contents.get(key)
+        if isinstance(method, EditMessageText):
+            new = (str(method.text), self._markup(method.reply_markup))
+        else:
+            new = (old[0] if old else "", self._markup(method.reply_markup))
+        if old == new:
+            return True
+        self.contents[key] = new
+        return False
 
     @property
     def photo_messages(self) -> set[int]:
@@ -201,6 +219,7 @@ class FakeTelegramSession(BaseSession):
                 raise TelegramForbiddenError(method=method, message="Forbidden: bot was blocked by the user")
             self._message_id += 1
             self.message_ids[id(method)] = self._message_id
+            self.contents[(chat_id, self._message_id)] = (str(method.text), self._markup(method.reply_markup))
             return Message(
                 message_id=self._message_id,
                 date=datetime.now(UTC),
@@ -245,6 +264,10 @@ class FakeTelegramSession(BaseSession):
                 raise TelegramForbiddenError(method=method, message="Forbidden: bot was blocked by the user")
             if method.chat_id is not None and (int(method.chat_id), method.message_id) in self.deleted:
                 raise TelegramBadRequest(method=method, message="Bad Request: message to edit not found")
+            if method.chat_id is not None and self._not_modified(method):
+                raise TelegramBadRequest(method=method, message=(
+                    "Bad Request: message is not modified: specified new message content and reply markup are "
+                    "exactly the same as a current content and reply markup of the message"))
             return True
         if isinstance(method, DeleteMessages):
             if not 1 <= len(method.message_ids) <= 100:
