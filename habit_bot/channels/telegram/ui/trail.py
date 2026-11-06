@@ -30,7 +30,7 @@ from aiogram.types import Message, ReplyKeyboardMarkup, ReplyKeyboardRemove, Tel
 
 from habit_bot.channels.telegram.dialogs.policy import TRAIL
 from habit_bot.channels.telegram.dialogs.store import DialogStore
-from habit_bot.channels.telegram.ui.chat_log import ChatLog
+from habit_bot.channels.telegram.ui.chat_log import ChatLog, Sent
 from habit_bot.kernel.clock import Clock
 
 log = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class _Update:
     clean: bool = False
     wipe: bool = False
     forget: bool = False
-    sent: list[tuple[int, bool]] = field(default_factory=list)  # для журнала чата: (сообщение, файл ли это)
+    sent: list[Sent] = field(default_factory=list)  # для журнала чата
 
 
 _current: ContextVar[_Update | None] = ContextVar("trail_update", default=None)
@@ -114,7 +114,7 @@ class TrailRecorder(BaseRequestMiddleware):
         current = _current.get()
         sent: object = response  # на деле сессия возвращает сам результат метода, а не Response
         request: object = method
-        await self._journal(current, sent)
+        await self._journal(current, sent, request)
         if current is None or not isinstance(request, SendMessage) or not isinstance(sent, Message):
             return response
         if sent.chat.id != current.chat_id:
@@ -125,21 +125,20 @@ class TrailRecorder(BaseRequestMiddleware):
             current.transient.append(sent.message_id)
         return response
 
-    async def _journal(self, current: _Update | None, sent: object) -> None:
+    async def _journal(self, current: _Update | None, sent: object, request: object) -> None:
         if self._log is None or self._clock is None:
             return
         messages = [m for m in (sent if isinstance(sent, list) else [sent])
                     if isinstance(m, Message) and m.chat.type == "private"]
         if not messages:
             return
+        keyboard = isinstance(getattr(request, "reply_markup", None), ReplyKeyboardMarkup)
+        items = [Sent(m.message_id, file=m.document is not None, keyboard=keyboard) for m in messages]
         if current is not None and messages[0].chat.id == current.chat_id:
-            current.sent += [(m.message_id, m.document is not None) for m in messages]
+            current.sent += items
             return  # запишется после ответа: обработчик мог ещё не закончить свою транзакцию
         try:  # фоновая задача или оповещение другому человеку
-            for kept in (False, True):
-                ids = [m.message_id for m in messages if (m.document is not None) is kept]
-                if ids:
-                    await self._log.record(messages[0].chat.id, ids, self._clock.now(), kept=kept)
+            await self._log.record(messages[0].chat.id, items, self._clock.now())
         except Exception:
             log.warning("Не удалось записать сообщение в журнал чата", exc_info=True)
 
@@ -173,7 +172,7 @@ class TrailMiddleware(BaseMiddleware):
         if chat_id is None:
             return await handler(event, data)
         current = _Update(chat_id=chat_id, transient=[incoming] if incoming is not None else [],
-                          sent=[(incoming, False)] if incoming is not None else [])
+                          sent=[Sent(incoming)] if incoming is not None else [])
         token = _current.set(current)
         try:
             return await handler(event, data)
@@ -202,10 +201,8 @@ class TrailMiddleware(BaseMiddleware):
             doomed += ids
             ids = []
         if self._log is not None:
-            for kept in (False, True):
-                found = [i for i, is_file in current.sent if is_file is kept]
-                if found:
-                    await self._log.record(current.chat_id, found, now, kept=kept)
+            if current.sent:
+                await self._log.record(current.chat_id, current.sent, now)
             if current.wipe:
                 doomed += await self._log.deletable(current.chat_id, now)
         doomed = [i for i in doomed if i not in current.keep and i != holder]

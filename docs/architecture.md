@@ -693,7 +693,9 @@ classDiagram
   журналу `ChatLog` (`ui/chat_log.py`, таблица `chat_messages`: номер чата, номер сообщения, «файл», время — без
   содержимого). `TrailRecorder` пишет в журнал все отправленные сообщения (ответа — после него, в `_settle`;
   фоновых задач — сразу), `TrailMiddleware` — входящие. Файлы (`document`) помечены `kept` и не удаляются; строки
-  старше 47 часов стираются при каждой записи.
+  старше 47 часов стираются при каждой записи. Ночная чистка — `TelegramChannel.nightly_clean` (задача `chat.nightly`,
+  раз в минуту): `ChatLog.before(последние 04:00)` — всё, кроме файлов и последнего сообщения с клавиатурой
+  (отметка `keyboard`).
 - **Разбор ввода** — чистые функции `kernel/domain/parsing.py` и `formatting.py` (числа с точкой и запятой, время, даты, логический день с границей 04:00). Ими же будут пользоваться приложение и веб.
 
 `TgSession.started_at` (часть 4) берётся из даты сообщения Telegram, поэтому ввод, начатый в 03:58, остаётся в предыдущем дне. Режим «Другой день» хранится в `DialogState`, и канал передаёт выбранную дату в сценарий явным параметром `day`.
@@ -1128,7 +1130,7 @@ sequenceDiagram
 | 10. Экспорт (шаг 2) ✅ | Модуль `export`: домен `csv_format.py` (BOM, точка, ISO-даты, README) и `tables.py` (состав файлов раздела 3.12), `period.py` («01.10–22.10»); `Export` собирает строки из сервисов модулей (новые выборки `Food.entries_between`, `Habits.entries_between`, `Runs.entries_between`) и складывает ZIP в памяти. Вместо `platform/export` и `ExportTable` — пока один модуль, как и «Итоги». Кнопки хранят период и маску галочек (`ExCb`), без состояния диалога |
 | 10. Админ и бэкап (шаг 3) ✅ | Модуль `admin`: `Admin` (пользователи с числом записей из таблиц дневника, блокировка, удаление через `Profiles.erase_user` — общий код с «Удалить аккаунт», расходы на ИИ из `ai_command`, счётчики каталога), `Food.add_catalog_item` / `set_catalog_active`. Модуль `backup`: `Backups` (копия через `ops.make_backup`, журнал `backup_log`, «раз в 2 дня» от последнего удачного — задача раз в час), `platform/backup/crypto.py` (scrypt + AES-256-GCM, `ops decrypt`). Новое место меню `Place.ADMIN`: кнопки «🛠 Админ» добавляют модули. Приёмка — `docs/acceptance-mvp.md` |
 | Правки 1.0.1 | `ui/not_modified.py` (`IgnoreNotModified`: «message is not modified» — успех), `habits_builtin_archive` (архив встроенных привычек, миграция 0012), три оттенка «Итогов» в `platform/stats/domain/traffic.py`, «Текстом» в том же сообщении; `scripts/local_check.sh` и `deploy/update.sh` — пока GitHub Actions отключены |
-| Правки 1.0.2 | `ui/chat_log.py` (`ChatLog`, `chat_messages`, миграция 0013) и `trail.wipe()` — «🏠 Домой» чистит весь чат кроме файлов; `MenuEntry.habit` — еда, зарядка, тренировка не в «Ещё»; флаги `stats…TEXT_BUTTON`, `users…DELETE_BUTTON` |
+| Правки 1.0.2 | `ui/chat_log.py` (`ChatLog`, `chat_messages`, миграция 0013) и `trail.wipe()` — «🏠 Домой» чистит весь чат кроме файлов; ночная чистка в 04:00 (`nightly_clean`, задача `chat.nightly`); `MenuEntry.habit` — еда, зарядка, тренировка не в «Ещё»; флаги `stats…TEXT_BUTTON`, `users…DELETE_BUTTON` |
 | v2–v3 | `platform/delivery` и модуль `notifications` с провайдерами; новые модули `chat_digest`, `weekly_review`, `voice` |
 | Следующие версии | `channels/http`, вход через привязку, push — раздел 10 |
 

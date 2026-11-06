@@ -1,8 +1,9 @@
 """Поведенческие сценарии: чистый чат, «🏠 Домой», «Ещё» и кнопки, которые помещаются (правки после части 6)."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from aiogram.types import BufferedInputFile, InputMediaDocument
 from sqlalchemy import select
@@ -18,6 +19,7 @@ from tests.conftest import ADMIN_ID
 from tests.scenarios.harness import Persona, World
 
 STALE = "Это меню устарело. Вот главное меню 👇"
+MSK = ZoneInfo("Europe/Moscow")
 
 
 async def _actor(world: World) -> Any:
@@ -225,3 +227,34 @@ async def test_s135_home_after_restart_skips_old(world: World, owner: Persona) -
     async with world.app.ctx.uow() as uow:
         stamps = (await uow.session.execute(select(ChatMessage.sent_at))).scalars().all()
     assert stamps and all(world.clock.now() - s < timedelta(hours=47) for s in stamps)
+
+
+async def test_s136_nightly_clean_at_four(world: World, owner: Persona) -> None:
+    """S-136. Каждую ночь в 04:00 переписка очищается сама: удаляется всё, присланное до 04:00, кроме файлов и
+    последнего сообщения с клавиатурой (клавиатура внизу остаётся); бот ничего не пишет. Сообщения после 04:00
+    ждут следующей ночи; до 04:00 чистка ничего не трогает; повторный запуск ничего не делает."""
+    await _recipe(world)
+    world.set_time(datetime(2026, 11, 3, 23, 30, tzinfo=MSK))
+    await owner.tap("🍽 Еда")
+    await owner.tap("Коктейль")
+    await owner.say("что-то непонятное")
+    bot = world.app.telegram.bot
+    backup = await bot.send_document(ADMIN_ID, BufferedInputFile(b"secret", filename="habit-bot.db.enc"))
+    world.set_time(datetime(2026, 11, 4, 3, 59, tzinfo=MSK))
+    assert await world.app.telegram.nightly_clean() == 0  # ещё не 04:00
+    late = await bot.send_message(ADMIN_ID, "💧 Напоминание")
+    world.set_time(datetime(2026, 11, 4, 4, 5, tzinfo=MSK))
+    after = await bot.send_message(ADMIN_ID, "после 04:00")
+    sent = len(owner.texts())
+    assert await world.app.telegram.nightly_clean() > 0
+    assert len(owner.texts()) == sent
+    assert owner.session.is_deleted(ADMIN_ID, late.message_id) and owner.typed_on_screen() == []
+    assert not any(t.startswith("🍽 Коктейль") for t in owner.on_screen())
+    assert not owner.session.is_deleted(ADMIN_ID, backup.message_id)
+    assert not owner.session.is_deleted(ADMIN_ID, after.message_id)
+    assert owner.keyboard()[-1][-2:] == ["🏠 Домой", "☰ Ещё"]  # сообщение с клавиатурой осталось
+    assert await world.app.telegram.nightly_clean() == 0
+    await world.restart()  # бот был выключен в 04:00 следующей ночи — догоняет при старте
+    world.set_time(datetime(2026, 11, 5, 9, 0, tzinfo=MSK))
+    assert await world.app.telegram.nightly_clean() == 1
+    assert owner.session.is_deleted(ADMIN_ID, after.message_id)

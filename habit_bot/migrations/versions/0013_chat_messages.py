@@ -1,4 +1,4 @@
-"""Журнал сообщений чата за 48 часов для «🏠 Домой» (ChatMessage)
+"""Журнал сообщений чата за 48 часов для «🏠 Домой» и ночной чистки (ChatMessage)
 
 Revision ID: 0013_chat_messages
 Revises: 0012_builtin_archive
@@ -22,6 +22,7 @@ def upgrade() -> None:
     sa.Column("chat_id", sa.BigInteger(), nullable=False),
     sa.Column("message_id", sa.Integer(), nullable=False),
     sa.Column("kept", sa.Boolean(), nullable=False),
+    sa.Column("keyboard", sa.Boolean(), nullable=False),
     sa.Column("sent_at", sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint("id", name=op.f("pk_chat_messages")),
     sa.UniqueConstraint("chat_id", "message_id", name="uq_chat_messages_chat_id_message_id")
