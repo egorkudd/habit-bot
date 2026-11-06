@@ -228,3 +228,16 @@ async def test_s109_foreign_and_old_buttons(stats_world: World, me: Persona) -> 
     assert me.last() == "📊 Еда · 15.10 (чт)"
     await guest.tap("📊 Итоги")
     assert guest.last() == "📊 Еда · 15.10 (чт)" and "👁 Глаза" not in guest.labels()
+
+
+async def test_s124_pressing_open_section_again(stats_world: World, me: Persona) -> None:
+    """S-124. «📊 Итоги» → «🤸 Зарядка», затем снова «▸ 🤸 Зарядка» (или «Неделя» дважды): картинка та же — Telegram
+    отвечает «message is not modified», бот молчит, без ⚠️ E-xxxx и оповещения администратору."""
+    await me.tap("📊 Итоги")
+    sent = len(me.texts())
+    assert await me.tap("🤸 Зарядка") == "📊 Зарядка · 15.10 (чт)"
+    assert await me.tap("▸ 🤸 Зарядка") == "📊 Зарядка · 15.10 (чт)"
+    await me.tap("Неделя")
+    await me.tap("▸ Неделя")
+    assert len(me.texts()) == sent
+    assert await me.tap("📊 День") == "📊 Зарядка · 15.10 (чт)"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from html.parser import HTMLParser
@@ -178,6 +179,7 @@ class FakeTelegramSession(BaseSession):
         self.message_ids: dict[int, int] = {}       # id(SendMessage) → message_id, который вернул «Telegram»
         self.deleted: set[tuple[int, int]] = set()  # (chat_id, message_id) удалённых сообщений
         self.contents: dict[tuple[int, int], tuple[str, Any]] = {}  # текущие текст и кнопки сообщения
+        self.media: dict[tuple[int, int], tuple[str, str, Any]] = {}  # картинка (хэш), подпись и кнопки
 
     @staticmethod
     def _markup(markup: Any) -> Any:
@@ -234,6 +236,8 @@ class FakeTelegramSession(BaseSession):
             self.message_ids[id(method)] = self._message_id
             extra: dict[str, Any] = {}
             if isinstance(method, SendPhoto):
+                self.media[(chat_id, self._message_id)] = (hashlib.sha256(method.photo.data).hexdigest(),
+                                                           str(method.caption), self._markup(method.reply_markup))
                 extra["photo"] = [PhotoSize(file_id=f"p{self._message_id}", file_unique_id=f"u{self._message_id}",
                                             width=1, height=1)]
             else:
@@ -258,6 +262,15 @@ class FakeTelegramSession(BaseSession):
                 raise TelegramBadRequest(method=method, message="Bad Request: message to edit not found")
             if method.message_id not in self.photo_messages:
                 raise TelegramBadRequest(method=method, message="Bad Request: there is no media in the message to edit")
+            # Telegram узнаёт тот же файл по содержимому: та же картинка с той же подписью и кнопками — «не изменено».
+            key = (int(method.chat_id or 0), method.message_id or 0)
+            new = (hashlib.sha256(method.media.media.data).hexdigest(), str(method.media.caption),
+                   self._markup(method.reply_markup))
+            if self.media.get(key) == new:
+                raise TelegramBadRequest(method=method, message=(
+                    "Bad Request: message is not modified: specified new message content and reply markup are "
+                    "exactly the same as a current content and reply markup of the message"))
+            self.media[key] = new
             return True
         if isinstance(method, (EditMessageText, EditMessageReplyMarkup)):
             if method.chat_id is not None and int(method.chat_id) in self.blocked_chats:
