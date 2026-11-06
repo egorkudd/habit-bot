@@ -88,3 +88,19 @@ def test_text_rendering() -> None:
     assert quarter.split("\n")[1] == "Калории  — · серия 0"
     assert overview_text(Overview("Неделя", days[:7])) == "Неделя\nЗа этот период записей нет"
     assert overview_png(Overview("Неделя", days[:7])).startswith(b"\x89PNG")
+
+
+def test_picture_ratio_fits_phone_preview() -> None:
+    """Правки 1.0.2: широкая картинка (одна полоса) дополняется полями до 3:2, узкая — до 1:2, иначе телефонный
+    Telegram показывает её в чате обрезанной; содержимое по центру; обычная картинка не меняется."""
+    from PIL import Image
+
+    from habit_bot.channels.telegram.render.stats import PAPER, fit_ratio
+
+    wide = Image.new("RGB", (760, 194), (0, 0, 0))
+    framed = fit_ratio(wide)
+    assert framed.size == (760, 507)
+    assert framed.getpixel((10, 5)) == PAPER and framed.getpixel((380, 253)) == (0, 0, 0)
+    assert fit_ratio(Image.new("RGB", (400, 1200))).size == (600, 1200)
+    normal = Image.new("RGB", (760, 600))
+    assert fit_ratio(normal) is normal

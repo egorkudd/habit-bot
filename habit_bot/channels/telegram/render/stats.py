@@ -45,7 +45,25 @@ def plain(text: str) -> str:
     return "".join(ch for ch in text if ord(ch) < 0x1F000 and ch not in "️‍").strip()
 
 
+# Телефонный Telegram показывает в чате слишком широкую (или узкую) картинку обрезанной по краям — целиком она
+# видна, только если её открыть (правки 1.0.2). Поэтому картинка дополняется полями до пропорций не шире 3:2
+# и не уже 1:2, содержимое — по центру.
+MAX_RATIO, MIN_RATIO = 1.5, 0.5
+
+
+def fit_ratio(image: Image.Image) -> Image.Image:
+    width, height = image.size
+    target = (width, max(height, round(width / MAX_RATIO)))
+    target = (max(target[0], round(target[1] * MIN_RATIO)), target[1])
+    if target == image.size:
+        return image
+    framed = Image.new("RGB", target, PAPER)
+    framed.paste(image, ((target[0] - width) // 2, (target[1] - height) // 2))
+    return framed
+
+
 def _png(image: Image.Image) -> bytes:
+    image = fit_ratio(image)
     buffer = io.BytesIO()
     image.save(buffer, format="PNG", optimize=True)
     return buffer.getvalue()
@@ -98,8 +116,11 @@ def day_png(data: DayStats) -> bytes:
     y = PAD
     draw.text((PAD, y), plain(data.title), font=font(28, True), fill=INK)
     y += 48
+    # подписи полос — колонкой по самой длинной («Витамины» не залезает на полосу), полоса укорачивается
+    label_w = max([110, *(_width(probe, plain(b.label), 20, True) + 16 for b in data.bars)])
+    label_w = min(label_w, 260)
     for bar in data.bars:
-        _bar(draw, bar, y)
+        _bar(draw, bar, y, PAD + label_w, 300 - max(0, label_w - 110))
         y += 54
     for table in data.tables:
         y += 12
@@ -114,8 +135,7 @@ def day_png(data: DayStats) -> bytes:
     return _png(image)
 
 
-def _bar(draw: ImageDraw.ImageDraw, bar: Bar, y: int) -> None:
-    left, track = PAD + 110, 300
+def _bar(draw: ImageDraw.ImageDraw, bar: Bar, y: int, left: int, track: int) -> None:
     draw.text((PAD, y + 6), plain(bar.label), font=font(20, True), fill=INK)
     draw.rounded_rectangle((left, y + 4, left + track, y + 34), radius=8, fill=TRACK)
     share = percent(bar.fact, bar.goal)
