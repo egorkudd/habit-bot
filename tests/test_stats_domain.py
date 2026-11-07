@@ -91,16 +91,29 @@ def test_text_rendering() -> None:
 
 
 def test_picture_ratio_fits_phone_preview() -> None:
-    """Правки 1.0.2: широкая картинка (одна полоса) дополняется полями до 3:2, узкая — до 1:2, иначе телефонный
-    Telegram показывает её в чате обрезанной; содержимое по центру; обычная картинка не меняется."""
+    """Правки 1.0.2: страховка — картинка шире 9:5 дополняется полями, уже 1:2 — тоже, иначе телефонный Telegram
+    показывает её в чате обрезанной; содержимое по центру; обычная картинка не меняется."""
     from PIL import Image
 
     from habit_bot.channels.telegram.render.stats import PAPER, fit_ratio
 
     wide = Image.new("RGB", (760, 194), (0, 0, 0))
     framed = fit_ratio(wide)
-    assert framed.size == (760, 507)
-    assert framed.getpixel((10, 5)) == PAPER and framed.getpixel((380, 253)) == (0, 0, 0)
+    assert framed.size == (760, 422)
+    assert framed.getpixel((10, 5)) == PAPER and framed.getpixel((380, 211)) == (0, 0, 0)
     assert fit_ratio(Image.new("RGB", (400, 1200))).size == (600, 1200)
     normal = Image.new("RGB", (760, 600))
     assert fit_ratio(normal) is normal
+
+
+@pytest.mark.parametrize(("count", "rows"), [(7, 1), (7, 6), (30, 1), (30, 2), (30, 8), (90, 1), (90, 3), (90, 9)])
+def test_overview_layout_close_to_phone_ratio(count: int, rows: int) -> None:
+    """Обзор держит пропорции без пустых полей: неделя одной частью, месяц и 3 месяца — частями друг под другом;
+    картинка не шире 9:5 и не уже 1:2 (кроме недели с одной строкой — ей нужны небольшие поля)."""
+    from habit_bot.channels.telegram.render.stats import _overview_layout
+
+    parts, size, cell, width, height = _overview_layout(count, rows, 160)
+    assert parts * size >= count and (parts == 1 or (parts - 1) * size < count)
+    assert 12 <= cell <= 40
+    if (count, rows) != (7, 1):
+        assert 0.5 <= width / height <= 1.8, (width, height)

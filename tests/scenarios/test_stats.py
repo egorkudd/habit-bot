@@ -80,7 +80,8 @@ async def test_s104_food_day_picture_and_text(stats_world: World, me: Persona) -
     assert me.labels()[:2] == ["▸ 🍽 Еда", "🤸 Зарядка"]  # без точки «есть записи»
     assert "◀ 21.10" in me.labels() and "23.10 ▶" not in me.labels()  # будущее не листается
     picture = me.session.photos(ADMIN_ID)[-1]
-    assert png_size(picture)[0] == 760
+    width, height = png_size(picture)
+    assert width == 520 and 0.5 <= width / height <= 1.8  # телефон показывает целиком, без обрезки (1.0.2)
     assert has_color(picture, (33, 37, 41)) and has_color(picture, (160, 166, 173))  # выполнено и частично
     data = await stats_world.service("stats").day(await actor_of(stats_world), "food", OCT22)
     assert [(b.label, b.color) for b in data.bars] == [
@@ -199,7 +200,8 @@ async def test_s108_month_quarter_and_rules(stats_world: World, me: Persona) -> 
     stats_world.set_time(datetime(2026, 10, 21, 12, 0, tzinfo=UTC))
     await me.tap("📊 Итоги")
     assert await me.tap("Месяц") == "📊 Месяц · октябрь 2026"
-    assert png_size(me.session.photos(ADMIN_ID)[-1])[0] < 1300
+    width, height = png_size(me.session.photos(ADMIN_ID)[-1])
+    assert width < 1300 and width / height <= 1.8  # 3 месяца — частями друг под другом, а не полосой
     assert await me.tap("3 месяца") == "📊 3 месяца · август–октябрь 2026"
     text = await me.tap("📝 Текстом")
     assert "👁 Глаза" in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
@@ -386,5 +388,5 @@ async def test_s138_yesterday_before_onboarding_is_visible(stats_world: World, m
         assert rows["Калории"].cells[i - 1] is Color.SKIP
     await me.tap("📊 Итоги")
     await me.tap("Неделя")
-    picture = me.session.photos(ADMIN_ID)[-1]
-    assert png_size(picture)[0] >= 600
+    width, height = png_size(me.session.photos(ADMIN_ID)[-1])
+    assert width / height <= 1.8
