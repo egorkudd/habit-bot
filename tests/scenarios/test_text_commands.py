@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
+from habit_bot.channels.telegram.ui.callbacks import MenuCb
 from habit_bot.modules.food.models import FoodEntry, FoodItem
 from habit_bot.platform.ai.models import AiCommand
 from tests.ai.golden import GOLDEN
@@ -181,7 +182,10 @@ async def test_s99_without_key(world: World, owner: Persona) -> None:
     """S-99. Ключа модели нет (как сейчас у владельца): «✍️ Текстом» — «пока не подключён», любой текст —
     подсказка с меню, кнопки работают."""
     await owner.tap("☰ Ещё")
-    assert await owner.tap("✍️ Текстом") == "Разбор текстом пока не подключён. Кнопки работают как обычно"
+    assert not owner.sees("✍️ Текстом")  # правки 1.0.2: кнопка убрана; старая работает
+    actor = await world.service("users.sign_in").execute(owner.tg_id, "")
+    await owner.press_data(MenuCb(o=actor.user_id, t=0, k="text").pack())
+    assert owner.last() == "Разбор текстом пока не подключён. Кнопки работают как обычно"
     assert await owner.say("вчера съел 2 бедра") == "Не понял. Выберите раздел в меню 👇"
     assert (await owner.tap("🍽 Еда")).startswith("🍽 Еда за 03.11.")
 

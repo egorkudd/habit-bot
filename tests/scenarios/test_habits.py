@@ -53,9 +53,8 @@ def _rows(user: Persona) -> list[list[str]]:
 async def test_s62_eyes_from_template_one_tap(world: World, owner: Persona) -> None:
     """S-62. Раздел 9: шаблон «Зарядка для глаз» с «На главном экране» добавляет кнопку «👁 Глаза»; одно нажатие →
     «👁 Зарядка для глаз — 1/3» с «Отменить», «+ ещё», «Другое значение», «📅 На вчера»; «Отменить» удаляет."""
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("➕ Новая")
     assert (await owner.tap("👁 Зарядка для глаз")).startswith("Добавлено: 👁 Зарядка для глаз — отметка, цель 3")
     assert await owner.tap("🏠 Да") == "Готово: «👁 Глаза» на главном экране 👇"
@@ -188,9 +187,8 @@ async def test_s68_once_habit_offers_unmark(world: World, owner: Persona) -> Non
 async def test_s69_own_habit_by_buttons(world: World, owner: Persona) -> None:
     """S-69. Своя привычка кнопками: «🧘 Медитация» → «Длительность» → цель «15» → «🏠 Да» — кнопка на главном;
     ошибки ввода — подсказка без сброса; дубль названия — отказ; «отмена» посреди — ничего не создано."""
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("➕ Новая")
     await owner.tap("✍️ Своя")
     await owner.say("🧘 Медитация")
@@ -200,9 +198,8 @@ async def test_s69_own_habit_by_buttons(world: World, owner: Persona) -> None:
     await owner.tap("🏠 Да")
     assert (await owner.tap("🧘 Медитация")).startswith("🧘 Медитация — 10/15 мин")
 
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("➕ Новая")
     await owner.tap("✍️ Своя")
     assert await owner.say("🧘 Медитация") == "Привычка „Медитация“ уже есть. Напишите другое название"
@@ -233,22 +230,19 @@ async def test_s71_archive_restore_delete(world: World, owner: Persona) -> None:
     с подтверждением и вместе с историей."""
     await _habit(world, "eyes", home=True)
     await owner.tap("👁 Глаза")
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("👁 Глаза")
     assert (await owner.tap("🗄 В архив")).startswith("👁 Глаза — в архиве")
     assert not any("👁 Глаза" in row for row in owner.keyboard())
     assert await owner.say("👁 Глаза") == "Не понял. Выберите раздел в меню 👇"
     assert len(await _entries(world)) == 1
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("🗄 Архив (1)")
     await owner.tap("↩ 👁 Глаза")
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("👁 Глаза")
     await owner.tap("🗑 Удалить")
     assert (await owner.tap("🗑 Да, удалить")) == "«Зарядка для глаз» удалена вместе с историей."
@@ -297,15 +291,13 @@ async def test_s74_edit_goal_days_and_stale(world: World, owner: Persona) -> Non
     """S-74. Правка: цель «5», дни «Пн, Ср» — сегодня (вт) привычка свёрнута в «Не сегодня»; старая кнопка «Цель»
     после 15 минут — «меню устарело»."""
     await _habit(world, "eyes", home=True)
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("👁 Глаза")
     await owner.tap("🎯 Цель")
     assert (await owner.say("5")).startswith("Сохранено ✅\n👁 Зарядка для глаз — отметка, цель 5 в день")
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("👁 Глаза")
     await owner.tap("📅 Расписание")
     for day in ("✅ Вт", "✅ Чт", "✅ Пт", "✅ Сб", "✅ Вс"):
@@ -313,9 +305,8 @@ async def test_s74_edit_goal_days_and_stale(world: World, owner: Persona) -> Non
     assert (await owner.tap("💾 Сохранить")).endswith("Пн, Ср")
     await owner.tap("✅ Привычки")
     assert "💤 Не сегодня: Глаза" in [b for row in _rows(owner) for b in row]
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("👁 Глаза")
     await owner.tap("🎯 Цель")
     stale = owner.find_button("Без цели")
@@ -325,9 +316,8 @@ async def test_s74_edit_goal_days_and_stale(world: World, owner: Persona) -> Non
 
 
 async def _habit_menu(owner: Persona, label: str) -> None:
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap(label)
 
 
@@ -365,9 +355,8 @@ async def test_s75_settings_all_fields(world: World, owner: Persona) -> None:
     await _habit_menu(owner, "🥤 Вода с лимоном")
     assert await owner.tap("🏠 Убрать с главного") == "🥤 Вода с лимоном убрана с главного экрана 👇"
 
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("➕ Новая")
     await owner.tap("✍️ Своя")
     await owner.say("Страницы")
@@ -418,9 +407,8 @@ async def test_s76_stale_and_wrong_presses(world: World, owner: Persona) -> None
     assert owner.last() == STALE
     await owner.press_data(sleep_tap)
     assert owner.last() == STALE
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     open_eyes = owner.find_button("👁 Глаза")
     await owner.tap("👁 Глаза")
     await owner.tap("🗑 Удалить")
@@ -439,11 +427,12 @@ async def test_s77_from_more_and_archive_delete(world: World, owner: Persona) ->
     await owner.say("/start")
     await owner.tap("☰ Ещё")
     assert (await owner.tap("✅ Привычки")).startswith("✅ Привычки за 03.11")
-    await _habit_menu(owner, "👁 Глаза")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("👁 Глаза")
     await owner.tap("🗄 В архив")
     await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap("🗄 Архив (1)")
     await owner.tap("🗑")
     yes = owner.find_button("🗑 Да, удалить")
@@ -456,10 +445,10 @@ async def test_s125_builtin_habits_to_archive(world: World, owner: Persona) -> N
     """S-125. Все привычки можно убрать в архив, и встроенные тоже: «🍽 Еда», «🤸 Зарядка», «🏋️ Тренировки за
     неделю». В архиве их нет в «✅ Привычки» и в светофоре «Итогов»; раздел «🍽 Еда» и записи остаются; «↩» в архиве
     возвращает."""
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    text = await owner.tap("✅ Свои привычки")
-    assert "Встроенные: 🍽 Еда, 🤸 Зарядка, 🏋️ Тренировки за неделю — их тоже можно убрать в архив." in text
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    text = owner.last()
+    assert "Встроенные: 🍽 Еда, 🤸 Зарядка, 🏋️ Тренировки за неделю — нажмите: настройки раздела и архив." in text
     assert (await owner.tap("🍽 Еда")).startswith("🍽 Еда — встроенная привычка")
     assert (await owner.tap("🗄 В архив")).startswith("🍽 Еда — в архиве")
     await owner.tap("✅ Привычки")
@@ -471,9 +460,8 @@ async def test_s125_builtin_habits_to_archive(world: World, owner: Persona) -> N
                                           day=date(2026, 11, 3))
     rows = [r.label for r in (await world.service("stats").overview(actor, Kind.WEEK)).rows]
     assert "Калории" not in rows and "Белки" not in rows
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     assert "Встроенные: 🤸 Зарядка, 🏋️ Тренировки за неделю" in owner.last()
     await owner.tap("🗄 Архив (1)")
     assert (await owner.tap("↩ 🍽 Еда")) == "🍽 Еда снова в списке привычек."
@@ -488,9 +476,8 @@ async def test_s125_builtin_habits_to_archive(world: World, owner: Persona) -> N
 
 
 async def _schedule(owner: Persona, label: str) -> str:
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("✅ Свои привычки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
     await owner.tap(label)
     return await owner.tap("📅 Расписание")
 
@@ -543,3 +530,28 @@ async def test_s144_habit_amount_per_month(world: World, owner: Persona) -> None
     assert "📖 Чтение 40/300 мин мес." in owner.labels()
     day = await world.service("stats").day(actor, "h" + reading.public_id, date(2026, 11, 3))
     assert day.bars[0].fact == 40 and day.bars[0].unit == "мин мес."
+
+
+async def test_s145_section_settings_live_in_habits(world: World, owner: Persona) -> None:
+    """S-145. Правки 1.0.2: в «⚙️ Настройки» нет «✅ Свои привычки», «🍽 Рецепты и продукты», «🎯 Цели КБЖУ»,
+    «🤸 Зарядка: набор и цели», «🏋️ Тренировки» — они в «✅ Привычки» → «⚙️ Настроить» → встроенная привычка:
+    «🍽 Еда» → рецепты и цели КБЖУ, «🤸 Зарядка» → набор и цели, «🏋️ Тренировки за неделю» → цель и резины."""
+    await owner.tap("☰ Ещё")
+    await owner.tap("⚙️ Настройки")
+    for gone in ("✅ Свои привычки", "🍽 Рецепты и продукты", "🎯 Цели КБЖУ", "🤸 Зарядка: набор и цели",
+                 "🏋️ Тренировки"):
+        assert not owner.sees(gone), gone
+    assert owner.sees("👤 Профиль") and owner.sees("🏠 Главный экран")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    assert (await owner.tap("🍽 Еда")).startswith("🍽 Еда — встроенная привычка. Её настройки — кнопками ниже.")
+    assert owner.labels()[:2] == ["🍽 Рецепты и продукты", "🎯 Цели КБЖУ"]
+    assert (await owner.tap("🎯 Цели КБЖУ")).startswith("🎯 Цели КБЖУ (новые сверху):")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🤸 Зарядка")
+    assert (await owner.tap("🤸 Набор и цели зарядки")).startswith("🤸 Настройки зарядки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🏋️ Тренировки за неделю")
+    assert (await owner.tap("🏋️ Цель, резины, упражнения")).startswith("🏋️ Тренировки\nТренировок в неделю: 3")

@@ -183,8 +183,9 @@ async def test_s36_double_delivery(world: World, owner: Persona) -> None:
 async def test_s37_own_product_and_hiding(world: World, owner: Persona) -> None:
     """S-37. Свой продукт в настройках: «⚙️ Настройки» → «🍽 Рецепты и продукты» → новый «Творог» на 100 г;
     дубль названия — подсказка; скрытый продукт пропадает из списка «Еда»."""
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🍽 Еда")
     await owner.tap("🍽 Рецепты и продукты")
     await owner.tap("➕ Новый рецепт или продукт")
     await owner.say("Творог 5%")

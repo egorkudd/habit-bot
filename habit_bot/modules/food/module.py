@@ -70,7 +70,6 @@ class FoodModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
-            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
             from habit_bot.modules.food.telegram.handlers import build_food_router
 
             assert isinstance(channel, TelegramChannel)
@@ -78,4 +77,3 @@ class FoodModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("food")
-            channel.menu.add(MenuEntry("food_items", "🍽 Рецепты и продукты", 10, Place.SETTINGS, ready=True))

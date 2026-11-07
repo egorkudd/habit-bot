@@ -76,7 +76,6 @@ class WorkoutsModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
-            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
             from habit_bot.modules.workouts.telegram.handlers import SETTINGS_KEY, build_workouts_router
 
             assert isinstance(channel, TelegramChannel)
@@ -85,7 +84,6 @@ class WorkoutsModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("workout")
-            channel.menu.add(MenuEntry(SETTINGS_KEY, "🏋️ Тренировки", 40, Place.SETTINGS, ready=True))
             builtins = ctx.services.get("habits.builtins")
             if builtins is not None:
                 from habit_bot.modules.habits.telegram.handlers import Builtin
@@ -94,4 +92,5 @@ class WorkoutsModule(Module):
                     done, goal = await week_progress(actor, day)
                     return Decimal(done), Decimal(goal)
 
-                builtins.append(Builtin("workout", "🏋️ Тренировки за неделю", progress))
+                builtins.append(Builtin("workout", "🏋️ Тренировки за неделю", progress,
+                                        (("🏋️ Цель, резины, упражнения", SETTINGS_KEY),)))

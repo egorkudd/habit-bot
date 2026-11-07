@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 
 from habit_bot.app import build_app
+from habit_bot.channels.telegram.ui.callbacks import MenuCb
 from habit_bot.kernel.identity import Identity, User, UserStatus
 from habit_bot.modules.users.models import BodyWeight, Goal, Invite, Profile
 from habit_bot.modules.users.telegram import settings as settings_ui
@@ -279,9 +280,8 @@ async def test_goals_screen(app: Any, fake_session: Any, clock: Any) -> None:
     """Цели КБЖУ: история; ручной ввод; цель на дату — по действовавшей, до первой — первая."""
     actor = await register_active(app)
     chat = TgChat(app, fake_session, ADMIN_ID)
-    await chat.say("☰ Ещё")
-    await chat.press("⚙️ Настройки")
-    text = await chat.press("🎯 Цели КБЖУ")
+    await chat.press_data(MenuCb(o=actor.user_id, t=0, k="kbju_goals").pack())  # «✅ Привычки» → «🍽 Еда» (1.0.2)
+    text = chat.texts()[-1]
     assert text == "🎯 Цели КБЖУ (новые сверху):\n• сегодня: 2 800 ккал · Б 160 · Ж 80 · У 360 (расчёт)"
     clock.advance(days=1)
     await chat.press("✏️ Ввести вручную")

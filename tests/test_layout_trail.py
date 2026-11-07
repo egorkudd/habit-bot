@@ -73,7 +73,7 @@ def test_home_keyboard_rows_and_hidden_in_more() -> None:
     assert menu.hidden(actor, None) == []
     more = [b.text for row in menu.more_keyboard(actor, ["food"]).inline_keyboard for b in row]
     assert more[:2] == ["✅ Привычки", "📊 Итоги"]
-    assert more[2:] == ["📅 Другой день", "📋 Записи", "✍️ Текстом", "🛌 Выходной", "⚙️ Настройки", "🛠 Админ"]
+    assert more[2:] == ["📅 Другой день", "📋 Записи", "🛌 Выходной", "⚙️ Настройки", "🛠 Админ"]
     menu.add(MenuEntry("h1", "Очень длинная своя привычка", 100))
     assert ["Очень длинная своя привычка"] in [
         [b.text for b in row] for row in menu.more_keyboard(_actor(False), ["food"]).inline_keyboard]

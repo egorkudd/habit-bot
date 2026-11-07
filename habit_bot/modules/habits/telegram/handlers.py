@@ -63,6 +63,7 @@ class Builtin:
     key: str
     label: str
     progress: Callable[[Actor, date], Awaitable[tuple[Decimal, Decimal | None]]]
+    settings: tuple[tuple[str, str], ...] = ()  # кнопки настроек раздела: (подпись, ключ MenuCb) — правки 1.0.2
 
 
 class HCb(CallbackData, prefix="hb"):
@@ -431,7 +432,7 @@ def build_habits_router(
         if not items:
             lines.append("Пока нет ни одной.")
         if shown:
-            lines += ["", "Встроенные: " + ", ".join(b.label for b in shown) + " — их тоже можно убрать в архив."]
+            lines += ["", "Встроенные: " + ", ".join(b.label for b in shown) + " — нажмите: настройки раздела и архив."]
         rows = fit_rows([hbtn(actor, 0, h.label, "open", h.public_id) for h in items])
         rows += fit_rows([hbtn(actor, 0, b.label, "b_open", b.key) for b in shown])
         rows.append([hbtn(actor, 0, "➕ Новая", "new"), *([hbtn(actor, 0, f"🗄 Архив ({len(archived)})", "arch")]
@@ -518,10 +519,12 @@ def build_habits_router(
             await screens.refuse_button(bot, query, actor, "UI-STALE")
             return
         await screens.close_buttons(query)
-        text = (f"{builtin.label} — встроенная привычка: цель задаётся в своём разделе.\n"
+        text = (f"{builtin.label} — встроенная привычка. Её настройки — кнопками ниже.\n"
                 "В архиве она не показывается в «✅ Привычки» и в светофоре «📊 Итоги»; раздел и записи остаются.")
-        await bot.send_message(query.from_user.id, text, reply_markup=inline([
-            [hbtn(actor, 0, "🗄 В архив", "b_archive", builtin.key), hbtn(actor, 0, "← Привычки", "settings")]]))
+        rows = [[InlineKeyboardButton(text=label, callback_data=MenuCb(o=actor.user_id, t=0, k=key).pack())]
+                for label, key in builtin.settings]
+        rows.append([hbtn(actor, 0, "🗄 В архив", "b_archive", builtin.key), hbtn(actor, 0, "← Привычки", "settings")])
+        await bot.send_message(query.from_user.id, text, reply_markup=inline(rows))
 
     @router.callback_query(HCb.filter(F.a.in_({"b_archive", "b_restore"})))
     async def archive_builtin(query: CallbackQuery, callback_data: HCb, bot: Bot, actor: Actor) -> None:

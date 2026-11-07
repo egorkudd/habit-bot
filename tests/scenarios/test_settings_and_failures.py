@@ -21,8 +21,9 @@ async def test_s22_weight_changed_then_hesitates(world: World, owner: Persona) -
     await owner.tap("Рост")
     await owner.say("190")
     assert (await owner.tap("Оставить как есть")).startswith("КБЖУ оставлены как есть.")
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🍽 Еда")
     history = await owner.tap("🎯 Цели КБЖУ")
     assert history.count("сегодня:") == 2
 

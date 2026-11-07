@@ -50,9 +50,8 @@ class HabitsModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
-            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
+            from habit_bot.channels.telegram.ui.menu import MenuEntry
             from habit_bot.modules.habits.telegram.handlers import (
-                SETTINGS_KEY,
                 Builtin,
                 build_habits_router,
                 home_key,
@@ -66,13 +65,15 @@ class HabitsModule(Module):
                     goal = await profiles.goal_on(actor, day)
                     return (await food.totals(actor, day)).fact.kcal, Decimal(goal.kcal) if goal else None
 
-                builtins.append(Builtin("food", "🍽 Еда", food_progress))
+                builtins.append(Builtin("food", "🍽 Еда", food_progress, (
+                    ("🍽 Рецепты и продукты", "food_items"), ("🎯 Цели КБЖУ", "kbju_goals"))))
             warmup = ctx.services.get("warmup")
             if warmup is not None:
                 async def warmup_progress(actor: Actor, day: date) -> tuple[Decimal, Decimal | None]:
                     return Decimal(len(await warmup.sessions(actor, day))), Decimal(await warmup.daily_goal(actor))
 
-                builtins.append(Builtin("warmup", "🤸 Зарядка", warmup_progress))
+                builtins.append(Builtin("warmup", "🤸 Зарядка", warmup_progress,
+                                        (("🤸 Набор и цели зарядки", "warmup_settings"),)))
 
             async def extras(actor: Actor) -> list[MenuEntry]:
                 """Свои привычки для главного экрана. Здесь же — «Примеры привычек» из анкеты: «👁 Глаза» сразу
@@ -90,4 +91,3 @@ class HabitsModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("habits")
-            channel.menu.add(MenuEntry(SETTINGS_KEY, "✅ Свои привычки", 30, Place.SETTINGS, ready=True))

@@ -93,7 +93,7 @@ DELETE_BUTTON = False
 def settings_keyboard(actor: Actor, extra: list[InlineKeyboardButton] | None = None) -> Any:
     return keyboard([
         *([b] for b in extra or []),
-        [button(actor, 0, "👤 Профиль", "settings", "profile"), button(actor, 0, "🎯 Цели КБЖУ", "settings", "goals")],
+        [button(actor, 0, "👤 Профиль", "settings", "profile")],  # цели КБЖУ — в «✅ Привычки» → «🍽 Еда» (1.0.2)
         [button(actor, 0, "🏠 Главный экран", "settings", "home")],
         *([[button(actor, 0, "🗑 Удалить аккаунт", "settings", "delete")]] if DELETE_BUTTON else []),
     ])
@@ -239,6 +239,12 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         await state.clear()
         trail.result()
         await flow.screens.home(bot, query.from_user.id, actor, HOME_SAVED)
+
+    @router.callback_query(MenuCb.filter(F.k == "kbju_goals"))
+    async def open_goals(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
+        """«🎯 Цели КБЖУ» — из настроек еды в «✅ Привычки» → «⚙️ Настроить» → «🍽 Еда» (правки 1.0.2)."""
+        await flow.screens.close_buttons(query)
+        await flow.show_goals(bot, query.from_user.id, actor)
 
     @router.callback_query(MenuCb.filter(F.k == "settings"))
     async def open_settings(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
