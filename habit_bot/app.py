@@ -29,6 +29,7 @@ log = logging.getLogger(__name__)
 HEARTBEAT_EVERY_SECONDS = 30
 EXPIRE_EVERY = timedelta(minutes=1)
 PURGE_EVERY = timedelta(hours=6)
+NIGHTLY_EVERY = timedelta(minutes=1)  # ночная чистка переписки: проверка раз в минуту, удаляет всё до 04:00
 
 
 def heartbeat_path(data_dir: Path) -> Path:
@@ -117,6 +118,7 @@ def build_app(
                   **({"llm.client": llm} if llm else {})},
     )
     ctx.add_job(JobSpec("dialogs.expire", EXPIRE_EVERY, telegram.expire_idle))
+    ctx.add_job(JobSpec("chat.nightly", NIGHTLY_EVERY, telegram.nightly_clean))  # чистка переписки в 04:00
 
     async def purge_deleted() -> int:
         return await purge(uow, clock.now(), ctx.idempotency)

@@ -30,16 +30,18 @@ from habit_bot.kernel.identity import Actor
 from habit_bot.modules.days.public import Days
 from habit_bot.modules.habits.domain.habits import (
     MEASURE_LABELS,
+    PERIOD_GOAL,
     TEMPLATES,
     WEEKDAYS,
     Measure,
-    days_word,
+    Period,
     format_value,
     is_done,
     parse_quick,
     parse_value,
     progress_label,
     schedule_label,
+    streak_word,
     unit_of,
 )
 from habit_bot.modules.habits.usecases import DayHabit, Habits, HabitView, MarkResult
@@ -61,6 +63,7 @@ class Builtin:
     key: str
     label: str
     progress: Callable[[Actor, date], Awaitable[tuple[Decimal, Decimal | None]]]
+    settings: tuple[tuple[str, str], ...] = ()  # кнопки настроек раздела: (подпись, ключ MenuCb) — правки 1.0.2
 
 
 class HCb(CallbackData, prefix="hb"):
@@ -91,6 +94,7 @@ class HabitInput(StatesGroup):
     home = State()      # новая: на главный экран?
     edit = State()      # правка поля привычки
     days = State()      # дни недели
+    period = State()    # цель за неделю / месяц: сколько
 
 
 def home_key(habit: HabitView) -> str:
@@ -98,9 +102,9 @@ def home_key(habit: HabitView) -> str:
 
 
 def amount_text(habit: HabitView, fact: Decimal) -> str:
-    """«2/3», «6/8 стак.», «20/20 мин»."""
+    """«2/3», «6/8 стак.», «20/20 мин»; цель за неделю или месяц — «1/2 нед.»."""
     unit = unit_of(habit.measure, habit.unit)
-    return f"{progress_label(fact, habit.goal)} {unit}".rstrip()
+    return f"{progress_label(fact, habit.goal)} {unit}".rstrip() + habit.per
 
 
 def split_emoji(text: str) -> tuple[str, str]:
@@ -115,9 +119,11 @@ def split_emoji(text: str) -> tuple[str, str]:
 
 
 def habit_line(h: HabitView) -> str:
-    goal = f"цель {format_value(h.goal, h.measure, h.unit)} в день" if h.goal is not None else "без цели"
+    goal = (f"цель {format_value(h.goal, h.measure, h.unit)} {PERIOD_GOAL[h.period]}" if h.goal is not None
+            else "без цели")
     step = "число при нажатии" if h.step is None else f"шаг {format_value(h.step, h.measure, h.unit)}"
-    return f"{h.emoji} {h.name} — {MEASURE_LABELS[h.measure].lower()}, {goal}, {step}, {schedule_label(h.weekdays)}"
+    schedule = schedule_label(h.weekdays, h.period)
+    return f"{h.emoji} {h.name} — {MEASURE_LABELS[h.measure].lower()}, {goal}, {step}, {schedule}"
 
 
 class OwnHabitLabel(Filter):
@@ -168,7 +174,7 @@ def build_habits_router(
     def result_text(result: MarkResult) -> str:
         h = result.habit
         if result.just_done:
-            return f"✅ {h.short} {amount_text(h, result.fact)} · серия {days_word(result.streak)}"
+            return f"✅ {h.short} {amount_text(h, result.fact)} · серия {streak_word(result.streak, h.period)}"
         return f"{h.emoji} {h.name} — {amount_text(h, result.fact)}"
 
     async def show_result(bot: Bot, chat_id: int, actor: Actor, result: MarkResult) -> None:
@@ -426,7 +432,7 @@ def build_habits_router(
         if not items:
             lines.append("Пока нет ни одной.")
         if shown:
-            lines += ["", "Встроенные: " + ", ".join(b.label for b in shown) + " — их тоже можно убрать в архив."]
+            lines += ["", "Встроенные: " + ", ".join(b.label for b in shown) + " — нажмите: настройки раздела и архив."]
         rows = fit_rows([hbtn(actor, 0, h.label, "open", h.public_id) for h in items])
         rows += fit_rows([hbtn(actor, 0, b.label, "b_open", b.key) for b in shown])
         rows.append([hbtn(actor, 0, "➕ Новая", "new"), *([hbtn(actor, 0, f"🗄 Архив ({len(archived)})", "arch")]
@@ -446,7 +452,7 @@ def build_habits_router(
         text = (f"{habit_line(habit)}\nБыстрые значения: {quick}\n"
                 f"На главном экране: {'да' if on_home else 'нет'}")
         pid = habit.public_id
-        rows = [[hbtn(actor, 0, "🎯 Цель", "e_goal", pid), hbtn(actor, 0, "📅 Дни", "e_days", pid)],
+        rows = [[hbtn(actor, 0, "🎯 Цель", "e_goal", pid), hbtn(actor, 0, "📅 Расписание", "e_days", pid)],
                 [hbtn(actor, 0, "🏠 Убрать с главного" if on_home else "🏠 На главный", "e_home", pid)]]
         if habit.measure is not Measure.CHECK:
             rows.append([hbtn(actor, 0, "➕ Шаг", "e_step", pid), hbtn(actor, 0, "⚡ Быстрые", "e_quick", pid)])
@@ -513,10 +519,12 @@ def build_habits_router(
             await screens.refuse_button(bot, query, actor, "UI-STALE")
             return
         await screens.close_buttons(query)
-        text = (f"{builtin.label} — встроенная привычка: цель задаётся в своём разделе.\n"
+        text = (f"{builtin.label} — встроенная привычка. Её настройки — кнопками ниже.\n"
                 "В архиве она не показывается в «✅ Привычки» и в светофоре «📊 Итоги»; раздел и записи остаются.")
-        await bot.send_message(query.from_user.id, text, reply_markup=inline([
-            [hbtn(actor, 0, "🗄 В архив", "b_archive", builtin.key), hbtn(actor, 0, "← Привычки", "settings")]]))
+        rows = [[InlineKeyboardButton(text=label, callback_data=MenuCb(o=actor.user_id, t=0, k=key).pack())]
+                for label, key in builtin.settings]
+        rows.append([hbtn(actor, 0, "🗄 В архив", "b_archive", builtin.key), hbtn(actor, 0, "← Привычки", "settings")])
+        await bot.send_message(query.from_user.id, text, reply_markup=inline(rows))
 
     @router.callback_query(HCb.filter(F.a.in_({"b_archive", "b_restore"})))
     async def archive_builtin(query: CallbackQuery, callback_data: HCb, bot: Bot, actor: Actor) -> None:
@@ -629,6 +637,8 @@ def build_habits_router(
                    for i, name in enumerate(WEEKDAYS)]
         return inline([buttons[:4], buttons[4:],
                        [hbtn(actor, token, "Каждый день", "dall"), hbtn(actor, token, "💾 Сохранить", "dsave")],
+                       [hbtn(actor, token, "🔁 N раз в неделю", "pweek"),
+                        hbtn(actor, token, "🗓 N раз в месяц", "pmonth")],
                        [cancel(actor, token)]])
 
     @router.callback_query(HCb.filter(F.a == "e_days"))
@@ -639,8 +649,10 @@ def build_habits_router(
         await screens.close_buttons(query)
         await start_dialog(state, HabitInput.days)
         await state.update_data(habit=habit.public_id, days=list(habit.weekdays or range(7)))
-        await bot.send_message(query.from_user.id, f"{habit.label}: в какие дни? Сейчас — "
-                                                   f"{schedule_label(habit.weekdays)}.",
+        now = (f"{progress_label(habit.goal or Decimal(1), None)} {PERIOD_GOAL[habit.period]}"
+               if habit.period is not Period.DAY else schedule_label(habit.weekdays))
+        await bot.send_message(query.from_user.id, f"{habit.label}: в какие дни? Сейчас — {now}.\n"
+                                                   "Или цель на неделю / месяц — в любые дни.",
                                reply_markup=await days_markup(actor, state))
 
     @router.callback_query(StateFilter(HabitInput.days), HCb.filter(F.a.in_({"dt", "dall"})))
@@ -667,6 +679,51 @@ def build_habits_router(
         await state.clear()
         trail.result()
         await bot.send_message(query.from_user.id, f"Сохранено ✅\n{habit_line(updated)}")
+
+    # --- цель за неделю или месяц (правки 1.0.2) ---
+    @router.callback_query(StateFilter(HabitInput.days), HCb.filter(F.a.in_({"pweek", "pmonth"})))
+    async def period_ask(query: CallbackQuery, callback_data: HCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        period = Period.WEEK if callback_data.a == "pweek" else Period.MONTH
+        habit = await habits.habit(actor, (await state.get_data()).get("habit", ""))
+        if habit is None:
+            await screens.refuse_button(bot, query, actor, "UI-STALE")
+            return
+        await screens.close_buttons(query)
+        token = await start_dialog(state, HabitInput.period)
+        await state.update_data(habit=habit.public_id, period=period.value)
+        word = "неделю" if period is Period.WEEK else "месяц"
+        if habit.measure is Measure.CHECK:
+            counts = (1, 2, 3, 4, 5) if period is Period.WEEK else (1, 2, 4, 8, 12)
+            rows = [[hbtn(actor, token, str(n), "pnum", str(n)) for n in counts], [cancel(actor, token)]]
+            question = f"{habit.label}: сколько раз за {word}? Нажмите или напишите число."
+        else:
+            rows = [[cancel(actor, token)]]
+            unit = unit_of(habit.measure, habit.unit)
+            question = f"{habit.label}: сколько за {word}{f' ({unit})' if unit else ''}? Напишите число."
+        await bot.send_message(query.from_user.id, question, reply_markup=inline(rows))
+
+    async def period_save(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, text: str) -> None:
+        data = await state.get_data()
+        habit = await habits.habit(actor, data.get("habit", ""))
+        if habit is None:
+            await state.clear()
+            await screens.home(bot, chat_id, actor, "Это меню устарело. Вот главное меню 👇")
+            return
+        goal = parse_value(habit.measure, text, "Цель")
+        updated = await habits.update(actor, habit.public_id, period=data.get("period", "week"), goal=goal)
+        await state.clear()
+        trail.result()
+        await bot.send_message(chat_id, f"Сохранено ✅\n{habit_line(updated)}")
+
+    @router.callback_query(StateFilter(HabitInput.period), HCb.filter(F.a == "pnum"))
+    async def period_number(query: CallbackQuery, callback_data: HCb, bot: Bot, actor: Actor,
+                            state: FSMContext) -> None:
+        await screens.close_buttons(query)
+        await period_save(bot, query.from_user.id, actor, state, callback_data.v or "1")
+
+    @router.message(StateFilter(HabitInput.period), F.text)
+    async def period_text(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        await period_save(bot, message.chat.id, actor, state, message.text or "")
 
     # --- новая привычка: шаблон или своя ---
     @router.callback_query(HCb.filter(F.a == "new"))

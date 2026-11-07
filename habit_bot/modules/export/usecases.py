@@ -96,7 +96,7 @@ class Export:
             return [(day, self._local(at), run.distance_km, run.seconds, run.pace, speed(run.distance_km, run.seconds))
                     for day, at, run in runs]
         if spec is t.HABITS:
-            return [(day, self._local(at), h.name, h.measure, value, h.unit, h.goal)
+            return [(day, self._local(at), h.name, h.measure, value, h.unit, h.goal, h.period.value)
                     for day, at, h, value in await s.habits.entries_between(actor, start, end)]
         if spec is t.BODY:
             weights = await s.profiles.weights_between(actor, start, end)

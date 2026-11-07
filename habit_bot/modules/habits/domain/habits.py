@@ -28,6 +28,58 @@ class Measure(StrEnum):
     DURATION = "duration"  # минуты
 
 
+class Period(StrEnum):
+    """За какой срок цель (правки 1.0.2): в день (с расписанием по дням недели), в неделю (с понедельника), в месяц."""
+
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+
+
+PERIOD_GOAL = {Period.DAY: "в день", Period.WEEK: "в неделю", Period.MONTH: "в месяц"}
+PERIOD_SHORT = {Period.DAY: "", Period.WEEK: "нед.", Period.MONTH: "мес."}
+
+
+def period_bounds(day: date, period: Period) -> tuple[date, date]:
+    """Неделя с понедельника или календарный месяц, в которые попадает день; для «в день» — сам день."""
+    if period is Period.WEEK:
+        start = day - timedelta(days=day.weekday())
+        return start, start + timedelta(days=6)
+    if period is Period.MONTH:
+        start = day.replace(day=1)
+        following = (start + timedelta(days=32)).replace(day=1)
+        return start, following - timedelta(days=1)
+    return day, day
+
+
+def period_streak(today: date, period: Period, done: Callable[[date], bool]) -> int:
+    """Серия недель или месяцев подряд с выполненной целью, назад от текущего; невыполненный текущий не обрывает."""
+    count = 0
+    start = period_bounds(today, period)[0]
+    for _ in range(STREAK_LOOKBACK // 7):
+        if done(start):
+            count += 1
+        elif start != period_bounds(today, period)[0]:
+            break
+        start = period_bounds(start - timedelta(days=1), period)[0]
+    return count
+
+
+def streak_word(n: int, period: Period) -> str:
+    """«3 дня», «2 недели», «5 месяцев»."""
+    if period is Period.WEEK:
+        forms = ("неделя", "недели", "недель")
+    elif period is Period.MONTH:
+        forms = ("месяц", "месяца", "месяцев")
+    else:
+        return days_word(n)
+    if n % 10 == 1 and n % 100 != 11:
+        return f"{n} {forms[0]}"
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return f"{n} {forms[1]}"
+    return f"{n} {forms[2]}"
+
+
 MEASURE_LABELS = {Measure.CHECK: "Отметка", Measure.AMOUNT: "Количество", Measure.DURATION: "Длительность"}
 DEFAULT_STEP = {Measure.CHECK: Decimal(1), Measure.AMOUNT: Decimal(1), Measure.DURATION: Decimal(10)}
 
@@ -91,7 +143,9 @@ def is_scheduled(weekdays: Sequence[int] | None, day: date) -> bool:
     return weekdays is None or day.weekday() in weekdays
 
 
-def schedule_label(weekdays: Sequence[int] | None) -> str:
+def schedule_label(weekdays: Sequence[int] | None, period: Period = Period.DAY) -> str:
+    if period is not Period.DAY:
+        return "в любые дни"
     if weekdays is None or len(set(weekdays)) == 7:
         return "каждый день"
     return ", ".join(WEEKDAYS[d] for d in sorted(set(weekdays))) or "ни одного дня"

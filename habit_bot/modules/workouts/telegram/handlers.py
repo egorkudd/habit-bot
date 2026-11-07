@@ -582,7 +582,7 @@ def build_workouts_router(
         bands = ", ".join(BAND_LABELS[b] for b in s.bands) or "не указаны"
         text = (f"🏋️ Тренировки\nТренировок в неделю: {s.weekly_goal}\nРезины: {bands}\n"
                 f"Показывать все упражнения: {'да' if s.show_all else 'нет — подбор по полу из профиля'}")
-        rows = [[btn(actor, 0, f"{'✅ ' if n == s.weekly_goal else ''}{n}", "goal", str(n)) for n in (2, 3, 4, 5)],
+        rows = [[btn(actor, 0, f"{'✅ ' if n == s.weekly_goal else ''}{n}", "goal", str(n)) for n in (1, 2, 3, 4, 5)],
                 [btn(actor, 0, f"{'✅ ' if b in s.bands else ''}{BAND_LABELS[b]}", "sband", b.value) for b in Band],
                 [btn(actor, 0, f"Все упражнения: {'да' if s.show_all else 'нет'}", "all")]]
         if message is not None:

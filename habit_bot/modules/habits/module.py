@@ -5,7 +5,8 @@ from decimal import Decimal
 
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
-from habit_bot.modules.habits.domain.habits import STARTER_ON_HOME, is_scheduled, progress_label
+from habit_bot.modules.days.public import DayEntry
+from habit_bot.modules.habits.domain.habits import STARTER_ON_HOME, format_value, is_scheduled, progress_label
 from habit_bot.modules.habits.usecases import Habits
 
 
@@ -23,6 +24,19 @@ class HabitsModule(Module):
         ctx.services["habits"] = habits
         days.add_mover("habits", habits)
 
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            """Каждая отметка отдельно: «👁 Глаза +1 · 13:00» — удаляется по одной."""
+            found = []
+            for public_id, at, h, value in await habits.day_marks(actor, day):
+                mark = f"+{format_value(value, h.measure, h.unit)} · {at.astimezone(days.tz):%H:%M}"
+                found.append(DayEntry("habits", public_id, f"{h.label} {mark}", f"{h.emoji} {h.name}: отметка {mark}"))
+            return found
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await habits.undo(actor, public_id) is not None
+
+        days.add_entries("habits", listing, remove)
+
         async def card_section(actor: Actor, day: date) -> list[str]:
             """Строка привычек карточки дня: «👁 2/3 · 💧 6/8» — привычки по расписанию этого дня."""
             items = [i for i in await habits.day(actor, day) if is_scheduled(i.habit.weekdays, day)]
@@ -36,9 +50,8 @@ class HabitsModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
-            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
+            from habit_bot.channels.telegram.ui.menu import MenuEntry
             from habit_bot.modules.habits.telegram.handlers import (
-                SETTINGS_KEY,
                 Builtin,
                 build_habits_router,
                 home_key,
@@ -52,13 +65,15 @@ class HabitsModule(Module):
                     goal = await profiles.goal_on(actor, day)
                     return (await food.totals(actor, day)).fact.kcal, Decimal(goal.kcal) if goal else None
 
-                builtins.append(Builtin("food", "🍽 Еда", food_progress))
+                builtins.append(Builtin("food", "🍽 Еда", food_progress, (
+                    ("🍽 Рецепты и продукты", "food_items"), ("🎯 Цели КБЖУ", "kbju_goals"))))
             warmup = ctx.services.get("warmup")
             if warmup is not None:
                 async def warmup_progress(actor: Actor, day: date) -> tuple[Decimal, Decimal | None]:
                     return Decimal(len(await warmup.sessions(actor, day))), Decimal(await warmup.daily_goal(actor))
 
-                builtins.append(Builtin("warmup", "🤸 Зарядка", warmup_progress))
+                builtins.append(Builtin("warmup", "🤸 Зарядка", warmup_progress,
+                                        (("🤸 Набор и цели зарядки", "warmup_settings"),)))
 
             async def extras(actor: Actor) -> list[MenuEntry]:
                 """Свои привычки для главного экрана. Здесь же — «Примеры привычек» из анкеты: «👁 Глаза» сразу
@@ -76,4 +91,3 @@ class HabitsModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("habits")
-            channel.menu.add(MenuEntry(SETTINGS_KEY, "✅ Свои привычки", 30, Place.SETTINGS, ready=True))

@@ -21,13 +21,17 @@ from habit_bot.kernel.identity import Actor
 from habit_bot.modules.days.public import Days
 from habit_bot.modules.habits.domain.habits import (
     DEFAULT_STEP,
+    PERIOD_SHORT,
     STARTER,
     STREAK_LOOKBACK,
     TEMPLATE_BY_KEY,
     Measure,
+    Period,
     daily_totals,
     is_done,
     is_scheduled,
+    period_bounds,
+    period_streak,
     streak,
 )
 from habit_bot.modules.habits.models import BuiltinArchive, Habit, HabitEntry
@@ -58,6 +62,7 @@ class HabitView:
     position: int
     archived: bool
     template_key: str | None
+    period: Period = Period.DAY
 
     @property
     def label(self) -> str:
@@ -67,7 +72,12 @@ class HabitView:
     @property
     def once(self) -> bool:
         """Однократная отметка в день («Витамины»): повторное нажатие предлагает снять отметку."""
-        return self.measure is Measure.CHECK and self.goal == 1
+        return self.measure is Measure.CHECK and self.goal == 1 and self.period is Period.DAY
+
+    @property
+    def per(self) -> str:
+        """« нед.» / « мес.» после «1/2» — цель за неделю или месяц; для цели в день — пусто."""
+        return f" {PERIOD_SHORT[self.period]}" if self.period is not Period.DAY else ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +111,7 @@ def habit_view(h: Habit) -> HabitView:
     quick = tuple(Decimal(str(v)) for v in (h.quick_values or []))
     weekdays = tuple(h.weekdays) if h.weekdays is not None else None
     return HabitView(h.public_id.hex, h.name, h.short, h.emoji, Measure(h.measure), h.unit, dec(h.goal), dec(h.step),
-                     quick, weekdays, h.position, h.status == ARCHIVED, h.template_key)
+                     quick, weekdays, h.position, h.status == ARCHIVED, h.template_key, Period(h.period or "day"))
 
 
 class Habits:
@@ -211,6 +221,11 @@ class Habits:
             if "weekdays" in fields:
                 days = fields["weekdays"]
                 habit.weekdays = None if days is None or len(set(days)) == 7 else sorted(set(days))
+                habit.period = Period.DAY.value  # дни недели — это цель в день
+            if "period" in fields:
+                habit.period = Period(fields["period"]).value
+                if habit.period != Period.DAY.value:
+                    habit.weekdays = None  # неделя и месяц — в любые дни
             await uow.session.flush()
             return habit_view(habit)
 
@@ -262,9 +277,12 @@ class Habits:
 
     # --- записи ---
     async def _fact(self, session: AsyncSession, habit: Habit, day: date) -> Decimal:
+        """Выполнение за день, а для цели «в неделю» / «в месяц» — за неделю или месяц, куда попадает день."""
+        start, end = period_bounds(day, Period(habit.period or "day"))
         total = (await session.execute(
             select(func.coalesce(func.sum(HabitEntry.value), 0)).where(
-                HabitEntry.habit_id == habit.id, HabitEntry.day == day, HabitEntry.deleted_at.is_(None))
+                HabitEntry.habit_id == habit.id, HabitEntry.day >= start, HabitEntry.day <= end,
+                HabitEntry.deleted_at.is_(None))
         )).scalar_one()
         return dec(total) or Decimal(0)
 
@@ -278,6 +296,17 @@ class Habits:
         return {d for d, total in daily_totals((d, Decimal(str(v))) for d, v in rows).items() if is_done(total, goal)}
 
     async def _streak(self, session: AsyncSession, actor: Actor, habit: Habit, day: date) -> int:
+        period = Period(habit.period or "day")
+        if period is not Period.DAY:  # серия недель или месяцев с выполненной целью
+            rows = (await session.execute(select(HabitEntry.day, HabitEntry.value).where(
+                HabitEntry.habit_id == habit.id, HabitEntry.deleted_at.is_(None), HabitEntry.day <= day,
+                HabitEntry.day > day - timedelta(days=STREAK_LOOKBACK)))).all()
+            totals: dict[date, Decimal] = {}
+            for d, v in rows:
+                start = period_bounds(d, period)[0]
+                totals[start] = totals.get(start, Decimal(0)) + Decimal(str(v))
+            goal = dec(habit.goal)
+            return period_streak(day, period, lambda s: is_done(totals.get(s, Decimal(0)), goal))
         done = await self._done_days(session, habit, day)
         off = await self._days.days_off(actor, day - timedelta(days=STREAK_LOOKBACK), day)
         weekdays = habit.weekdays
@@ -409,6 +438,16 @@ class Habits:
                 .order_by(HabitEntry.day, HabitEntry.logged_at, HabitEntry.id)
             )).all()
             return [(e.day, e.logged_at, habit_view(h), Decimal(str(e.value))) for e, h in rows]
+
+    async def day_marks(self, actor: Actor, day: date) -> list[tuple[str, datetime, HabitView, Decimal]]:
+        """Отметки всех привычек за день с номером записи — для «📋 Записи» (удаление по одной)."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(HabitEntry, Habit).join(Habit, Habit.id == HabitEntry.habit_id)
+                .where(HabitEntry.user_id == actor.user_id, HabitEntry.deleted_at.is_(None), HabitEntry.day == day)
+                .order_by(HabitEntry.logged_at, HabitEntry.id)
+            )).all()
+            return [(e.public_id.hex, e.logged_at, habit_view(h), Decimal(str(e.value))) for e, h in rows]
 
     async def day_entries(self, actor: Actor, public_id: str, day: date) -> list[tuple[datetime, Decimal]]:
         """Отметки привычки за день со временем — для картинки «Итоги»."""

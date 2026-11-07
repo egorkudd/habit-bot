@@ -4,6 +4,7 @@ from datetime import date
 
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
+from habit_bot.modules.days.public import DayEntry
 from habit_bot.modules.warmup.usecases import Warmup
 
 
@@ -21,6 +22,15 @@ class WarmupModule(Module):
         ctx.services["warmup"] = warmup
         days.add_mover("warmup", warmup)
 
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            return [DayEntry("warmup", s.public_id, f"🤸 Зарядка №{s.number}", f"🤸 Зарядка №{s.number}: {s.summary()}")
+                    for s in await warmup.sessions(actor, day)]
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await warmup.delete_session(actor, public_id) is not None
+
+        days.add_entries("warmup", listing, remove)
+
         async def card_section(actor: Actor, day: date) -> list[str]:
             sessions = await warmup.sessions(actor, day)
             if not sessions:
@@ -32,7 +42,6 @@ class WarmupModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
-            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
             from habit_bot.modules.warmup.telegram.handlers import build_warmup_router
 
             assert isinstance(channel, TelegramChannel)
@@ -40,4 +49,3 @@ class WarmupModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("warmup")
-            channel.menu.add(MenuEntry("warmup_settings", "🤸 Зарядка: набор и цели", 20, Place.SETTINGS, ready=True))

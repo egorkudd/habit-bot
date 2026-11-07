@@ -33,3 +33,18 @@ def format_day(day: date) -> str:
 def format_date(day: date) -> str:
     """Полная дата: «20.10.2026»."""
     return f"{format_day(day)}.{day.year}"
+
+
+# Таблица КБЖУ в карточке дня (правки 1.0.2): моноширинные столбцы, целые числа без разрядов — влезает в телефон.
+KBJU_HEADER = f"{'':<8}{'Ккал':>6}{'Б':>5}{'Ж':>5}{'У':>5}"
+
+
+def _whole(value: Decimal | int | float) -> str:
+    number = int(Decimal(str(value)).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+    return f"−{abs(number)}" if number < 0 else str(number)
+
+
+def kbju_row(title: str, kcal: Decimal | int | float, protein: Decimal | int | float, fat: Decimal | int | float,
+             carbs: Decimal | int | float) -> str:
+    """«Остаток   2478  134   71  321»."""
+    return f"{title:<8}{_whole(kcal):>6}{_whole(protein):>5}{_whole(fat):>5}{_whole(carbs):>5}"

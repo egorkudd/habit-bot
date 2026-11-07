@@ -28,9 +28,12 @@ from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_day
 from habit_bot.kernel.identity import Actor
 from habit_bot.modules.stats.domain.periods import LABELS, Kind
-from habit_bot.modules.stats.usecases import Section, Stats
+from habit_bot.modules.stats.usecases import NUTRIENTS, Section, Stats
 
 KEY = "stats"
+SETTINGS_KEY = "stats_settings"
+NUTRIENTS_TITLE = ("📊 Итоги: КБЖУ. Какие строки еды показывать в «Неделе», «Месяце» и «3 месяцах»? Нажмите, "
+                   "чтобы включить или выключить. Картинка дня еды всегда показывает все четыре.")
 NO_SECTIONS = "📊 Итоги: пока нечего показать — включите разделы в настройках."
 
 
@@ -43,6 +46,8 @@ class StCb(CallbackData, prefix="st"):
 
 
 PICTURE, TEXT = "p", "t"
+# Кнопка «📝 Текстом» спрятана по просьбе владельца (1.0.2); текстовый вид работает — True возвращает кнопку.
+TEXT_BUTTON = False
 
 
 def mode_of(callback_data: StCb) -> str:
@@ -68,10 +73,13 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         return InlineKeyboardButton(text=text, callback_data=StCb(o=actor.user_id, t=0, a=action, v=value,
                                                                     m=mode).pack())
 
-    def switch(actor: Actor, action: str, value: str, mode: str) -> InlineKeyboardButton:
-        """«📝 Текстом» ↔ «🖼 Картинкой» — тот же экран в другом виде, в том же месте чата."""
+    def switch(actor: Actor, action: str, value: str, mode: str) -> list[InlineKeyboardButton]:
+        """«📝 Текстом» ↔ «🖼 Картинкой» — тот же экран в другом виде, в том же месте чата. Пока кнопка спрятана,
+        текстовый вид (открытый старой кнопкой) всё равно предлагает вернуться к картинке."""
+        if mode == PICTURE and not TEXT_BUTTON:
+            return []
         other = TEXT if mode == PICTURE else PICTURE
-        return btn(actor, "📝 Текстом" if other == TEXT else "🖼 Картинкой", action, value, other)
+        return [btn(actor, "📝 Текстом" if other == TEXT else "🖼 Картинкой", action, value, other)]
 
     def day_markup(actor: Actor, key: str, day: date, sections: list[Section], mode: str) -> InlineKeyboardMarkup:
         code = _day_code(day)
@@ -85,7 +93,8 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
                             f"{key}.{_day_code(day + timedelta(days=1))}", mode))
         rows.append(move)
         rows.append([btn(actor, LABELS[k], "per", f"{k.value}0", mode) for k in Kind])
-        rows.append([switch(actor, "sec", f"{key}.{code}", mode)])
+        if toggle := switch(actor, "sec", f"{key}.{code}", mode):
+            rows.append(toggle)
         return inline(rows)
 
     def period_markup(actor: Actor, kind: Kind, shift: int, mode: str) -> InlineKeyboardMarkup:
@@ -93,7 +102,7 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         if shift < 0:
             move.append(btn(actor, "▶", "per", f"{kind.value}{shift + 1}", mode))
         kinds = [btn(actor, ("▸ " if k is kind else "") + LABELS[k], "per", f"{k.value}0", mode) for k in Kind]
-        return inline([move, kinds, [switch(actor, "per", f"{kind.value}{shift}", mode),
+        return inline([move, kinds, [*switch(actor, "per", f"{kind.value}{shift}", mode),
                                      btn(actor, "📊 День", "sec", f"last.{_day_code(stats.today())}", mode)]])
 
     async def show(bot: Bot, chat_id: int, query: CallbackQuery | None, *, png: bytes, text: str, caption: str,
@@ -177,6 +186,25 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         await show(bot, query.from_user.id, query, png=overview_png(data) if mode == PICTURE else b"",
                    text=overview_text(data), caption=f"📊 {data.title}",
                    markup=period_markup(actor, kind, shift, mode), mode=mode)
+
+    # --- «⚙️ Настройки» → «📊 Итоги: КБЖУ»: какие строки еды показывать в обзоре (правки 1.0.2) ---
+    async def nutrients_markup(actor: Actor) -> InlineKeyboardMarkup:
+        chosen = await stats.nutrients(actor)
+        buttons = [btn(actor, f"{'✅' if code in chosen else '☐'} {label}", "nut", code)
+                   for code, label, _, _ in NUTRIENTS]
+        return inline([buttons[:2], buttons[2:]])
+
+    @router.callback_query(MenuCb.filter(F.k == SETTINGS_KEY))
+    async def open_nutrients(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
+        await screens.close_buttons(query)
+        await bot.send_message(query.from_user.id, NUTRIENTS_TITLE, reply_markup=await nutrients_markup(actor))
+
+    @router.callback_query(StCb.filter(F.a == "nut"))
+    async def toggle_nutrient(query: CallbackQuery, callback_data: StCb, actor: Actor) -> None:
+        await stats.toggle_nutrient(actor, callback_data.v)
+        await query.answer("Сохранено")
+        if isinstance(query.message, Message):
+            await query.message.edit_reply_markup(reply_markup=await nutrients_markup(actor))
 
     return nav, router
 

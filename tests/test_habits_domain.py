@@ -85,3 +85,38 @@ def test_streak_rules() -> None:
                                          (12, "12 дней"), (21, "21 день"), (22, "22 дня")])
 def test_days_word(n: int, text: str) -> None:
     assert days_word(n) == text
+
+
+def test_periods_week_month_streak_words() -> None:
+    """Правки 1.0.2: неделя с понедельника, месяц календарный (и февраль, и декабрь); серия недель или месяцев —
+    текущий невыполненный не обрывает; «1 неделя», «3 недели», «5 месяцев», «21 месяц»."""
+    from datetime import date
+
+    from habit_bot.modules.habits.domain.habits import (
+        Period,
+        period_bounds,
+        period_streak,
+        schedule_label,
+        streak_word,
+    )
+
+    assert period_bounds(date(2026, 11, 8), Period.WEEK) == (date(2026, 11, 2), date(2026, 11, 8))
+    assert period_bounds(date(2026, 12, 31), Period.MONTH) == (date(2026, 12, 1), date(2026, 12, 31))
+    assert period_bounds(date(2028, 2, 10), Period.MONTH) == (date(2028, 2, 1), date(2028, 2, 29))
+    assert period_bounds(date(2026, 11, 8), Period.DAY) == (date(2026, 11, 8), date(2026, 11, 8))
+    done = {date(2026, 10, 1), date(2026, 9, 1), date(2026, 7, 1)}
+    assert period_streak(date(2026, 11, 7), Period.MONTH, done.__contains__) == 2  # ноябрь идёт, июль после пропуска
+    assert period_streak(date(2026, 10, 7), Period.MONTH, done.__contains__) == 2
+    assert [streak_word(n, Period.WEEK) for n in (1, 3, 5)] == ["1 неделя", "3 недели", "5 недель"]
+    assert [streak_word(n, Period.MONTH) for n in (21, 2, 11)] == ["21 месяц", "2 месяца", "11 месяцев"]
+    assert streak_word(2, Period.DAY) == "2 дня"
+    assert schedule_label(None, Period.WEEK) == "в любые дни"
+
+
+def test_period_streak_limit() -> None:
+    """Серия недель не уходит дальше ~400 дней назад, даже если все недели выполнены."""
+    from datetime import date
+
+    from habit_bot.modules.habits.domain.habits import STREAK_LOOKBACK, Period, period_streak
+
+    assert period_streak(date(2026, 11, 7), Period.WEEK, lambda _: True) == STREAK_LOOKBACK // 7

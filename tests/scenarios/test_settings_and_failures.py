@@ -1,5 +1,8 @@
 """Поведенческие сценарии: настройки, удаление аккаунта и сбои (части 1 и 3)."""
 
+from typing import Any
+
+from habit_bot.modules.users.telegram import settings as settings_ui
 from tests.conftest import ADMIN_ID
 from tests.scenarios.harness import Persona, World
 
@@ -18,8 +21,9 @@ async def test_s22_weight_changed_then_hesitates(world: World, owner: Persona) -
     await owner.tap("Рост")
     await owner.say("190")
     assert (await owner.tap("Оставить как есть")).startswith("КБЖУ оставлены как есть.")
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🍽 Еда")
     history = await owner.tap("🎯 Цели КБЖУ")
     assert history.count("сегодня:") == 2
 
@@ -37,8 +41,9 @@ async def test_s23_starts_edit_and_walks_away(world: World, owner: Persona) -> N
     assert profile.weight_kg == 75
 
 
-async def test_s24_only_admin_cannot_leave(world: World, owner: Persona) -> None:
+async def test_s24_only_admin_cannot_leave(world: World, owner: Persona, monkeypatch: Any) -> None:
     """S-24. Единственный администратор пытается удалить аккаунт — отказ с подсказкой, данные на месте."""
+    monkeypatch.setattr(settings_ui, "DELETE_BUTTON", True)  # кнопка спрятана с 1.0.2, удаление работает
     await owner.tap("☰ Ещё")
     await owner.tap("⚙️ Настройки")
     await owner.tap("🗑 Удалить аккаунт")
@@ -64,3 +69,16 @@ async def test_s26_city_service_down(world: World, owner: Persona) -> None:
     await owner.say("сломано")
     assert owner.replies()[0].startswith("Поиск городов сейчас не отвечает.")
     assert "Город: Санкт-Петербург" in await owner.tap("Санкт-Петербург")
+
+
+async def test_s132_settings_without_delete_and_default(world: World, owner: Persona) -> None:
+    """S-132. Правки 1.0.2: в «⚙️ Настройки» нет «🗑 Удалить аккаунт» (удаляет администратор в «🛠 Админ»), в
+    «🏠 Главный экран» нет «↩ По умолчанию» — только «✅ Готово»; старая кнопка «По умолчанию» устарела."""
+    await owner.tap("☰ Ещё")
+    await owner.tap("⚙️ Настройки")
+    assert not owner.sees("🗑 Удалить аккаунт") and owner.sees("🏠 Главный экран")
+    await owner.tap("🏠 Главный экран")
+    assert owner.labels()[-1] == "✅ Готово" and "↩ По умолчанию" not in owner.labels()
+    old = owner.find_button("✅ Готово").replace(":hm_s:", ":hm_r:")
+    await owner.press_data(old)
+    assert owner.last() == "Это меню устарело. Вот главное меню 👇"

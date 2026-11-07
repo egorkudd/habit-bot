@@ -45,7 +45,26 @@ def plain(text: str) -> str:
     return "".join(ch for ch in text if ord(ch) < 0x1F000 and ch not in "️‍").strip()
 
 
+# Телефонный Telegram показывает в чате слишком широкую картинку обрезанной по краям — целиком она видна, только если
+# её открыть, а порог у разных телефонов разный (правки 1.0.2). Поэтому раскладка сама держит пропорции около 3:2:
+# картинка дня — полосы друг под другом (подпись и значение над полосой), обзор за месяц и 3 месяца — несколькими
+# частями друг под другом. Если картинка всё же шире 9:5 (неделя с одной строкой) — небольшие поля сверху и снизу.
+MAX_RATIO, MIN_RATIO, TARGET_RATIO = 1.8, 0.5, 1.4
+
+
+def fit_ratio(image: Image.Image) -> Image.Image:
+    width, height = image.size
+    target = (width, max(height, round(width / MAX_RATIO)))
+    target = (max(target[0], round(target[1] * MIN_RATIO)), target[1])
+    if target == image.size:
+        return image
+    framed = Image.new("RGB", target, PAPER)
+    framed.paste(image, ((target[0] - width) // 2, (target[1] - height) // 2))
+    return framed
+
+
 def _png(image: Image.Image) -> bytes:
+    image = fit_ratio(image)
     buffer = io.BytesIO()
     image.save(buffer, format="PNG", optimize=True)
     return buffer.getvalue()
@@ -60,24 +79,22 @@ def _amount(value: Decimal) -> str:
 
 
 # --- картинка дня ---
-def _table_widths(draw: ImageDraw.ImageDraw, table: Table) -> list[int]:
+def _table_widths(draw: ImageDraw.ImageDraw, table: Table, inner: int | None = None) -> list[int]:
     widths = []
     for i, header in enumerate(table.headers):
         cells = [header, *(row[i] for row in table.rows)]
         widths.append(max(_width(draw, plain(c), 20, bold=c is header) for c in cells) + 18)
-    extra = WIDTH - 2 * PAD - sum(widths)
+    extra = (inner if inner is not None else WIDTH - 2 * PAD) - sum(widths)
     if extra > 0:
         widths[0] += extra
     return widths
 
 
-def _wrap(draw: ImageDraw.ImageDraw, text: str, size: int, width: int) -> list[str]:
-    """Перенос по словам, чтобы длинная строка (прогресс личной цели) не обрезалась справа."""
-    lines: list[str] = []
-    current = ""
-    for word in text.split(" "):
+def _wrap(draw: ImageDraw.ImageDraw, text: str, size: int, width: int, bold: bool = False) -> list[str]:
+    words, lines, current = text.split(), [], ""
+    for word in words:
         candidate = f"{current} {word}".strip()
-        if current and _width(draw, candidate, size) > width:
+        if current and _width(draw, candidate, size, bold) > width:
             lines.append(current)
             current = word
         else:
@@ -85,52 +102,83 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, size: int, width: int) -> list[s
     return [*lines, current]
 
 
+DAY_MIN_WIDTH = 520
+BIG = 44            # крупное значение, когда полоса одна
+GAP = 22            # между блоками картинки дня
+
+
+def _value(bar: Bar) -> str:
+    goal = f" / {_amount(bar.goal)}" if bar.goal else ""
+    return f"{_amount(bar.fact)}{goal}{(' ' + bar.unit) if bar.unit else ''}"
+
+
 def day_png(data: DayStats) -> bytes:
+    """Картинка дня: заголовок, полосы друг под другом (подпись слева, значение справа, полоса во всю ширину),
+    таблица, строки. Ширина — по содержимому, не меньше 520: картинка выходит не шире ~3:2."""
     probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
-    lines = [part for line in data.lines for part in _wrap(probe, plain(line), 20, WIDTH - 2 * PAD)]
-    height = PAD + 44 + 54 * len(data.bars) + 30 * len(lines) + PAD + (10 if lines else 0)
-    for table in data.tables:
-        height += 16 + 34 * (len(table.rows) + 1)
+    natural = [sum(_table_widths(probe, t, 0)) for t in data.tables]
+    width = min(WIDTH, max([DAY_MIN_WIDTH, *(w + 2 * PAD for w in natural)]))
+    inner = width - 2 * PAD
+    title = _wrap(probe, plain(data.title), 28, inner, bold=True)
+    lines = [part for line in data.lines for part in _wrap(probe, plain(line), 20, inner)]
+    single = len(data.bars) == 1
+    blocks = [130 if single else 64] * len(data.bars)
+    blocks += [34 * (len(t.rows) + 1) for t in data.tables]
     if data.empty:
-        height += 30
-    image = Image.new("RGB", (WIDTH, max(height, 140)), PAPER)
+        blocks.append(150)
+    if lines:
+        blocks.append(30 * len(lines))
+    height = PAD + 38 * len(title) + GAP * len(blocks) + sum(blocks) + PAD
+    image = Image.new("RGB", (width, height), PAPER)
     draw = ImageDraw.Draw(image)
     y = PAD
-    draw.text((PAD, y), plain(data.title), font=font(28, True), fill=INK)
-    y += 48
+    for line in title:
+        draw.text((PAD, y), line, font=font(28, True), fill=INK)
+        y += 38
     for bar in data.bars:
-        _bar(draw, bar, y)
-        y += 54
+        y += GAP
+        y = _bar(draw, bar, y, inner, big=single)
     for table in data.tables:
-        y += 12
-        y = _table(draw, probe, table, y)
+        y += GAP
+        y = _table(draw, probe, table, y, inner)
     if data.empty:
-        draw.text((PAD, y), "Записей нет", font=font(20), fill=MUTED)
-        y += 30
-    y += 10 if lines else 0
-    for line in lines:
-        draw.text((PAD, y), line, font=font(20), fill=INK)
-        y += 30
+        y += GAP
+        draw.rounded_rectangle((PAD, y, PAD + inner, y + 150), radius=12, fill=TRACK)
+        text = "Записей нет"
+        draw.text((PAD + (inner - _width(draw, text, 24)) / 2, y + 60), text, font=font(24), fill=MUTED)
+        y += 150
+    if lines:
+        y += GAP
+        for line in lines:
+            draw.text((PAD, y), line, font=font(20), fill=INK)
+            y += 30
     return _png(image)
 
 
-def _bar(draw: ImageDraw.ImageDraw, bar: Bar, y: int) -> None:
-    left, track = PAD + 110, 300
-    draw.text((PAD, y + 6), plain(bar.label), font=font(20, True), fill=INK)
-    draw.rounded_rectangle((left, y + 4, left + track, y + 34), radius=8, fill=TRACK)
+def _bar(draw: ImageDraw.ImageDraw, bar: Bar, y: int, inner: int, *, big: bool = False) -> int:
+    """Подпись и процент над полосой; одна полоса — крупное значение «0 / 1»."""
     share = percent(bar.fact, bar.goal)
-    if share:
-        filled = int(track * min(share, 100) / 100)
-        if filled > 0:
-            draw.rounded_rectangle((left, y + 4, left + max(filled, 16), y + 34), radius=8, fill=COLORS[bar.color])
     shown = f"{share}%" if share is not None else ""
-    goal = f" / {_amount(bar.goal)}" if bar.goal else ""
-    draw.text((left + track + 14, y + 6), f"{shown}  {_amount(bar.fact)}{goal}{(' ' + bar.unit) if bar.unit else ''}",
-              font=font(20), fill=INK)
+    draw.text((PAD, y), plain(bar.label), font=font(20, True), fill=INK)
+    if big:
+        draw.text((PAD + inner - _width(draw, shown, 20), y), shown, font=font(20), fill=MUTED)
+        draw.text((PAD, y + 30), _value(bar), font=font(BIG, True), fill=INK)
+        top = y + 92
+    else:
+        value = f"{_value(bar)}   {shown}".strip()
+        draw.text((PAD + inner - _width(draw, value, 20), y), value, font=font(20), fill=INK)
+        top = y + 32
+    thick = 38 if big else 30
+    draw.rounded_rectangle((PAD, top, PAD + inner, top + thick), radius=10, fill=TRACK)
+    if share:
+        filled = int(inner * min(share, 100) / 100)
+        if filled > 0:
+            draw.rounded_rectangle((PAD, top, PAD + max(filled, 20), top + thick), radius=10, fill=COLORS[bar.color])
+    return top + thick
 
 
-def _table(draw: ImageDraw.ImageDraw, probe: ImageDraw.ImageDraw, table: Table, y: int) -> int:
-    widths = _table_widths(probe, table)
+def _table(draw: ImageDraw.ImageDraw, probe: ImageDraw.ImageDraw, table: Table, y: int, inner: int) -> int:
+    widths = _table_widths(probe, table, inner)
     for r, row in enumerate([table.headers, *table.rows]):
         x = PAD
         for i, cell in enumerate(row):
@@ -144,51 +192,75 @@ def _table(draw: ImageDraw.ImageDraw, probe: ImageDraw.ImageDraw, table: Table, 
                 draw.text((x + 4, y + 4), text, font=font(20, bold), fill=fill)
             x += widths[i]
         y += 34
-        draw.line((PAD, y - 2, WIDTH - PAD, y - 2), fill=LINE, width=1)
+        draw.line((PAD, y - 2, PAD + inner, y - 2), fill=LINE, width=1)
     return y
 
 
 # --- обзор-светофор ---
+GRID_TARGET = 420  # ширина сетки одной части обзора
+
+
+def _overview_layout(count: int, rows: int, label_w: int) -> tuple[int, int, int, int, int]:
+    """(частей, дней в части, клетка, ширина, высота): месяц и 3 месяца — несколькими частями друг под другом,
+    чтобы картинка была около 3:2, а не полосой 4:1."""
+    best: tuple[float, tuple[int, int, int, int, int]] | None = None
+    for parts in range(1, 7 if count > 7 else 2):
+        size = -(-count // parts)
+        if parts > 1 and -(-count // size) < parts:
+            continue
+        cell = max(12, min(40, GRID_TARGET // size - 3))
+        gap = 3 if cell >= 16 else 2
+        width = max(480, PAD + label_w + size * (cell + gap) + PAD)
+        row_h = max(cell + 8, 50)
+        height = PAD + 44 + parts * (26 + row_h * max(rows, 1) + 14) + 34 + PAD
+        score = abs(width / height - TARGET_RATIO)
+        if best is None or score < best[0]:
+            best = (score, (parts, size, cell, width, height))
+    assert best is not None
+    return best[1]
+
+
 def overview_png(data: Overview) -> bytes:
+    """Обзор: строка на привычку — подпись и «% · серия» под ней, клетки по дням; длинный период — частями."""
     probe = ImageDraw.Draw(Image.new("RGB", (1, 1)))
     count = len(data.days)
-    cell = max(10, min(46, 720 // max(count, 1)))
-    gap = 3 if cell >= 16 else 1
-    label_w = max([_width(probe, plain(r.label), 20) for r in data.rows] + [120]) + 16
-    grid_w = count * (cell + gap)
-    width = PAD + label_w + grid_w + 150 + PAD
-    row_h = max(cell, 26) + 8
-    height = PAD + 44 + 30 + row_h * max(len(data.rows), 1) + 40 + PAD
-    image = Image.new("RGB", (max(width, 600), height), PAPER)
+    stats = [f"{r.green}% · серия {r.streak}" if r.green is not None else f"— · серия {r.streak}" for r in data.rows]
+    label_w = max([_width(probe, plain(r.label), 20) for r in data.rows]
+                  + [_width(probe, s, 15) for s in stats] + [120]) + 18
+    parts, size, cell, width, height = _overview_layout(count, len(data.rows), label_w)
+    gap = 3 if cell >= 16 else 2
+    row_h = max(cell + 8, 50)
+    image = Image.new("RGB", (width, height), PAPER)
     draw = ImageDraw.Draw(image)
     draw.text((PAD, PAD), plain(data.title), font=font(28, True), fill=INK)
-    top = PAD + 48
     left = PAD + label_w
-    step = 1 if cell >= 24 else 7
-    for i, day in enumerate(data.days):
-        if i % step == 0:
-            label = f"{WEEKDAYS[day.weekday()]} {day.day}" if cell >= 40 else f"{day.day}"
-            bold = day == data.today
-            draw.text((left + i * (cell + gap), top), label, font=font(14, bold), fill=INK if bold else MUTED)
-    draw.text((left + grid_w + 16, top), "выполнено · серия", font=font(14), fill=MUTED)
-    y = top + 26
+    y = PAD + 44
     if not data.rows:
-        draw.text((PAD, y + 4), "За этот период записей нет", font=font(20), fill=MUTED)
-    for row in data.rows:
-        draw.text((PAD, y + (row_h - 30) // 2 + 2), plain(row.label), font=font(20), fill=INK)
-        for i, color in enumerate(row.cells):
-            x0 = left + i * (cell + gap)
-            y0 = y + (row_h - 8 - cell) // 2
-            box = (x0, y0, x0 + cell, y0 + cell)
-            _cell(draw, box, color, cell)
-        share = f"{row.green}%" if row.green is not None else "—"
-        draw.text((left + grid_w + 16, y + (row_h - 30) // 2 + 2), f"{share} · {row.streak}", font=font(20),
-                  fill=INK)
-        y += row_h
-    if data.today in data.days and data.rows:  # сегодняшний день — в рамке, чтобы прогресс дня было видно сразу
-        i = data.days.index(data.today)
-        x0 = left + i * (cell + gap) - 2
-        draw.rounded_rectangle((x0, top + 22, x0 + cell + 4, y - 2), radius=4, outline=INK, width=2)
+        draw.text((PAD, y + 30), "За этот период записей нет", font=font(20), fill=MUTED)
+    for part in range(parts if data.rows else 0):
+        days = data.days[part * size:(part + 1) * size]
+        step = 1 if cell >= 24 else 7
+        for i, day in enumerate(days):
+            if i % step == 0 or day == data.today:
+                label = f"{WEEKDAYS[day.weekday()]} {day.day}" if cell >= 38 else f"{day.day}"
+                bold = day == data.today
+                draw.text((left + i * (cell + gap), y + 4), label, font=font(14, bold), fill=INK if bold else MUTED)
+        top = y + 26
+        for r, row in enumerate(data.rows):
+            ry = top + r * row_h
+            if part == 0 or parts > 1:
+                draw.text((PAD, ry + row_h // 2 - 22), plain(row.label), font=font(20), fill=INK)
+                draw.text((PAD, ry + row_h // 2 + 2), stats[r], font=font(15), fill=MUTED)
+            for i, color in enumerate(row.cells[part * size:(part + 1) * size]):
+                x0 = left + i * (cell + gap)
+                y0 = ry + (row_h - cell) // 2
+                _cell(draw, (x0, y0, x0 + cell, y0 + cell), color, cell)
+        bottom = top + row_h * len(data.rows)
+        if data.today in days:  # сегодняшний день — в рамке, чтобы прогресс дня было видно сразу
+            i = days.index(data.today)
+            x0 = left + i * (cell + gap) - 2
+            draw.rounded_rectangle((x0, top + 2, x0 + cell + 4, bottom - 2), radius=4, outline=INK, width=2)
+        y = bottom + 14
     x = PAD
     for color, text in ((Color.DONE, "выполнено"), (Color.PARTIAL, "частично"), (Color.NONE, "ничего"),
                         (Color.OFF, "выходной")):
@@ -216,11 +288,11 @@ def text_bar(bar: Bar) -> str:
     track = ("█" * whole + part.strip()).ljust(BAR_CHARS, "░")
     goal = f" / {_amount(bar.goal)}" if bar.goal else ""
     shown = f"{share}%" if share is not None else "—"
-    return f"{bar.label:<6} {track} {shown:>4}  {_amount(bar.fact)}{goal}  {ICON[bar.color]}"
+    return f"{plain(bar.label):<6} {track} {shown:>4}  {_amount(bar.fact)}{goal}  {ICON[bar.color]}"
 
 
 def text_table(table: Table) -> list[str]:
-    rows = [table.headers, *table.rows]
+    rows = [tuple(plain(c) for c in r) for r in (table.headers, *table.rows)]
     widths = [max(len(r[i]) for r in rows) for i in range(len(table.headers))]
     out = []
     for row in rows:
@@ -250,16 +322,20 @@ def overview_text(data: Overview) -> str:
     lines = [data.title]
     if not data.rows:
         return "\n".join([*lines, "За этот период записей нет"])
-    width = max(len(r.label) for r in data.rows)
+    # Эмодзи в моноширинном блоке шире буквы и на разных телефонах по-разному — столбцы съезжают; поэтому подписи
+    # без эмодзи, как и на картинке (правки 1.0.2).
+    labels = {id(r): plain(r.label) for r in data.rows}
+    width = max(len(label) for label in labels.values())
     for row in data.rows:
+        label = labels[id(row)]
         share = f"{row.green}%" if row.green is not None else "—"
         summary = f"{share} · серия {row.streak}"
         if len(data.days) > 31:
-            lines.append(f"{row.label:<{width}}  {summary}")
+            lines.append(f"{label:<{width}}  {summary}")
             continue
         weeks = list(_weeks(row.cells))
-        lines.append(f"{row.label:<{width}}  {weeks[0]}  {summary}" if len(weeks) == 1
-                     else f"{row.label}  {summary}")
+        lines.append(f"{label:<{width}}  {weeks[0]}  {summary}" if len(weeks) == 1
+                     else f"{label}  {summary}")
         if len(weeks) > 1:
             lines += [f"  {w}" for w in weeks]
     lines += ["", LEGEND]

@@ -17,8 +17,9 @@ from habit_bot.kernel.db import UowFactory
 from habit_bot.kernel.domain.formatting import format_day, format_duration, format_number
 from habit_bot.kernel.domain.parsing import logical_day
 from habit_bot.kernel.identity import Actor
+from habit_bot.modules.habits.domain.habits import Period as HabitPeriod
 from habit_bot.modules.habits.domain.habits import format_value as habit_value
-from habit_bot.modules.habits.domain.habits import is_scheduled
+from habit_bot.modules.habits.domain.habits import is_scheduled, period_bounds, streak_word
 from habit_bot.modules.runs.domain.runs import comparison, group_of, km, records, speed
 from habit_bot.modules.stats.domain.periods import Kind, Period, day_title, period, word
 from habit_bot.modules.stats.models import StatsSettings
@@ -31,6 +32,11 @@ from habit_bot.platform.stats.domain.traffic import Color
 
 FOOD, WARMUP, WORKOUT, RUN = "food", "warmup", "workout", "run"
 HABIT = "h"  # + public_id своей привычки
+# Строки еды в обзоре (правки 1.0.2): код, подпись, правило клетки (раздел 4.10), поле факта и цели.
+NUTRIENTS = (("k", "Калории", t.kcal, "kcal"), ("p", "Белки", t.protein, "protein"),
+             ("f", "Жиры", t.macro, "fat"), ("c", "Углеводы", t.macro, "carbs"))
+NUTRIENT_CODES = "".join(n[0] for n in NUTRIENTS)
+DEFAULT_NUTRIENTS = "kp"
 HISTORY_DAYS = 365  # рекорды и «прошлый раз» — за год
 
 
@@ -94,6 +100,27 @@ class Stats:
             row = (await uow.session.execute(select(StatsSettings).where(
                 StatsSettings.user_id == actor.user_id))).scalar_one_or_none()
             return row.section if row else None
+
+    async def nutrients(self, actor: Actor) -> str:
+        """Какие строки еды показывать в обзоре: коды из ``NUTRIENTS`` («kp» — калории и белки)."""
+        async with self._uow() as uow:
+            row = (await uow.session.execute(select(StatsSettings).where(
+                StatsSettings.user_id == actor.user_id))).scalar_one_or_none()
+            return row.nutrients if row else DEFAULT_NUTRIENTS
+
+    async def toggle_nutrient(self, actor: Actor, code: str) -> str:
+        """Включить или выключить строку КБЖУ в обзоре; возвращает новый набор."""
+        if code not in NUTRIENT_CODES:
+            return await self.nutrients(actor)
+        async with self._uow() as uow:
+            row = (await uow.session.execute(select(StatsSettings).where(
+                StatsSettings.user_id == actor.user_id))).scalar_one_or_none()
+            if row is None:
+                row = StatsSettings(user_id=actor.user_id, section=FOOD, nutrients=DEFAULT_NUTRIENTS)
+                uow.session.add(row)
+            chosen = set(row.nutrients) ^ {code}
+            row.nutrients = "".join(c for c in NUTRIENT_CODES if c in chosen)
+            return row.nutrients
 
     async def remember(self, actor: Actor, key: str) -> None:
         async with self._uow() as uow:
@@ -234,7 +261,8 @@ class Stats:
         if item is None:
             return None
         h = item.habit
-        bars = (Bar(h.short, item.fact, h.goal, t.habit(item.fact, h.goal), h.unit),)
+        # цель за неделю или месяц — полоса за неделю или месяц («1 / 2 нед.»)
+        bars = (Bar(h.short, item.fact, h.goal, t.habit(item.fact, h.goal), (h.unit + h.per).strip()),)
         marks = await self.s.habits.day_entries(actor, public_id, day)
         lines = []
         if marks:
@@ -242,7 +270,8 @@ class Stats:
                 f"{at.astimezone(self._tz):%H:%M} +{habit_value(v, h.measure, h.unit)}" for at, v in marks))
         streak = await self.s.habits.streak_of(actor, public_id, day)
         if streak:
-            lines.append(f"Серия: {streak} {word(streak, 'день', 'дня', 'дней')}")
+            lines.append(f"Серия: {streak_word(streak, h.period)}")
+
         if not is_scheduled(h.weekdays, day):
             lines.append("Сегодня не по расписанию")
         return DayStats(f"{h.name} · {day_title(day)}", bars, (), tuple(lines), empty=not marks)
@@ -259,13 +288,14 @@ class Stats:
         off = await self.s.days.days_off(actor, p.start, p.end)
         rows: list[TrafficRow] = []
 
-        def frame(day: date) -> Color | None:
-            """Клетка без оценки: будущее, выходной («в»), дни до анкеты."""
+        def frame(day: date, recorded: bool = False) -> Color | None:
+            """Клетка без оценки: будущее, выходной («в»), дни до анкеты. Запись задним числом за день до анкеты
+            оценивается как обычный день (правки 1.0.2) — иначе её не видно."""
             if day > today:
                 return Color.FUTURE
             if day in off:
                 return Color.OFF
-            if day < registered:
+            if day < registered and not recorded:
                 return Color.SKIP
             return None
 
@@ -280,13 +310,17 @@ class Stats:
             totals = await self.s.food.daily_totals(actor, p.start, p.end)
             if totals:
                 goals = {d: await self.s.profiles.goal_on(actor, d) for d in days if d in totals}
-                kcal, prot = [], []
-                for d in days:
-                    goal = goals.get(d)
-                    fact = totals[d].fact if d in totals else None
-                    kcal.append(frame(d) or t.kcal(fact.kcal if fact else None, goal.kcal if goal else None))
-                    prot.append(frame(d) or t.protein(fact.protein if fact else None, goal.protein if goal else None))
-                rows += [row("Калории", kcal), row("Белки", prot)]
+                chosen = await self.nutrients(actor)
+                for code, label, rule, field in NUTRIENTS:
+                    if code not in chosen:
+                        continue
+                    cells = []
+                    for d in days:
+                        goal = goals.get(d)
+                        fact = totals[d].fact if d in totals else None
+                        cells.append(frame(d, fact is not None) or rule(
+                            getattr(fact, field) if fact else None, getattr(goal, field) if goal else None))
+                    rows.append(row(label, cells))
         if self.s.warmup is not None and WARMUP not in hidden:
             sessions = await self.s.warmup.sessions_between(actor, p.start, p.end)
             if sessions:
@@ -294,7 +328,8 @@ class Stats:
                 count: dict[date, int] = {}
                 for x in sessions:
                     count[x.day] = count.get(x.day, 0) + 1
-                rows.append(row("Зарядка", [frame(d) or t.warmup(count.get(d, 0), goal) for d in days]))
+                rows.append(row("Зарядка", [frame(d, d in count) or t.warmup(count.get(d, 0), goal)
+                                            for d in days]))
         if self.s.workouts is not None and WORKOUT not in hidden:
             trained = await self._weekly_workouts(actor, p, today, registered)
             if trained is not None:
@@ -304,10 +339,13 @@ class Stats:
             for h in await self.s.habits.habits(actor):
                 if h.public_id not in facts:
                     continue
+                if h.period is not HabitPeriod.DAY:
+                    rows.append(await self._period_habit(actor, h, p, today, registered, frame))
+                    continue
                 done = facts[h.public_id]
                 cells = []
                 for d in days:
-                    fixed = frame(d)
+                    fixed = frame(d, bool(done.get(d)))
                     if fixed is None and not is_scheduled(h.weekdays, d):
                         fixed = Color.SKIP
                     cells.append(fixed or t.habit(done.get(d, Decimal(0)), h.goal))
@@ -317,6 +355,31 @@ class Stats:
         if weight is not None and any(c in (Color.DONE, Color.PARTIAL) for c in weight):
             rows.append(row("Вес", weight))
         return Overview(p.title, days, tuple(rows), today=today)
+
+    async def _period_habit(self, actor: Actor, h: Any, p: Period, today: date, registered: date,
+                            frame: Any) -> TrafficRow:
+        """Привычка «N раз в неделю / месяц» (правки 1.0.2) — как тренировки: день с отметкой чёрный, если цель
+        периода выполнена, иначе серый; день без отметки — белый; % и серия — по неделям или месяцам."""
+        first, last = period_bounds(p.start, h.period)[0], period_bounds(p.end, h.period)[1]
+        marks = (await self.s.habits.facts_between(actor, first, last)).get(h.public_id, {})
+        totals: dict[date, Decimal] = {}
+        for d, v in marks.items():
+            start = period_bounds(d, h.period)[0]
+            totals[start] = totals.get(start, Decimal(0)) + v
+        cells = []
+        for d in p.days:
+            done = t.habit(totals.get(period_bounds(d, h.period)[0], Decimal(0)), h.goal) is Color.DONE
+            fixed = frame(d, d in marks)
+            cells.append(fixed or ((Color.DONE if done else Color.PARTIAL) if d in marks else Color.NONE))
+        finished = []
+        start = first
+        while start <= last and start <= today:
+            end = period_bounds(start, h.period)[1]
+            color = t.habit(totals.get(start, Decimal(0)), h.goal)
+            if (end < today and end >= registered) or color is Color.DONE:
+                finished.append(Color.DONE if color is Color.DONE else Color.NONE)
+            start = end + timedelta(days=1)
+        return TrafficRow(h.label, tuple(cells), t.green_share(finished), t.current_streak(finished))
 
     async def _weekly_workouts(self, actor: Actor, p: Period, today: date, registered: date) -> TrafficRow | None:
         """Тренировки и бег против цели «в неделю» (раздел 4.10). День с тренировкой: чёрный, если цель недели

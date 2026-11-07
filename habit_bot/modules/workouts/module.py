@@ -7,6 +7,7 @@ from habit_bot.kernel.domain.formatting import format_number
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.jobs import JobSpec
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
+from habit_bot.modules.days.public import DayEntry
 from habit_bot.modules.workouts.domain.training import KIND_LABELS
 from habit_bot.modules.workouts.usecases import Workouts
 
@@ -27,6 +28,23 @@ class WorkoutsModule(Module):
                             profiles=ctx.services["users.profiles"])
         ctx.services["workouts"] = workouts
         days.add_mover("workout", workouts)
+
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            """Завершённые тренировки дня; идущую удаляет «🏁 Завершить» без подходов, а не «📋 Записи»."""
+            found = []
+            for s in await workouts.day_sessions(actor, day):
+                if s.open:
+                    continue
+                label = KIND_LABELS[s.kind] + (f" · {s.duration_min} мин" if s.duration_min else "")
+                names = ", ".join(b.name for b in s.blocks)
+                tonnage = f" · {format_number(s.tonnage)} кг" if s.tonnage else ""
+                found.append(DayEntry("workout", s.public_id, label, f"{label}{tonnage}\n{names}".strip()))
+            return found
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await workouts.delete_session(actor, public_id) is not None
+
+        days.add_entries("workout", listing, remove)
 
         async def week_progress(actor: Actor, day: date) -> tuple[int, int]:
             """Тренировки и забеги за неделю (с понедельника) и цель «тренировок в неделю»."""
@@ -58,7 +76,6 @@ class WorkoutsModule(Module):
         channel = ctx.channel("telegram")
         if channel is not None:
             from habit_bot.channels.telegram.channel import TelegramChannel
-            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
             from habit_bot.modules.workouts.telegram.handlers import SETTINGS_KEY, build_workouts_router
 
             assert isinstance(channel, TelegramChannel)
@@ -67,7 +84,6 @@ class WorkoutsModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("workout")
-            channel.menu.add(MenuEntry(SETTINGS_KEY, "🏋️ Тренировки", 40, Place.SETTINGS, ready=True))
             builtins = ctx.services.get("habits.builtins")
             if builtins is not None:
                 from habit_bot.modules.habits.telegram.handlers import Builtin
@@ -76,4 +92,5 @@ class WorkoutsModule(Module):
                     done, goal = await week_progress(actor, day)
                     return Decimal(done), Decimal(goal)
 
-                builtins.append(Builtin("workout", "🏋️ Тренировки за неделю", progress))
+                builtins.append(Builtin("workout", "🏋️ Тренировки за неделю", progress,
+                                        (("🏋️ Цель, резины, упражнения", SETTINGS_KEY),)))

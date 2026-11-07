@@ -12,6 +12,7 @@ import pytest
 
 from habit_bot.modules.food.domain.nutrition import Nutrients
 from habit_bot.modules.food.domain.other_line import OtherLine
+from habit_bot.modules.users.telegram import settings as settings_ui
 from habit_bot.modules.workouts.domain.training import Kind as WorkoutKind
 from habit_bot.modules.workouts.domain.training import SetValue
 from tests.conftest import ADMIN_ID, OTHER_ID
@@ -136,9 +137,10 @@ async def test_s112_custom_dates_with_mistakes(export_world: World, me: Persona)
     assert await me.tap("✕ Отмена") == "Отменено, ничего не выгружено."
 
 
-async def test_s113_isolation_and_delete_account_offer(export_world: World, me: Persona) -> None:
+async def test_s113_isolation_and_delete_account_offer(export_world: World, me: Persona, monkeypatch: Any) -> None:
     """S-113. Раздел 9: экспорт содержит только свои данные; гость не может нажать кнопку экспорта владельца;
     «Удалить аккаунт» предлагает сначала скачать экспорт."""
+    monkeypatch.setattr(settings_ui, "DELETE_BUTTON", True)  # кнопка спрятана с 1.0.2, удаление работает
     guest = await invite_guest(export_world, me, OTHER_ID, "Аня")
     await finish_guest_onboarding(guest)
     await open_export(me)

@@ -46,7 +46,7 @@ class AiCommandsModule(Module):
 
             from habit_bot.channels.telegram.channel import TelegramChannel
             from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
-            from habit_bot.modules.ai_commands.telegram.handlers import FILL_KEY, TEXT_KEY, build_ai_router
+            from habit_bot.modules.ai_commands.telegram.handlers import FILL_KEY, build_ai_router
 
             assert isinstance(channel, TelegramChannel)
             save_button = None
@@ -61,5 +61,5 @@ class AiCommandsModule(Module):
             router, free_text = build_ai_router(commands, channel.screens, lambda: channel.day_card, save_button)
             channel.add_router(router)
             channel.add_router(free_text, last=True)
-            channel.menu.mark_ready(TEXT_KEY)
+            # «✍️ Текстом» в «Ещё» убрана (правки 1.0.2): фразы можно писать в чат сразу, старая кнопка работает
             channel.menu.add(MenuEntry(FILL_KEY, "✍️ Заполнить с помощью ИИ", 5, Place.SETTINGS, ready=True))

@@ -113,3 +113,23 @@ async def test_s91_workout_auto_finish_really_runs(world: World, owner: Persona)
     async with world.app.ctx.uow() as uow:
         (session,) = (await uow.session.execute(select(WorkoutSession))).scalars().all()
     assert (session.status, session.auto_finished) == ("done", True)
+
+
+async def test_s137_nightly_clean_really_runs(world: World, owner: Persona) -> None:
+    """S-137. Ночная чистка переписки — настоящая фоновая задача: после 04:00 она сама удаляет ночные сообщения
+    в течение минуты, пользователю ничего не пишет."""
+    from datetime import UTC, datetime
+
+    await owner.say("ночное сообщение")
+    typed = owner.typed[-1]
+    world.set_time(datetime(2026, 11, 4, 1, 5, tzinfo=UTC))  # 04:05 по Москве
+    sent = len(owner.texts())
+    tasks = world.app.start_background()
+    try:
+        started = time.monotonic()
+        assert await _wait(lambda: owner.session.is_deleted(owner.tg_id, typed), REAL_WAIT_SECONDS), \
+            "ночная чистка за минуту не сработала"
+        assert time.monotonic() - started >= 50  # сработал настоящий цикл, а не вызов из теста
+    finally:
+        await world.app.stop_background(tasks)
+    assert len(owner.texts()) == sent

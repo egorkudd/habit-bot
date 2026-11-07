@@ -19,17 +19,14 @@ class CatalogProduct:
     portion_label: str | None = None
 
 
+# Правки 1.0.2: базовый набор владельца. Значения — типичные из таблиц состава (на 1 шт / пакет или на 100 г).
+# Старый набор (бедро, курица готовая, макароны, протеин, фастфуд, пельмени) убран миграцией 0014 — и у тех, кому
+# его скопировала анкета («Базовые продукты»).
 CATALOG: tuple[CatalogProduct, ...] = (
-    CatalogProduct("chicken_thigh", "Куриное бедро", Unit.PIECE, 250, 23, 17, 0),
-    CatalogProduct("chicken_cooked", "Курица готовая", Unit.GRAMS, 220, 28, 11, 0),
-    CatalogProduct("pasta_boiled", "Макароны отварные", Unit.GRAMS, 158, 5.8, 0.9, 30.9),
     CatalogProduct("buckwheat_pack", "Гречка сухая (пакет 80 г)", Unit.PIECE, 288.8, 9.6, 2.72, 51.36),
     CatalogProduct("banana", "Банан", Unit.PIECE, 105, 1.3, 0.4, 27),
-    CatalogProduct("protein_30g", "Протеин", Unit.PORTION, 111, 23.5, 2, 2.6, "30 г"),
-    CatalogProduct("chickenburger_rostics", "Чикенбургер Новый (Ростикс)", Unit.PIECE, 335, 10.9, 15.9, 37.1),
-    CatalogProduct("chef_basket_rostics", "Шеф Баскет (Ростикс)", Unit.PIECE, 731, 56.5, 43.4, 28.6),
-    CatalogProduct("nuggets_vit", "Наггетсы (Вкусно и точка)", Unit.PORTION, 179, 11, 9, 12, "4 шт"),
-    CatalogProduct("ham_toast_vit", "Тост с ветчиной (Вкусно и точка)", Unit.PIECE, 265, 14, 11, 28),
-    CatalogProduct("fresh_muffin_vit", "Фреш Маффин (Вкусно и точка)", Unit.PIECE, 368, 18, 20, 28),
-    CatalogProduct("pelmeni", "Пельмени", Unit.GRAMS, 260, 11, 12, 28),
+    CatalogProduct("chicken_fillet", "Куриное филе", Unit.GRAMS, 113, 23.6, 1.9, 0.4),
+    CatalogProduct("cottage_cheese_5", "Творог 5%", Unit.GRAMS, 121, 17.2, 5, 1.8),
+    CatalogProduct("rice_pack", "Рис сухой (пакет 80 г)", Unit.PIECE, 275.2, 5.36, 0.56, 63.12),
+    CatalogProduct("potato", "Картофель", Unit.GRAMS, 77, 2, 0.4, 16.3),
 )

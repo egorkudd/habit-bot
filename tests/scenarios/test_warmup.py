@@ -83,9 +83,10 @@ async def test_s44_plus_steps(world: World, owner: Persona) -> None:
 async def test_s45_custom_step(world: World, owner: Persona) -> None:
     """S-45. Раздел 9: шаг отжиманий изменён на 10 → кнопка «Отжимания +10»; шаг «0» — подсказка."""
     await _history(world)
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("🤸 Зарядка: набор и цели")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🤸 Зарядка")
+    await owner.tap("🤸 Набор и цели зарядки")
     assert "Отжимания — шаг +5" in await owner.tap("📋 Набор и шаги")
     await owner.tap("Отжимания")
     await owner.tap("✏️ Шаг")
@@ -142,9 +143,10 @@ async def test_s48_other_day_uses_earlier_warmup(world: World, owner: Persona) -
 async def test_s49_personal_goal(world: World, owner: Persona) -> None:
     """S-49. Личная цель «Планка 11:00 к 03.12.2026»: после записи — строка прогресса с нужным темпом."""
     await _history(world)
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("🤸 Зарядка: набор и цели")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🤸 Зарядка")
+    await owner.tap("🤸 Набор и цели зарядки")
     await owner.tap("🎯 Личные цели")
     await owner.tap("➕ Новая цель")
     await owner.tap("Планка")
@@ -160,9 +162,10 @@ async def test_s50_edit_set(world: World, owner: Persona) -> None:
     """S-50. Набор меняется: добавить «Приседания», убрать «Спина», поднять «Приседания» — у каждого упражнения своё
     меню «✏️ Шаг» / «⬆ Выше» / «✕ Убрать»; экран зарядки по-новому; прошлые зарядки не изменились."""
     await _history(world)
-    await owner.tap("☰ Ещё")
-    await owner.tap("⚙️ Настройки")
-    await owner.tap("🤸 Зарядка: набор и цели")
+    await owner.tap("✅ Привычки")
+    await owner.tap("⚙️ Настроить")
+    await owner.tap("🤸 Зарядка")
+    await owner.tap("🤸 Набор и цели зарядки")
     await owner.tap("📋 Набор и шаги")
     await owner.tap("➕ Добавить упражнение")
     await owner.say("Приседания")

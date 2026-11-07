@@ -34,3 +34,4 @@ class DaysModule(Module):
             channel.day_card = day_card
             channel.menu.mark_ready("other_day")
             channel.menu.mark_ready("day_off")
+            channel.menu.mark_ready("records")

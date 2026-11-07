@@ -22,12 +22,13 @@ from habit_bot.channels.telegram.dialogs.fsm import DbFsmStorage
 from habit_bot.channels.telegram.dialogs.input_check import build_input_check_router
 from habit_bot.channels.telegram.dialogs.middleware import ActivityMiddleware
 from habit_bot.channels.telegram.dialogs.store import DialogStore
+from habit_bot.channels.telegram.ui.chat_log import ChatLog, last_night
 from habit_bot.channels.telegram.ui.guard import CallbackGuardMiddleware
 from habit_bot.channels.telegram.ui.menu import MenuRegistry
 from habit_bot.channels.telegram.ui.not_modified import IgnoreNotModified
 from habit_bot.channels.telegram.ui.routes import build_core_router, build_fallback_router
 from habit_bot.channels.telegram.ui.screens import Screens
-from habit_bot.channels.telegram.ui.trail import TrailMiddleware, TrailRecorder
+from habit_bot.channels.telegram.ui.trail import TrailMiddleware, TrailRecorder, delete_all
 from habit_bot.kernel.clock import Clock, SystemClock
 from habit_bot.kernel.config import Settings
 from habit_bot.kernel.db import UowFactory
@@ -159,9 +160,10 @@ class TelegramChannel:
         self.screens = Screens(self.menu, self.dialogs)
         self._error_middleware = ErrorMiddleware(None)
         # Чистый чат: самый внешний слой, чтобы в след попали и сообщения об ошибках.
-        self.bot.session.middleware(TrailRecorder())
+        self.chat_log = ChatLog(uow)
+        self.bot.session.middleware(TrailRecorder(self.chat_log, self.clock))
         self.bot.session.middleware(IgnoreNotModified())  # «−5» при нуле и двойные нажатия — не ошибка
-        self.dispatcher.update.outer_middleware(TrailMiddleware(self.dialogs, self.clock))
+        self.dispatcher.update.outer_middleware(TrailMiddleware(self.dialogs, self.clock, self.chat_log))
         self.dispatcher.update.outer_middleware(self._error_middleware)
         self.dispatcher.callback_query.middleware(CallbackGuardMiddleware(self.storage, self.screens))
         self.dispatcher.include_router(build_core_router(self.menu, self.screens))
@@ -204,6 +206,16 @@ class TelegramChannel:
     async def expire_idle(self, now: datetime | None = None) -> int:
         """Сброс по таймеру (раз в минуту и при старте): незаконченный ввод старше срока удаляется молча."""
         return len(await self.dialogs.expire(now or self.clock.now()))
+
+    async def nightly_clean(self) -> int:
+        """Каждую ночь в 04:00 (задача раз в минуту, при старте догоняет пропущенное): удалить переписку,
+        присланную до последних 04:00, кроме файлов и последнего сообщения с клавиатурой. Бот ничего не пишет."""
+        now = self.clock.now()
+        found = await self.chat_log.before(last_night(now, self.tz), now)
+        for chat_id, ids in found.items():
+            await delete_all(self.bot, chat_id, ids)
+            await self.chat_log.forget(chat_id, ids)
+        return sum(len(ids) for ids in found.values())
 
     async def start(self) -> None:  # pragma: no cover — долгий опрос Telegram проверяется пробным запуском в CI
         self.finalize()

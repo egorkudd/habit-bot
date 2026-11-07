@@ -19,6 +19,7 @@ CANCELLED = "Отменено, ничего не записано."
 NOTHING_TO_CANCEL = "Отменять нечего. Вот главное меню 👇"
 BACK_TO_TODAY = "Вернулись к сегодняшнему дню."
 MORE_TITLE = "Ещё:"
+HOME_TEXT = "🏠 Главное меню"
 NOT_UNDERSTOOD = "Не понял. Выберите раздел в меню 👇"
 
 
@@ -59,10 +60,12 @@ def build_core_router(menu: MenuRegistry, screens: Screens) -> Router:
         await cancel(bot, query.from_user.id, actor, state)
 
     @router.message(F.text == HOME_LABEL)
-    async def go_home(message: Message, state: FSMContext) -> None:
-        """«🏠 Домой»: выйти из ввода и убрать его сообщения. Режим «Другой день» остаётся — у него своя кнопка."""
+    async def go_home(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        """«🏠 Домой»: выйти из ввода и очистить всю переписку за 48 часов, кроме файлов (экспорт, бэкап); остаётся
+        одно сообщение с главным меню. Режим «Другой день» остаётся — у него своя кнопка."""
         await state.clear()
-        trail.clean()
+        trail.wipe()
+        await screens.home(bot, message.chat.id, actor, HOME_TEXT)
 
     @router.message(F.text.func(soon_label))
     async def home_button(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:

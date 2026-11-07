@@ -85,12 +85,17 @@ class SettingsInput(StatesGroup):
     home = State()
 
 
+# «🗑 Удалить аккаунт» спрятана по просьбе владельца (1.0.2): удаляет пользователя администратор («🛠 Админ»).
+# Сам сценарий удаления работает — True возвращает кнопку.
+DELETE_BUTTON = False
+
+
 def settings_keyboard(actor: Actor, extra: list[InlineKeyboardButton] | None = None) -> Any:
     return keyboard([
         *([b] for b in extra or []),
-        [button(actor, 0, "👤 Профиль", "settings", "profile"), button(actor, 0, "🎯 Цели КБЖУ", "settings", "goals")],
+        [button(actor, 0, "👤 Профиль", "settings", "profile")],  # цели КБЖУ — в «✅ Привычки» → «🍽 Еда» (1.0.2)
         [button(actor, 0, "🏠 Главный экран", "settings", "home")],
-        [button(actor, 0, "🗑 Удалить аккаунт", "settings", "delete")],
+        *([[button(actor, 0, "🗑 Удалить аккаунт", "settings", "delete")]] if DELETE_BUTTON else []),
     ])
 
 
@@ -204,16 +209,14 @@ def build_settings_router(flow: SettingsFlow) -> Router:
             if key in chosen and chosen.index(key) > 0:
                 row.append(button(actor, token, "⬆", "hm_u", key))
             rows.append(row)
-        rows.append([button(actor, token, "↩ По умолчанию", "hm_r"), button(actor, token, "✅ Готово", "hm_s")])
+        rows.append([button(actor, token, "✅ Готово", "hm_s")])
         return keyboard(rows)
 
-    @router.callback_query(StateFilter(SettingsInput.home), UCb.filter(F.a.in_({"hm_t", "hm_u", "hm_r"})))
+    @router.callback_query(StateFilter(SettingsInput.home), UCb.filter(F.a.in_({"hm_t", "hm_u"})))
     async def edit_home(query: CallbackQuery, callback_data: UCb, actor: Actor, state: FSMContext) -> None:
         chosen = list((await state.get_data()).get("layout", []))
         key, toast = callback_data.value, None
-        if callback_data.a == "hm_r":
-            chosen = flow.screens.menu.defaults(actor)
-        elif callback_data.a == "hm_u" and key in chosen and chosen.index(key) > 0:
+        if callback_data.a == "hm_u" and key in chosen and chosen.index(key) > 0:
             i = chosen.index(key)
             chosen[i - 1], chosen[i] = chosen[i], chosen[i - 1]
         elif callback_data.a == "hm_t" and key in chosen:
@@ -236,6 +239,12 @@ def build_settings_router(flow: SettingsFlow) -> Router:
         await state.clear()
         trail.result()
         await flow.screens.home(bot, query.from_user.id, actor, HOME_SAVED)
+
+    @router.callback_query(MenuCb.filter(F.k == "kbju_goals"))
+    async def open_goals(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
+        """«🎯 Цели КБЖУ» — из настроек еды в «✅ Привычки» → «⚙️ Настроить» → «🍽 Еда» (правки 1.0.2)."""
+        await flow.screens.close_buttons(query)
+        await flow.show_goals(bot, query.from_user.id, actor)
 
     @router.callback_query(MenuCb.filter(F.k == "settings"))
     async def open_settings(query: CallbackQuery, bot: Bot, actor: Actor) -> None:

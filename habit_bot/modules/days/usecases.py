@@ -37,6 +37,21 @@ class DayCardData:
     lines: tuple[str, ...] = field(default_factory=tuple)
 
 
+@dataclass(frozen=True, slots=True)
+class DayEntry:
+    """Запись дня для «📋 Записи» (правки 1.0.2): кнопка списка и текст экрана записи."""
+
+    kind: str
+    public_id: str
+    label: str
+    detail: str
+
+
+ENTRY_ORDER = ("food", "warmup", "workout", "run", "habits")
+DayListing = Callable[[Actor, date], Awaitable[list[DayEntry]]]
+EntryRemover = Callable[[Actor, str], Awaitable[bool]]
+
+
 class EntryMover(Protocol):
     """Перенос записи раздела на другой день (еда, зарядка, привычки — части 5–8)."""
 
@@ -59,6 +74,7 @@ class Days:
         self._tz = tz
         self._sections: list[CardSection] = []
         self._movers: dict[str, EntryMover] = {}
+        self._listings: dict[str, tuple[DayListing, EntryRemover]] = {}
 
     def now(self) -> datetime:
         return self._clock.now()
@@ -77,6 +93,23 @@ class Days:
 
     def add_mover(self, kind: str, mover: EntryMover) -> None:
         self._movers[kind] = mover
+
+    def add_entries(self, kind: str, listing: DayListing, remove: EntryRemover) -> None:
+        """Раздел показывает свои записи дня в «📋 Записи» и умеет удалить запись (правки 1.0.2)."""
+        self._listings[kind] = (listing, remove)
+
+    # --- «📋 Записи»: все записи дня, удаление в том числе за прошлые дни ---
+    async def entries(self, actor: Actor, day: date) -> list[DayEntry]:
+        found: list[DayEntry] = []
+        order = {k: i for i, k in enumerate(ENTRY_ORDER)}
+        for kind in sorted(self._listings, key=lambda k: order.get(k, len(order))):
+            found.extend(await self._listings[kind][0](actor, day))
+        return found
+
+    async def remove_entry(self, actor: Actor, kind: str, public_id: str) -> bool:
+        """Удалить свою запись; чужая, уже удалённая или неизвестная — ``False``."""
+        source = self._listings.get(kind)
+        return source is not None and await source[1](actor, public_id)
 
     # --- выходной ---
     async def toggle_day_off(self, actor: Actor, day: date) -> bool:

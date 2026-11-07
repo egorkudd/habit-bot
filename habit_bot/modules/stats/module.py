@@ -29,3 +29,7 @@ class StatsModule(Module):
             channel.add_router(nav, first=True)
             channel.add_router(router)
             channel.menu.mark_ready("stats")
+            from habit_bot.channels.telegram.ui.menu import MenuEntry, Place
+            from habit_bot.modules.stats.telegram.handlers import SETTINGS_KEY
+
+            channel.menu.add(MenuEntry(SETTINGS_KEY, "📊 Итоги: КБЖУ", 60, Place.SETTINGS, ready=True))

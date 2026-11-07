@@ -14,6 +14,7 @@ from PIL import Image
 from habit_bot.modules.food.domain.nutrition import Nutrients
 from habit_bot.modules.food.domain.other_line import OtherLine
 from habit_bot.modules.stats.domain.periods import Kind
+from habit_bot.modules.stats.telegram import handlers as stats_ui
 from habit_bot.modules.workouts.domain.training import Kind as WorkoutKind
 from habit_bot.modules.workouts.domain.training import SetValue
 from habit_bot.platform.stats.domain.traffic import Color
@@ -33,7 +34,9 @@ MEALS_22 = [
 
 
 @pytest.fixture
-async def stats_world(settings: Any, fake_session: Any, clock: Any, geocoder: Any) -> AsyncIterator[World]:
+async def stats_world(settings: Any, fake_session: Any, clock: Any, geocoder: Any,
+                      monkeypatch: Any) -> AsyncIterator[World]:
+    monkeypatch.setattr(stats_ui, "TEXT_BUTTON", True)  # кнопка «📝 Текстом» спрятана с 1.0.2, вид работает
     clock.current = datetime(2026, 10, 15, 9, 0, tzinfo=UTC)  # регистрация до примера 22.10
     w = await World(settings, fake_session, clock, geocoder, llm=FakeLlm()).start()
     yield w
@@ -77,7 +80,8 @@ async def test_s104_food_day_picture_and_text(stats_world: World, me: Persona) -
     assert me.labels()[:2] == ["▸ 🍽 Еда", "🤸 Зарядка"]  # без точки «есть записи»
     assert "◀ 21.10" in me.labels() and "23.10 ▶" not in me.labels()  # будущее не листается
     picture = me.session.photos(ADMIN_ID)[-1]
-    assert png_size(picture)[0] == 760
+    width, height = png_size(picture)
+    assert width == 520 and 0.5 <= width / height <= 1.8  # телефон показывает целиком, без обрезки (1.0.2)
     assert has_color(picture, (33, 37, 41)) and has_color(picture, (160, 166, 173))  # выполнено и частично
     data = await stats_world.service("stats").day(await actor_of(stats_world), "food", OCT22)
     assert [(b.label, b.color) for b in data.bars] == [
@@ -196,10 +200,11 @@ async def test_s108_month_quarter_and_rules(stats_world: World, me: Persona) -> 
     stats_world.set_time(datetime(2026, 10, 21, 12, 0, tzinfo=UTC))
     await me.tap("📊 Итоги")
     assert await me.tap("Месяц") == "📊 Месяц · октябрь 2026"
-    assert png_size(me.session.photos(ADMIN_ID)[-1])[0] < 1300
+    width, height = png_size(me.session.photos(ADMIN_ID)[-1])
+    assert width < 1300 and width / height <= 1.8  # 3 месяца — частями друг под другом, а не полосой
     assert await me.tap("3 месяца") == "📊 3 месяца · август–октябрь 2026"
     text = await me.tap("📝 Текстом")
-    assert "👁 Глаза" in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
+    assert "\nГлаза " in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
     month = await stats_world.service("stats").overview(actor, Kind.MONTH)
     rows = {r.label: r.cells for r in month.rows}
     # до анкеты — бледная; 3/3 — чёрная, 1/3 — серая, 0/3 — белая
@@ -321,7 +326,7 @@ async def test_s128_day_off_and_today_progress(stats_world: World, me: Persona) 
     await me.tap("📊 Итоги")
     assert not any("•" in label for label in me.labels())
     await me.tap("Неделя")
-    assert "👁 Глаза  ●в◐      100% · серия 1" in await me.tap("📝 Текстом")
+    assert "Глаза  ●в◐      100% · серия 1" in await me.tap("📝 Текстом")
     await me.tap("📊 День")
     assert "· 20.10 (вт) · выходной\n" in await me.tap("◀ 20.10")
 
@@ -345,3 +350,67 @@ async def test_s129_schedule_and_day_off_in_workouts(stats_world: World, me: Per
     await stats_world.service("days").toggle_day_off(actor, date(2026, 10, 20))
     rows = {r.label: r for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows}
     assert rows["👁 Глаза"].cells[1] is Color.SKIP and rows["👁 Глаза"].cells[3] is Color.SKIP
+
+
+async def test_s133_text_button_hidden(stats_world: World, me: Persona, monkeypatch: Any) -> None:
+    """S-133. Правки 1.0.2: кнопки «📝 Текстом» нет ни у картинки дня, ни у обзора; старая кнопка «Текстом» ещё
+    работает и предлагает «🖼 Картинкой», после чего кнопки снова нет."""
+    monkeypatch.setattr(stats_ui, "TEXT_BUTTON", False)
+    await eat_22(stats_world)
+    stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
+    await me.tap("📊 Итоги")
+    assert "📝 Текстом" not in me.labels() and me.labels()[-1] == "3 месяца"
+    await me.tap("Неделя")
+    assert me.labels()[-1] == "📊 День" and "📝 Текстом" not in me.labels()
+    actor = await actor_of(stats_world)
+    old = stats_ui.StCb(o=actor.user_id, t=0, a="per", v="w0", m="t").pack()
+    await me.press_data(old, message_id=me.message_id_of(me._mine()[-1]) or 500)
+    assert "🖼 Картинкой" in me.labels()
+    await me.tap("🖼 Картинкой")
+    assert "📝 Текстом" not in me.labels()
+
+
+async def test_s138_yesterday_before_onboarding_is_visible(stats_world: World, me: Persona) -> None:
+    """S-138. Правки 1.0.2: анкета пройдена сегодня (15.10), еда записана «📅 Другой день» → «Вчера» — в «Неделе» и
+    «Месяце» вчерашние «Калории» и «Белки» серые (часть цели), а не бледные «до анкеты»; день без записей до анкеты
+    остаётся бледным."""
+    await me.tap("☰ Ещё")
+    await me.tap("📅 Другой день")
+    await me.tap("Вчера (14.10)")
+    await stats_world.service("food").log_other(
+        await actor_of(stats_world), OtherLine("Каша", Nutrients.of(400, 15, 10, 60), None), day=date(2026, 10, 14))
+    stats = stats_world.service("stats")
+    for kind in (Kind.WEEK, Kind.MONTH):
+        data = await stats.overview(await actor_of(stats_world), kind)
+        rows = {r.label: r for r in data.rows}
+        i = data.days.index(date(2026, 10, 14))
+        assert rows["Калории"].cells[i] is Color.PARTIAL and rows["Белки"].cells[i] is Color.PARTIAL
+        assert rows["Калории"].cells[i - 1] is Color.SKIP
+    await me.tap("📊 Итоги")
+    await me.tap("Неделя")
+    width, height = png_size(me.session.photos(ADMIN_ID)[-1])
+    assert width / height <= 1.8
+
+
+async def test_s142_choose_kbju_rows(stats_world: World, me: Persona) -> None:
+    """S-142. Правки 1.0.2: «⚙️ Настройки» → «📊 Итоги: КБЖУ» — по умолчанию калории и белки; выключить калории,
+    включить жиры — в «Неделе» строки «Белки» и «Жиры», без «Калорий»; выбор переживает перезапуск; все выключены —
+    строк еды нет."""
+    await eat_22(stats_world)
+    stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
+    await me.tap("☰ Ещё")
+    await me.tap("⚙️ Настройки")
+    assert (await me.tap("📊 Итоги: КБЖУ")).startswith("📊 Итоги: КБЖУ. Какие строки еды")
+    assert me.labels() == ["✅ Калории", "✅ Белки", "☐ Жиры", "☐ Углеводы"]
+    await me.tap("✅ Калории")
+    await me.tap("☐ Жиры")
+    assert me.labels() == ["☐ Калории", "✅ Белки", "✅ Жиры", "☐ Углеводы"]
+    await stats_world.restart()
+    actor = await actor_of(stats_world)
+    labels = [r.label for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows]
+    assert labels[:2] == ["Белки", "Жиры"] and "Калории" not in labels
+    await me.tap("✅ Белки")
+    await me.tap("✅ Жиры")
+    labels = [r.label for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows]
+    assert not {"Калории", "Белки", "Жиры", "Углеводы"} & set(labels)
+    assert await stats_world.service("stats").toggle_nutrient(actor, "x") == ""

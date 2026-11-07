@@ -109,6 +109,14 @@ class Runs:
             row.deleted_at = self._clock.now()
         return found
 
+    async def day_list(self, actor: Actor, day: date) -> list[tuple[str, datetime, RunValue]]:
+        """Забеги дня с номером и временем — для «📋 Записи»."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(select(RunEntry).where(
+                RunEntry.user_id == actor.user_id, RunEntry.day == day, RunEntry.deleted_at.is_(None))
+                .order_by(RunEntry.id))).scalars().all()
+            return [(r.public_id.hex, r.logged_at, _value(r)) for r in rows]
+
     async def day_runs(self, actor: Actor, day: date) -> list[RunValue]:
         async with self._uow() as uow:
             rows = (await uow.session.execute(select(RunEntry).where(
