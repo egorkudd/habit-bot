@@ -5,7 +5,8 @@ from decimal import Decimal
 
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
-from habit_bot.modules.habits.domain.habits import STARTER_ON_HOME, is_scheduled, progress_label
+from habit_bot.modules.days.public import DayEntry
+from habit_bot.modules.habits.domain.habits import STARTER_ON_HOME, format_value, is_scheduled, progress_label
 from habit_bot.modules.habits.usecases import Habits
 
 
@@ -22,6 +23,19 @@ class HabitsModule(Module):
         habits = Habits(uow=ctx.uow, clock=ctx.clock, idempotency=ctx.idempotency, profiles=profiles, days=days)
         ctx.services["habits"] = habits
         days.add_mover("habits", habits)
+
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            """Каждая отметка отдельно: «👁 Глаза +1 · 13:00» — удаляется по одной."""
+            found = []
+            for public_id, at, h, value in await habits.day_marks(actor, day):
+                mark = f"+{format_value(value, h.measure, h.unit)} · {at.astimezone(days.tz):%H:%M}"
+                found.append(DayEntry("habits", public_id, f"{h.label} {mark}", f"{h.emoji} {h.name}: отметка {mark}"))
+            return found
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await habits.undo(actor, public_id) is not None
+
+        days.add_entries("habits", listing, remove)
 
         async def card_section(actor: Actor, day: date) -> list[str]:
             """Строка привычек карточки дня: «👁 2/3 · 💧 6/8» — привычки по расписанию этого дня."""

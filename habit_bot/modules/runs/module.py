@@ -5,6 +5,7 @@ from typing import Any
 
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
+from habit_bot.modules.days.public import DayEntry
 from habit_bot.modules.runs.domain.runs import run_line
 from habit_bot.modules.runs.usecases import Runs
 
@@ -21,6 +22,19 @@ class RunsModule(Module):
         runs = Runs(uow=ctx.uow, clock=ctx.clock, idempotency=ctx.idempotency)
         ctx.services["runs"] = runs
         days.add_mover("run", runs)
+
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            found = []
+            for public_id, at, value in await runs.day_list(actor, day):
+                line = run_line(value)
+                found.append(DayEntry("run", public_id, f"{line.split(' · темп')[0]} · {at.astimezone(days.tz):%H:%M}",
+                                      line))
+            return found
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await runs.delete(actor, public_id) is not None
+
+        days.add_entries("run", listing, remove)
 
         async def card_section(actor: Actor, day: date) -> list[str]:
             return [run_line(r) for r in await runs.day_runs(actor, day)]

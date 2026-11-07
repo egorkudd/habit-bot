@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
@@ -24,6 +24,7 @@ from habit_bot.channels.telegram.ui.menu import is_return_label
 from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.days import (
     MONTHS,
+    WEEKDAYS,
     days_ago,
     days_word,
     month_title,
@@ -49,6 +50,22 @@ class DayCb(CallbackData, prefix="d"):
     t: int
     a: str
     v: str | None = None
+
+
+class RecCb(CallbackData, prefix="rc"):
+    """«📋 Записи»: ``a`` — list / open / del, ``k`` — раздел, ``v`` — запись, ``d`` — день ГГММДД."""
+
+    o: int
+    t: int
+    a: str
+    d: str
+    k: str = "-"
+    v: str = "-"
+
+
+RECORDS_KEY = "records"
+RECORDS_EMPTY = "Записей нет."
+RECORDS_HINT = "Нажмите запись, чтобы удалить её."
 
 
 class OtherDay(StatesGroup):
@@ -230,6 +247,64 @@ def build_days_router(days: Days, screens: Screens) -> Router:
         trail.result()
         for day in (result.new_day, result.old_day):
             await show_card(bot, query.from_user.id, actor, day, f"Итоги {format_day(day)}:")
+
+    # --- «📋 Записи»: все записи дня, удаление — в том числе за прошлые дни (правки 1.0.2) ---
+    def rbtn(actor: Actor, text: str, action: str, day: date, kind: str = "-",
+             value: str = "-") -> InlineKeyboardButton:
+        data = RecCb(o=actor.user_id, t=0, a=action, d=f"{day:%y%m%d}", k=kind, v=value)
+        return InlineKeyboardButton(text=text, callback_data=data.pack())
+
+    async def records(actor: Actor, day: date) -> tuple[str, InlineKeyboardMarkup]:
+        found = await days.entries(actor, day)
+        today = days.today()
+        title = f"{format_day(day)} ({WEEKDAYS[day.weekday()]})"
+        text = f"📋 Записи · {title}\n" + (RECORDS_HINT if found else RECORDS_EMPTY)
+        rows = [[rbtn(actor, e.label[:60], "open", day, e.kind, e.public_id)] for e in found]
+        move = [rbtn(actor, f"◀ {format_day(day - timedelta(days=1))}", "list", day - timedelta(days=1))]
+        if day < today:
+            move.append(rbtn(actor, f"{format_day(day + timedelta(days=1))} ▶", "list", day + timedelta(days=1)))
+        rows.append(move)
+        return text, inline(rows)
+
+    def day_of(callback_data: RecCb) -> date | None:
+        try:
+            return date(2000 + int(callback_data.d[:2]), int(callback_data.d[2:4]), int(callback_data.d[4:6]))
+        except ValueError:
+            return None
+
+    @router.callback_query(MenuCb.filter(F.k == RECORDS_KEY))
+    async def open_records(query: CallbackQuery, bot: Bot, actor: Actor, record_day: date) -> None:
+        await screens.close_buttons(query)
+        text, markup = await records(actor, record_day)
+        await bot.send_message(query.from_user.id, text, reply_markup=markup)
+
+    @router.callback_query(RecCb.filter())
+    async def record_action(query: CallbackQuery, callback_data: RecCb, bot: Bot, actor: Actor) -> None:
+        day = day_of(callback_data)  # чужую кнопку отклоняет CallbackGuardMiddleware (ACCESS-FOREIGN)
+        if day is None or day > days.today():
+            await screens.refuse_button(bot, query, actor, "UI-STALE")
+            return
+        if not isinstance(query.message, Message):
+            await query.answer()
+            return
+        toast = None
+        if callback_data.a == "open":
+            entry = next((e for e in await days.entries(actor, day)
+                          if e.kind == callback_data.k and e.public_id == callback_data.v), None)
+            if entry is not None:
+                await query.answer()
+                await query.message.edit_text(
+                    f"{entry.detail}\n\n{format_day(day)}", reply_markup=inline([[
+                        rbtn(actor, "🗑 Удалить", "del", day, entry.kind, entry.public_id),
+                        rbtn(actor, "◀ Назад", "list", day)]]))
+                return
+            toast = "Этой записи уже нет"
+        elif callback_data.a == "del":
+            removed = await days.remove_entry(actor, callback_data.k, callback_data.v)
+            toast = "🗑 Удалено" if removed else "Этой записи уже нет"
+        await query.answer(toast)
+        text, markup = await records(actor, day)
+        await query.message.edit_text(text, reply_markup=markup)
 
     return router
 

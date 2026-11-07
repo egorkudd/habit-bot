@@ -5,7 +5,8 @@ from datetime import date
 from habit_bot.kernel.domain.formatting import format_number
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
-from habit_bot.modules.food.domain.nutrition import Nutrients
+from habit_bot.modules.days.public import DayEntry
+from habit_bot.modules.food.domain.nutrition import Nutrients, quantity_label
 from habit_bot.modules.food.usecases import Food
 
 
@@ -27,6 +28,22 @@ class FoodModule(Module):
         food = Food(uow=ctx.uow, clock=ctx.clock, idempotency=ctx.idempotency, profiles=profiles)
         ctx.services["food"] = food
         days.add_mover("food", food)
+
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            found = []
+            for e in await food.entries(actor, day):
+                amount = quantity_label(e.unit, e.quantity, e.portion_label)
+                n = e.nutrients
+                values = (f"{format_number(n.kcal)} ккал · Б {format_number(n.protein)} · Ж {format_number(n.fat)} · "
+                          f"У {format_number(n.carbs)}")
+                found.append(DayEntry("food", e.public_id, f"🍽 {e.name} · {format_number(n.kcal)} ккал",
+                                      f"🍽 {e.name} — {amount}: {values}"))
+            return found
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await food.delete_entry(actor, public_id) is not None
+
+        days.add_entries("food", listing, remove)
 
         async def card_section(actor: Actor, day: date) -> list[str]:
             """Факт / Остаток по цели, действовавшей в эту дату, и расход в рублях (раздел 3.1, 4.2)."""

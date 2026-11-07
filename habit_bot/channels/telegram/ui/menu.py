@@ -46,6 +46,7 @@ DEFAULT_ENTRIES: tuple[MenuEntry, ...] = (
     MenuEntry("stats", "📊 Итоги", 50, part=10),
     MenuEntry(MORE_KEY, "☰ Ещё", 1000, ready=True),
     MenuEntry("other_day", "📅 Другой день", 10, Place.MORE, part=4),
+    MenuEntry("records", "📋 Записи", 15, Place.MORE, part=4),
     MenuEntry("text", "✍️ Текстом", 20, Place.MORE, part=9),
     MenuEntry("day_off", "🛌 Выходной", 30, Place.MORE, part=4),
     MenuEntry("settings", "⚙️ Настройки", 40, Place.MORE, part=3),

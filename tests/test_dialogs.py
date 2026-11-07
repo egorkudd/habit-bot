@@ -91,12 +91,12 @@ async def test_menu_buttons_answer_soon(app: Any, fake_session: Any) -> None:
 
 
 async def test_more_menu(app: Any, fake_session: Any) -> None:
-    """«Ещё»: Другой день, Текстом, Выходной, Настройки и у администратора — Админ; «Текстом» без ключа модели —
+    """«Ещё»: Другой день, Записи, Текстом, Выходной, Настройки и у администратора — Админ; «Текстом» без ключа модели —
     «пока не подключён»."""
     chat = await _chat(app, fake_session)
     assert await chat.say("☰ Ещё") == MORE_TITLE
     assert _labels(fake_session.last(ADMIN_ID).reply_markup) == [
-        ["📅 Другой день", "✍️ Текстом"], ["🛌 Выходной", "⚙️ Настройки"], ["🛠 Админ"],
+        ["📅 Другой день", "📋 Записи"], ["✍️ Текстом", "🛌 Выходной"], ["⚙️ Настройки", "🛠 Админ"],
     ]
     user_id = await chat.user_id()
     await chat.press(MenuCb(o=user_id, t=0, k="text").pack())

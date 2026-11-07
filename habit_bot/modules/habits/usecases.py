@@ -410,6 +410,16 @@ class Habits:
             )).all()
             return [(e.day, e.logged_at, habit_view(h), Decimal(str(e.value))) for e, h in rows]
 
+    async def day_marks(self, actor: Actor, day: date) -> list[tuple[str, datetime, HabitView, Decimal]]:
+        """Отметки всех привычек за день с номером записи — для «📋 Записи» (удаление по одной)."""
+        async with self._uow() as uow:
+            rows = (await uow.session.execute(
+                select(HabitEntry, Habit).join(Habit, Habit.id == HabitEntry.habit_id)
+                .where(HabitEntry.user_id == actor.user_id, HabitEntry.deleted_at.is_(None), HabitEntry.day == day)
+                .order_by(HabitEntry.logged_at, HabitEntry.id)
+            )).all()
+            return [(e.public_id.hex, e.logged_at, habit_view(h), Decimal(str(e.value))) for e, h in rows]
+
     async def day_entries(self, actor: Actor, public_id: str, day: date) -> list[tuple[datetime, Decimal]]:
         """Отметки привычки за день со временем — для картинки «Итоги»."""
         async with self._uow() as uow:

@@ -15,7 +15,8 @@ async def test_s13_walks_through_menu(world: World, owner: Persona) -> None:
     стикер — подсказка с меню."""
     assert await owner.tap("📊 Итоги") == "📊 Еда · 03.11 (вт)"
     await owner.tap("☰ Ещё")
-    assert all(owner.sees(b) for b in ("📅 Другой день", "✍️ Текстом", "🛌 Выходной", "⚙️ Настройки", "🛠 Админ"))
+    assert all(owner.sees(b) for b in ("📅 Другой день", "📋 Записи", "✍️ Текстом", "🛌 Выходной", "⚙️ Настройки",
+                                       "🛠 Админ"))
     assert await owner.tap("✍️ Текстом") == "Разбор текстом пока не подключён. Кнопки работают как обычно"
     assert await owner.say("как дела?") == "Не понял. Выберите раздел в меню 👇"
     assert await owner.sticker() == "Не понял. Выберите раздел в меню 👇"

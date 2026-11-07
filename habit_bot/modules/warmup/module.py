@@ -4,6 +4,7 @@ from datetime import date
 
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
+from habit_bot.modules.days.public import DayEntry
 from habit_bot.modules.warmup.usecases import Warmup
 
 
@@ -20,6 +21,15 @@ class WarmupModule(Module):
                         profiles=ctx.services["users.profiles"])
         ctx.services["warmup"] = warmup
         days.add_mover("warmup", warmup)
+
+        async def listing(actor: Actor, day: date) -> list[DayEntry]:
+            return [DayEntry("warmup", s.public_id, f"🤸 Зарядка №{s.number}", f"🤸 Зарядка №{s.number}: {s.summary()}")
+                    for s in await warmup.sessions(actor, day)]
+
+        async def remove(actor: Actor, public_id: str) -> bool:
+            return await warmup.delete_session(actor, public_id) is not None
+
+        days.add_entries("warmup", listing, remove)
 
         async def card_section(actor: Actor, day: date) -> list[str]:
             sessions = await warmup.sessions(actor, day)
