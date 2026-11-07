@@ -17,8 +17,9 @@ from habit_bot.kernel.db import UowFactory
 from habit_bot.kernel.domain.formatting import format_day, format_duration, format_number
 from habit_bot.kernel.domain.parsing import logical_day
 from habit_bot.kernel.identity import Actor
+from habit_bot.modules.habits.domain.habits import Period as HabitPeriod
 from habit_bot.modules.habits.domain.habits import format_value as habit_value
-from habit_bot.modules.habits.domain.habits import is_scheduled
+from habit_bot.modules.habits.domain.habits import is_scheduled, period_bounds, streak_word
 from habit_bot.modules.runs.domain.runs import comparison, group_of, km, records, speed
 from habit_bot.modules.stats.domain.periods import Kind, Period, day_title, period, word
 from habit_bot.modules.stats.models import StatsSettings
@@ -260,7 +261,8 @@ class Stats:
         if item is None:
             return None
         h = item.habit
-        bars = (Bar(h.short, item.fact, h.goal, t.habit(item.fact, h.goal), h.unit),)
+        # цель за неделю или месяц — полоса за неделю или месяц («1 / 2 нед.»)
+        bars = (Bar(h.short, item.fact, h.goal, t.habit(item.fact, h.goal), (h.unit + h.per).strip()),)
         marks = await self.s.habits.day_entries(actor, public_id, day)
         lines = []
         if marks:
@@ -268,7 +270,8 @@ class Stats:
                 f"{at.astimezone(self._tz):%H:%M} +{habit_value(v, h.measure, h.unit)}" for at, v in marks))
         streak = await self.s.habits.streak_of(actor, public_id, day)
         if streak:
-            lines.append(f"Серия: {streak} {word(streak, 'день', 'дня', 'дней')}")
+            lines.append(f"Серия: {streak_word(streak, h.period)}")
+
         if not is_scheduled(h.weekdays, day):
             lines.append("Сегодня не по расписанию")
         return DayStats(f"{h.name} · {day_title(day)}", bars, (), tuple(lines), empty=not marks)
@@ -336,6 +339,9 @@ class Stats:
             for h in await self.s.habits.habits(actor):
                 if h.public_id not in facts:
                     continue
+                if h.period is not HabitPeriod.DAY:
+                    rows.append(await self._period_habit(actor, h, p, today, registered, frame))
+                    continue
                 done = facts[h.public_id]
                 cells = []
                 for d in days:
@@ -349,6 +355,31 @@ class Stats:
         if weight is not None and any(c in (Color.DONE, Color.PARTIAL) for c in weight):
             rows.append(row("Вес", weight))
         return Overview(p.title, days, tuple(rows), today=today)
+
+    async def _period_habit(self, actor: Actor, h: Any, p: Period, today: date, registered: date,
+                            frame: Any) -> TrafficRow:
+        """Привычка «N раз в неделю / месяц» (правки 1.0.2) — как тренировки: день с отметкой чёрный, если цель
+        периода выполнена, иначе серый; день без отметки — белый; % и серия — по неделям или месяцам."""
+        first, last = period_bounds(p.start, h.period)[0], period_bounds(p.end, h.period)[1]
+        marks = (await self.s.habits.facts_between(actor, first, last)).get(h.public_id, {})
+        totals: dict[date, Decimal] = {}
+        for d, v in marks.items():
+            start = period_bounds(d, h.period)[0]
+            totals[start] = totals.get(start, Decimal(0)) + v
+        cells = []
+        for d in p.days:
+            done = t.habit(totals.get(period_bounds(d, h.period)[0], Decimal(0)), h.goal) is Color.DONE
+            fixed = frame(d, d in marks)
+            cells.append(fixed or ((Color.DONE if done else Color.PARTIAL) if d in marks else Color.NONE))
+        finished = []
+        start = first
+        while start <= last and start <= today:
+            end = period_bounds(start, h.period)[1]
+            color = t.habit(totals.get(start, Decimal(0)), h.goal)
+            if (end < today and end >= registered) or color is Color.DONE:
+                finished.append(Color.DONE if color is Color.DONE else Color.NONE)
+            start = end + timedelta(days=1)
+        return TrafficRow(h.label, tuple(cells), t.green_share(finished), t.current_streak(finished))
 
     async def _weekly_workouts(self, actor: Actor, p: Period, today: date, registered: date) -> TrafficRow | None:
         """Тренировки и бег против цели «в неделю» (раздел 4.10). День с тренировкой: чёрный, если цель недели

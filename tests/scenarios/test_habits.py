@@ -12,6 +12,7 @@ from habit_bot.modules.habits.domain.habits import Measure
 from habit_bot.modules.habits.models import HabitEntry
 from habit_bot.modules.habits.telegram.handlers import HCb, home_key
 from habit_bot.modules.stats.domain.periods import Kind
+from habit_bot.platform.stats.domain.traffic import Color
 from tests.conftest import ADMIN_ID, OTHER_ID
 from tests.fakes import message_update
 from tests.scenarios.conftest import finish_guest_onboarding, invite_guest, pass_onboarding
@@ -306,7 +307,7 @@ async def test_s74_edit_goal_days_and_stale(world: World, owner: Persona) -> Non
     await owner.tap("⚙️ Настройки")
     await owner.tap("✅ Свои привычки")
     await owner.tap("👁 Глаза")
-    await owner.tap("📅 Дни")
+    await owner.tap("📅 Расписание")
     for day in ("✅ Вт", "✅ Чт", "✅ Пт", "✅ Сб", "✅ Вс"):
         await owner.tap(day)
     assert (await owner.tap("💾 Сохранить")).endswith("Пн, Ср")
@@ -355,7 +356,7 @@ async def test_s75_settings_all_fields(world: World, owner: Persona) -> None:
     await owner.tap("✏️ Название")
     assert (await owner.say("🥤 Вода с лимоном")).startswith("Сохранено ✅\n🥤 Вода с лимоном")
     await _habit_menu(owner, "🥤 Вода с лимоном")
-    await owner.tap("📅 Дни")
+    await owner.tap("📅 Расписание")
     await owner.tap("Каждый день")
     assert (await owner.tap("💾 Сохранить")).endswith("каждый день")
     await _habit_menu(owner, "🥤 Вода с лимоном")
@@ -484,3 +485,61 @@ async def test_s125_builtin_habits_to_archive(world: World, owner: Persona) -> N
     for action in ("b_open", "b_archive"):  # кнопка встроенной привычки, которой больше нет (модуль выключили)
         await owner.press_data(HCb(o=owner_id, t=0, a=action, v="gone").pack())
         assert owner.last() == "Это меню устарело. Вот главное меню 👇"
+
+
+async def _schedule(owner: Persona, label: str) -> str:
+    await owner.tap("☰ Ещё")
+    await owner.tap("⚙️ Настройки")
+    await owner.tap("✅ Свои привычки")
+    await owner.tap(label)
+    return await owner.tap("📅 Расписание")
+
+
+async def test_s143_habit_n_times_a_week(world: World, owner: Persona) -> None:
+    """S-143. Правки 1.0.2: «📅 Расписание» → «🔁 N раз в неделю» → «2»: в «✅ Привычки» — «1/2 нед.» после первой
+    отметки (в любой день), вторая отметка в четверг выполняет цель недели (серия — 1 неделя); в новой неделе снова
+    0/2, а прошлая выполненная неделя держит серию; в «Неделе» «Итогов» дни с отметкой чёрные, без отметки — белые;
+    отметка в «📋 Записи» видна; «Каждый день» возвращает цель в день."""
+    await _habit(world, "vitamins")
+    assert "Или цель на неделю / месяц" in await _schedule(owner, "💊 Витамины")
+    assert (await owner.tap("🔁 N раз в неделю")).startswith("💊 Витамины: сколько раз за неделю?")
+    assert (await owner.tap("2")).startswith("Сохранено ✅\n💊 Витамины — отметка, цель 2 в неделю, шаг 1, в любые дни")
+    await owner.tap("✅ Привычки")
+    await owner.tap("💊 Витамины 0/2 нед.")
+    assert "💊 Витамины 1/2 нед." in owner.labels()  # отметка списком — тот же список обновляется
+    world.clock.advance(days=2)  # чт 05.11
+    await owner.tap("✅ Привычки")
+    await owner.tap("💊 Витамины 1/2 нед.")
+    assert "✅ 💊 Витамины 2/2 нед." in owner.labels()
+    actor = await _actor(world)
+    vitamins = (await world.service("habits").habits(actor))[0]
+    result = await world.service("habits").mark(actor, vitamins.public_id, day=date(2026, 11, 5))
+    assert (result.fact, result.done, result.streak) == (3, True, 1)
+    await world.service("habits").undo(actor, result.entry_id)
+    week = {r.label: r for r in (await world.service("stats").overview(actor, Kind.WEEK)).rows}["💊 Витамины"]
+    assert week.cells[1:4] == (Color.DONE, Color.NONE, Color.DONE)  # вт, ср, чт
+    world.clock.advance(days=5)  # вт 10.11 — новая неделя
+    await owner.tap("✅ Привычки")
+    assert "💊 Витамины 0/2 нед." in owner.labels()
+    assert await world.service("habits").streak_of(actor, vitamins.public_id, date(2026, 11, 10)) == 1
+    await _schedule(owner, "💊 Витамины")
+    assert (await owner.tap("Каждый день")) and (await owner.tap("💾 Сохранить")).startswith(
+        "Сохранено ✅\n💊 Витамины — отметка, цель 2 в день")
+
+
+async def test_s144_habit_amount_per_month(world: World, owner: Persona) -> None:
+    """S-144. «📖 Чтение» → «🗓 N раз в месяц» → ошибка «abc» — подсказка, ввод остаётся → «300»: цель 300 мин в
+    месяц; отметка 20 мин — «20/300 мин мес.»; картинка дня «Итогов» — полоса за месяц."""
+    await _habit(world, "reading")
+    await _schedule(owner, "📖 Чтение")
+    assert (await owner.tap("🗓 N раз в месяц")).startswith("📖 Чтение: сколько за месяц (мин)?")
+    assert (await owner.say("abc")).startswith("Не понял число")
+    assert "цель 300 мин в месяц, шаг 10 мин, в любые дни" in await owner.say("300")
+    actor = await _actor(world)
+    reading = (await world.service("habits").habits(actor))[0]
+    await world.service("habits").mark(actor, reading.public_id, day=date(2026, 11, 1), value=Decimal(20))
+    await world.service("habits").mark(actor, reading.public_id, day=date(2026, 11, 3), value=Decimal(20))
+    await owner.tap("✅ Привычки")
+    assert "📖 Чтение 40/300 мин мес." in owner.labels()
+    day = await world.service("stats").day(actor, "h" + reading.public_id, date(2026, 11, 3))
+    assert day.bars[0].fact == 40 and day.bars[0].unit == "мин мес."

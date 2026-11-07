@@ -32,6 +32,8 @@ class Habit(PublicIdMixin, TimestampMixin, VersionedMixin, Base):
     step: Mapped[float | None] = mapped_column(Float, nullable=True)
     quick_values: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
     weekdays: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
+    # Цель за день / неделю / месяц (правки 1.0.2): «Бассейн 2 раза в неделю»; для недели и месяца дни не задаются.
+    period: Mapped[str] = mapped_column(String(8), nullable=False, default="day", server_default="day")
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="active")  # active / archived
 

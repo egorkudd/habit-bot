@@ -44,7 +44,8 @@ HABITS = TableSpec("habits", "habits.csv", "Привычки", "одна зап�
     C("date", "день", "YYYY-MM-DD"), C("time", "время отметки", "HH:MM"), C("habit", "привычка"),
     C("type", "check — отметка, amount — количество, duration — длительность"),
     C("value", "значение отметки (для длительности — минуты)"), C("unit", "единица привычки"),
-    C("daily_goal", "цель в день"),
+    C("daily_goal", "цель (за срок из goal_period)"),
+    C("goal_period", "срок цели: day — в день, week — в неделю, month — в месяц"),
 ))
 BODY = TableSpec("weight", "body_weight.csv", "Вес тела", "одно взвешивание", (
     C("date", "день", "YYYY-MM-DD"), C("weight_kg", "вес", "кг"),
