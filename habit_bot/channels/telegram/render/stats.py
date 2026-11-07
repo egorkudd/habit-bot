@@ -288,11 +288,11 @@ def text_bar(bar: Bar) -> str:
     track = ("█" * whole + part.strip()).ljust(BAR_CHARS, "░")
     goal = f" / {_amount(bar.goal)}" if bar.goal else ""
     shown = f"{share}%" if share is not None else "—"
-    return f"{bar.label:<6} {track} {shown:>4}  {_amount(bar.fact)}{goal}  {ICON[bar.color]}"
+    return f"{plain(bar.label):<6} {track} {shown:>4}  {_amount(bar.fact)}{goal}  {ICON[bar.color]}"
 
 
 def text_table(table: Table) -> list[str]:
-    rows = [table.headers, *table.rows]
+    rows = [tuple(plain(c) for c in r) for r in (table.headers, *table.rows)]
     widths = [max(len(r[i]) for r in rows) for i in range(len(table.headers))]
     out = []
     for row in rows:
@@ -322,16 +322,20 @@ def overview_text(data: Overview) -> str:
     lines = [data.title]
     if not data.rows:
         return "\n".join([*lines, "За этот период записей нет"])
-    width = max(len(r.label) for r in data.rows)
+    # Эмодзи в моноширинном блоке шире буквы и на разных телефонах по-разному — столбцы съезжают; поэтому подписи
+    # без эмодзи, как и на картинке (правки 1.0.2).
+    labels = {id(r): plain(r.label) for r in data.rows}
+    width = max(len(label) for label in labels.values())
     for row in data.rows:
+        label = labels[id(row)]
         share = f"{row.green}%" if row.green is not None else "—"
         summary = f"{share} · серия {row.streak}"
         if len(data.days) > 31:
-            lines.append(f"{row.label:<{width}}  {summary}")
+            lines.append(f"{label:<{width}}  {summary}")
             continue
         weeks = list(_weeks(row.cells))
-        lines.append(f"{row.label:<{width}}  {weeks[0]}  {summary}" if len(weeks) == 1
-                     else f"{row.label}  {summary}")
+        lines.append(f"{label:<{width}}  {weeks[0]}  {summary}" if len(weeks) == 1
+                     else f"{label}  {summary}")
         if len(weeks) > 1:
             lines += [f"  {w}" for w in weeks]
     lines += ["", LEGEND]

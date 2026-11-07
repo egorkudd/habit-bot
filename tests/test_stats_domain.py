@@ -117,3 +117,21 @@ def test_overview_layout_close_to_phone_ratio(count: int, rows: int) -> None:
     assert 12 <= cell <= 40
     if (count, rows) != (7, 1):
         assert 0.5 <= width / height <= 1.8, (width, height)
+
+
+def test_overview_text_columns_align_with_emoji_labels() -> None:
+    """Правки 1.0.2: в «Текстом» подписи без эмодзи — клетки и «% · серия» начинаются в одном столбце у всех строк
+    (эмодзи в моноширинном блоке шире буквы, и столбцы съезжали)."""
+    from datetime import date, timedelta
+
+    from habit_bot.channels.telegram.render.stats import overview_text
+    from habit_bot.platform.stats.data import Overview, TrafficRow
+    from habit_bot.platform.stats.domain.traffic import Color
+
+    days = tuple(date(2026, 11, 2) + timedelta(i) for i in range(7))
+    cells = (Color.NONE,) * 7
+    data = Overview("Неделя", days, (TrafficRow("Калории", cells, 0, 0), TrafficRow("👁 Глаза", cells, 0, 0),
+                                     TrafficRow("📖 Чтение", cells, None, 0)))
+    lines = overview_text(data).splitlines()[1:4]
+    assert [line.index("○") for line in lines] == [lines[0].index("○")] * 3
+    assert lines[1].startswith("Глаза ") and "👁" not in lines[1]

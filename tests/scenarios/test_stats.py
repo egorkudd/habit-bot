@@ -204,7 +204,7 @@ async def test_s108_month_quarter_and_rules(stats_world: World, me: Persona) -> 
     assert width < 1300 and width / height <= 1.8  # 3 месяца — частями друг под другом, а не полосой
     assert await me.tap("3 месяца") == "📊 3 месяца · август–октябрь 2026"
     text = await me.tap("📝 Текстом")
-    assert "👁 Глаза" in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
+    assert "\nГлаза " in text and "% · серия" in text and "●" not in text.split("\n", 2)[1]
     month = await stats_world.service("stats").overview(actor, Kind.MONTH)
     rows = {r.label: r.cells for r in month.rows}
     # до анкеты — бледная; 3/3 — чёрная, 1/3 — серая, 0/3 — белая
@@ -326,7 +326,7 @@ async def test_s128_day_off_and_today_progress(stats_world: World, me: Persona) 
     await me.tap("📊 Итоги")
     assert not any("•" in label for label in me.labels())
     await me.tap("Неделя")
-    assert "👁 Глаза  ●в◐      100% · серия 1" in await me.tap("📝 Текстом")
+    assert "Глаза  ●в◐      100% · серия 1" in await me.tap("📝 Текстом")
     await me.tap("📊 День")
     assert "· 20.10 (вт) · выходной\n" in await me.tap("◀ 20.10")
 
