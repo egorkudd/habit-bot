@@ -105,3 +105,15 @@ async def test_s141_records_foreign_button(world: World, owner: Persona) -> None
     await guest.press_data(delete)
     assert guest.last() == FOREIGN
     assert [e.name for e in await world.service("food").entries(await _actor(world), TODAY)] == ["Каша"]
+
+
+async def test_s146_records_broken_and_future_buttons(world: World, owner: Persona) -> None:
+    """S-146. Кнопка «📋 Записи» с испорченной или будущей датой — «меню устарело», ничего не удаляется."""
+    from habit_bot.modules.days.telegram.handlers import RecCb
+
+    await _fill(world)
+    actor = await _actor(world)
+    for d in ("zzzzzz", "261231"):
+        await owner.press_data(RecCb(o=actor.user_id, t=0, a="list", d=d).pack())
+        assert owner.last() == "Это меню устарело. Вот главное меню 👇"
+    assert len(await world.service("days").entries(actor, TODAY)) == 5  # еда, зарядка, тренировка, бег, отметка

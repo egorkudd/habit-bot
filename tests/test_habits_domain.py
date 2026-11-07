@@ -111,3 +111,12 @@ def test_periods_week_month_streak_words() -> None:
     assert [streak_word(n, Period.MONTH) for n in (21, 2, 11)] == ["21 месяц", "2 месяца", "11 месяцев"]
     assert streak_word(2, Period.DAY) == "2 дня"
     assert schedule_label(None, Period.WEEK) == "в любые дни"
+
+
+def test_period_streak_limit() -> None:
+    """Серия недель не уходит дальше ~400 дней назад, даже если все недели выполнены."""
+    from datetime import date
+
+    from habit_bot.modules.habits.domain.habits import STREAK_LOOKBACK, Period, period_streak
+
+    assert period_streak(date(2026, 11, 7), Period.WEEK, lambda _: True) == STREAK_LOOKBACK // 7
