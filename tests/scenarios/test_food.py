@@ -52,23 +52,26 @@ async def test_s29_cocktail_in_two_taps(world: World, owner: Persona) -> None:
 
 
 async def test_s30_thighs_and_grams(world: World, owner: Persona) -> None:
-    """S-30. Из каталога «Куриное бедро» к себе → «2 шт»: 500 / 46 / 34 / 0; «Пельмени» числом 250 г;
-    ошибка «2,5,1» — подсказка, вопрос остаётся."""
+    """S-30. Из каталога «Банан» к себе → «2 шт»: 210 / 2,6 / 0,8 / 54; «Картофель» числом 250 г;
+    ошибка «2,5,1» — подсказка, вопрос остаётся. Каталог — новый базовый набор (правки 1.0.2)."""
     await owner.tap("🍽 Еда")
     await owner.tap("📚 Каталог")
-    assert (await owner.tap("Куриное бедро")).startswith("Куриное бедро — на 1 шт: 250 ккал · Б 23 · Ж 17 · У 0")
-    assert await owner.tap("➕ Добавить к себе") == "«Куриное бедро» добавлен в ваш список."
-    assert (await owner.tap("Записать сейчас")).startswith("Куриное бедро: сколько?")
+    assert set(owner.labels()) >= {"Банан", "Картофель", "Куриное филе", "Творог 5%", "Гречка сухая (пакет 80 г)",
+                                   "Рис сухой (пакет 80 г)"}
+    assert "Пельмени" not in owner.labels()
+    assert (await owner.tap("Банан")).startswith("Банан — на 1 шт: 105 ккал · Б 1,3 · Ж 0,4 · У 27")
+    assert await owner.tap("➕ Добавить к себе") == "«Банан» добавлен в ваш список."
+    assert (await owner.tap("Записать сейчас")).startswith("Банан: сколько?")
     card = await owner.tap("2 шт")
-    assert card.startswith("🍽 Куриное бедро — 2 шт: 500 ккал · Б 46 · Ж 34 · У 0 · без цены")
+    assert card.startswith("🍽 Банан — 2 шт: 210 ккал · Б 2,6 · Ж 0,8 · У 54 · без цены")
     assert "1 без цены" in card
     await owner.tap("🍽 Еда")
     await owner.tap("📚 Каталог")
-    await owner.tap("Пельмени")
+    await owner.tap("Картофель")
     await owner.tap("➕ Добавить к себе")
     await owner.tap("Записать сейчас")
     assert await owner.say("2,5,1") == "Не понял число „2,5,1“. Напишите, например, 4,5 или 4.5"
-    assert (await owner.say("250")).startswith("🍽 Пельмени — 250 г: 650 ккал · Б 27,5 · Ж 30 · У 70")
+    assert (await owner.say("250")).startswith("🍽 Картофель — 250 г: 192,5 ккал · Б 5 · Ж 1 · У 40,75")
 
 
 async def test_s31_other_line(world: World, owner: Persona) -> None:
@@ -213,15 +216,15 @@ async def test_s38_foreign_entry_button(world: World, owner: Persona) -> None:
 
 
 async def test_s39_restart_mid_amount(world: World, owner: Persona) -> None:
-    """S-39. Выбрал «Пельмени», бот перезапустился, через 5 минут ввёл 200 — записано 200 г."""
+    """S-39. Выбрал «Творог 5%», бот перезапустился, через 5 минут ввёл 200 — записано 200 г."""
     await owner.tap("🍽 Еда")
     await owner.tap("📚 Каталог")
-    await owner.tap("Пельмени")
+    await owner.tap("Творог 5%")
     await owner.tap("➕ Добавить к себе")
     await owner.tap("Записать сейчас")
     await world.restart()
     await world.wait(minutes=5)
-    assert (await owner.say("200")).startswith("🍽 Пельмени — 200 г: 520 ккал")
+    assert (await owner.say("200")).startswith("🍽 Творог 5% — 200 г: 242 ккал")
 
 
 async def test_s40_goal_by_date(world: World, owner: Persona) -> None:

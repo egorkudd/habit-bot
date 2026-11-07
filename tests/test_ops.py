@@ -68,7 +68,7 @@ def test_restore(migrated_env: dict[str, str]) -> None:
     assert ops.main(["restore"], env=migrated_env) == 0
     assert not (db.parent / "bot.db-wal").exists()
     con = sqlite3.connect(db)
-    assert con.execute("SELECT version_num FROM alembic_version").fetchone() == ("0013_chat_messages",)
+    assert con.execute("SELECT version_num FROM alembic_version").fetchone() == ("0014_food_catalog_v2",)
     con.close()
 
 
@@ -102,6 +102,6 @@ def test_revisions(migrated_env: dict[str, str], capsys: Any) -> None:
     """Ревизии для отката: какую ждёт код и какая в базе."""
     assert ops.main(["migration-head"], env=migrated_env) == 0
     assert ops.main(["current-revision"], env=migrated_env) == 0
-    assert capsys.readouterr().out.split() == ["0013_chat_messages", "0013_chat_messages"]
+    assert capsys.readouterr().out.split() == ["0014_food_catalog_v2", "0014_food_catalog_v2"]
     assert ops.sync_url_from_env({"DATABASE_URL": "sqlite+aiosqlite:///x.db"}) == "sqlite:///x.db"
     assert ops.data_dir_from_env({}) == Path("/data")
