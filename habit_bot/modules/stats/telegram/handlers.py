@@ -28,9 +28,12 @@ from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.domain.formatting import format_day
 from habit_bot.kernel.identity import Actor
 from habit_bot.modules.stats.domain.periods import LABELS, Kind
-from habit_bot.modules.stats.usecases import Section, Stats
+from habit_bot.modules.stats.usecases import NUTRIENTS, Section, Stats
 
 KEY = "stats"
+SETTINGS_KEY = "stats_settings"
+NUTRIENTS_TITLE = ("📊 Итоги: КБЖУ. Какие строки еды показывать в «Неделе», «Месяце» и «3 месяцах»? Нажмите, "
+                   "чтобы включить или выключить. Картинка дня еды всегда показывает все четыре.")
 NO_SECTIONS = "📊 Итоги: пока нечего показать — включите разделы в настройках."
 
 
@@ -183,6 +186,25 @@ def build_stats_router(stats: Stats, screens: Screens) -> tuple[Router, Router]:
         await show(bot, query.from_user.id, query, png=overview_png(data) if mode == PICTURE else b"",
                    text=overview_text(data), caption=f"📊 {data.title}",
                    markup=period_markup(actor, kind, shift, mode), mode=mode)
+
+    # --- «⚙️ Настройки» → «📊 Итоги: КБЖУ»: какие строки еды показывать в обзоре (правки 1.0.2) ---
+    async def nutrients_markup(actor: Actor) -> InlineKeyboardMarkup:
+        chosen = await stats.nutrients(actor)
+        buttons = [btn(actor, f"{'✅' if code in chosen else '☐'} {label}", "nut", code)
+                   for code, label, _, _ in NUTRIENTS]
+        return inline([buttons[:2], buttons[2:]])
+
+    @router.callback_query(MenuCb.filter(F.k == SETTINGS_KEY))
+    async def open_nutrients(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
+        await screens.close_buttons(query)
+        await bot.send_message(query.from_user.id, NUTRIENTS_TITLE, reply_markup=await nutrients_markup(actor))
+
+    @router.callback_query(StCb.filter(F.a == "nut"))
+    async def toggle_nutrient(query: CallbackQuery, callback_data: StCb, actor: Actor) -> None:
+        await stats.toggle_nutrient(actor, callback_data.v)
+        await query.answer("Сохранено")
+        if isinstance(query.message, Message):
+            await query.message.edit_reply_markup(reply_markup=await nutrients_markup(actor))
 
     return nav, router
 

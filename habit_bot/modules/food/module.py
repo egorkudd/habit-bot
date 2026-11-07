@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from habit_bot.kernel.domain.formatting import format_number
+from habit_bot.kernel.domain.formatting import KBJU_HEADER, format_number, kbju_row
 from habit_bot.kernel.identity import Actor
 from habit_bot.kernel.modules import Module, ModuleContext, Stage
 from habit_bot.modules.days.public import DayEntry
@@ -11,8 +11,7 @@ from habit_bot.modules.food.usecases import Food
 
 
 def _line(title: str, n: Nutrients) -> str:
-    f = format_number
-    return f"{title}: {f(n.kcal)} ккал · Б {f(n.protein)} · Ж {f(n.fat)} · У {f(n.carbs)}"
+    return kbju_row(title, n.kcal, n.protein, n.fat, n.carbs)
 
 
 class FoodModule(Module):
@@ -50,8 +49,9 @@ class FoodModule(Module):
             totals = await food.totals(actor, day)
             if not totals.count:
                 return []
-            lines = [_line("Факт", totals.fact)]
             goal = await profiles.goal_on(actor, day)
+            lines = [] if goal is not None else [KBJU_HEADER]  # с целью заголовок таблицы уже над строкой «Цель»
+            lines.append(_line("Факт", totals.fact))
             if goal is not None:
                 lines.append(_line("Остаток", Nutrients(*goal.values()) - totals.fact))
             cost = f"Расход: {format_number(totals.cost)} ₽"

@@ -41,11 +41,12 @@ async def test_s29_cocktail_in_two_taps(world: World, owner: Persona) -> None:
     assert (await owner.tap("🍽 Еда")).startswith("🍽 Еда за 03.11.")
     card = await owner.tap("Коктейль")
     assert card.startswith(COCKTAIL)
-    assert "Факт: 322 ккал · Б 26 · Ж 9 · У 39" in card
-    assert "Остаток: 2 478 ккал · Б 134 · Ж 71 · У 321" in card
+    # правки 1.0.2: цель / факт / остаток — табличкой
+    assert ("          Ккал    Б    Ж    У\nЦель      2800  160   80  360\nФакт       322   26    9   39\n"
+            "Остаток   2478  134   71  321\n") in card
     assert "Расход: 140 ₽" in card
     assert all(owner.sees(b) for b in ("×0,5", "×2", "Отменить", "📅 На вчера"))
-    assert "Факт: 644 ккал" in await owner.tap("×2")
+    assert "Факт       644" in await owner.tap("×2")
     assert (await owner.tap("Отменить")).startswith("Запись «Коктейль» удалена.")
     assert "Записей пока нет" in owner.last()
     assert await _entries(world) == []
@@ -138,7 +139,7 @@ async def test_s34_move_to_yesterday_and_to_date(world: World, owner: Persona) -
     await owner.tap("Коктейль")
     await world.wait(hours=1)
     await owner.tap("📅 На вчера")
-    assert owner.replies()[0].startswith("Итоги 02.11:") and "Факт: 322 ккал" in owner.replies()[0]
+    assert owner.replies()[0].startswith("Итоги 02.11:") and "Факт       322" in owner.replies()[0]
     assert owner.replies()[1].startswith("Итоги 03.11:") and "Записей пока нет" in owner.replies()[1]
     await owner.tap("☰ Ещё")
     await owner.tap("📅 Другой день")
@@ -234,7 +235,7 @@ async def test_s40_goal_by_date(world: World, owner: Persona) -> None:
     await profiles.add_goal(actor, Targets(2410, 140, 70, 305), start_date=date(2026, 9, 22), source="manual")
     await profiles.add_goal(actor, Targets(2800, 160, 80, 360), start_date=date(2026, 10, 9), source="manual")
     await _cocktail(world)
-    for day, left in (("01.10", "Остаток: 2 088 ккал"), ("22.10", "Остаток: 2 478 ккал")):
+    for day, left in (("01.10", "Остаток   2088"), ("22.10", "Остаток   2478")):
         await owner.tap("☰ Ещё")
         await owner.tap("📅 Другой день")
         await owner.say(day)

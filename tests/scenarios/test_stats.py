@@ -390,3 +390,27 @@ async def test_s138_yesterday_before_onboarding_is_visible(stats_world: World, m
     await me.tap("Неделя")
     width, height = png_size(me.session.photos(ADMIN_ID)[-1])
     assert width / height <= 1.8
+
+
+async def test_s142_choose_kbju_rows(stats_world: World, me: Persona) -> None:
+    """S-142. Правки 1.0.2: «⚙️ Настройки» → «📊 Итоги: КБЖУ» — по умолчанию калории и белки; выключить калории,
+    включить жиры — в «Неделе» строки «Белки» и «Жиры», без «Калорий»; выбор переживает перезапуск; все выключены —
+    строк еды нет."""
+    await eat_22(stats_world)
+    stats_world.set_time(datetime(2026, 10, 22, 20, 0, tzinfo=UTC))
+    await me.tap("☰ Ещё")
+    await me.tap("⚙️ Настройки")
+    assert (await me.tap("📊 Итоги: КБЖУ")).startswith("📊 Итоги: КБЖУ. Какие строки еды")
+    assert me.labels() == ["✅ Калории", "✅ Белки", "☐ Жиры", "☐ Углеводы"]
+    await me.tap("✅ Калории")
+    await me.tap("☐ Жиры")
+    assert me.labels() == ["☐ Калории", "✅ Белки", "✅ Жиры", "☐ Углеводы"]
+    await stats_world.restart()
+    actor = await actor_of(stats_world)
+    labels = [r.label for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows]
+    assert labels[:2] == ["Белки", "Жиры"] and "Калории" not in labels
+    await me.tap("✅ Белки")
+    await me.tap("✅ Жиры")
+    labels = [r.label for r in (await stats_world.service("stats").overview(actor, Kind.WEEK)).rows]
+    assert not {"Калории", "Белки", "Жиры", "Углеводы"} & set(labels)
+    assert await stats_world.service("stats").toggle_nutrient(actor, "x") == ""

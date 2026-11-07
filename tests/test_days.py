@@ -86,7 +86,7 @@ async def test_other_day_mode_and_return(app: Any, fake_session: Any, clock: Any
     assert (await _menu(chat, actor, "other_day")).startswith("За какой день записать?")
     text = await chat.press("Вчера (24.10)")
     assert text.startswith("Записываю за 24.10. Всё, что добавите, попадёт в этот день.\n<pre>24.10, сб")
-    assert "Цель: 2 800 ккал · Б 160 · Ж 80 · У 360" in text
+    assert "Цель      2800  160   80  360" in text
     assert chat.keyboard()[0] == ["📅 24.10 ✕ Вернуться к сегодня"]
     assert (await _menu(chat, actor, "day_off")).startswith("🛌 24.10 — выходной")
     assert "24.10, сб · 🛌 выходной" in chat.texts()[-1]
@@ -247,3 +247,14 @@ async def test_home_screen_settings(app: Any, fake_session: Any, clock: Any) -> 
         await chat.press(f"☑ Привычка {i}")
     await chat.press("✅ Готово")  # раскладка как по умолчанию — хранить нечего
     assert await app.ctx.services["users.profiles"].home_layout(actor) == ["warmup", "food", "habits", "stats"]
+
+
+def test_kbju_table_fits_phone() -> None:
+    """Правки 1.0.2: таблица КБЖУ — целые числа, минус для перебора, строка не длиннее 29 знаков."""
+    from decimal import Decimal
+
+    from habit_bot.kernel.domain.formatting import KBJU_HEADER, kbju_row
+
+    row = kbju_row("Остаток", Decimal("-1234.6"), Decimal("134.4"), 0, Decimal("0.5"))
+    assert row == "Остаток  −1235  134    0    1"
+    assert len(row) == len(KBJU_HEADER) == 29
