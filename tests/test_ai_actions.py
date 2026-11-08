@@ -36,3 +36,11 @@ def test_split_text_parts() -> None:
     assert all(0 < len(p) <= 50 for p in parts) and "".join(parts).count("в") == 60
     assert split_text("x" * 120, 50) == ["x" * 50, "x" * 50, "x" * 20]
     assert split_text("коротко", 50) == ["коротко"]
+
+
+def test_split_text_long_line_after_short_and_empty() -> None:
+    """Короткая строка, потом строка длиннее части — короткая уходит отдельной частью; пустой текст — без частей."""
+    from habit_bot.modules.ai_commands.domain.actions import split_text
+
+    assert split_text("abc\n" + "x" * 60, 50) == ["abc", "x" * 50, "x" * 10]
+    assert split_text("\n\n", 50) == []

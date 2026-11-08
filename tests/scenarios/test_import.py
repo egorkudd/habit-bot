@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from habit_bot.kernel.errors import AppError
 from tests.conftest import ADMIN_ID
 from tests.fakes import FakeLlm
 from tests.scenarios.conftest import pass_onboarding
@@ -165,3 +166,14 @@ async def test_s151_import_weight_over_existing_day(world: World, owner: Persona
     assert (await profiles.weights_between(actor, YESTERDAY, YESTERDAY)) == {YESTERDAY: Decimal("75.5")}
     await owner.tap("↩️ Отменить всё")
     assert (await profiles.weights_between(actor, YESTERDAY, YESTERDAY)) == {YESTERDAY: Decimal("76")}
+
+
+async def test_s152_import_too_long_text_and_undo_nothing(world: World, owner: Persona) -> None:
+    """S-152. Текст готовых действий больше 200 КБ (такой придёт только файлом) — «разбейте на части»; отмена
+    взвешивания, которого уже нет, ничего не ломает."""
+    actor = await _actor(world)
+    with pytest.raises(AppError) as err:
+        await world.service("ai_commands").import_actions(actor, "[" + " " * 200_001 + "]")
+    assert "разбейте на части" in err.value.user_text()
+    await world.service("users.profiles").unweigh_on(actor, date(2026, 10, 1), None)
+    assert await world.service("users.profiles").weights_between(actor, date(2026, 10, 1), date(2026, 10, 1)) == {}
