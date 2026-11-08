@@ -62,4 +62,4 @@ class AiCommandsModule(Module):
             channel.add_router(router)
             channel.add_router(free_text, last=True)
             # «✍️ Текстом» в «Ещё» убрана (правки 1.0.2): фразы можно писать в чат сразу, старая кнопка работает
-            channel.menu.add(MenuEntry(FILL_KEY, "✍️ Заполнить с помощью ИИ", 5, Place.SETTINGS, ready=True))
+            channel.menu.add(MenuEntry(FILL_KEY, "📥 Импорт", 5, Place.SETTINGS, ready=True))

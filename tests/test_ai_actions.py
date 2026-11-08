@@ -23,3 +23,16 @@ def test_bad_parts_dropped() -> None:
     asked = parse_reply(json.dumps({"actions": [], "question": {"text": "Какой творог?", "options": ["А", "Б"]}}))
     assert asked.question is not None and asked.question.options == ["А", "Б"]
     assert parse_reply("{}").actions == ()
+
+
+def test_split_text_parts() -> None:
+    """Правки 1.0.3: длинный текст заполнения — частями по строкам; строка длиннее части — по словам; пустые строки
+    не дают пустых частей; каждая часть не длиннее предела."""
+    from habit_bot.modules.ai_commands.domain.actions import split_text
+
+    text = "\n".join(["а" * 40, "б" * 40, "", "в " * 60])
+    parts = split_text(text, 50)
+    assert parts[0] == "а" * 40 and parts[1].startswith("б" * 40)
+    assert all(0 < len(p) <= 50 for p in parts) and "".join(parts).count("в") == 60
+    assert split_text("x" * 120, 50) == ["x" * 50, "x" * 50, "x" * 20]
+    assert split_text("коротко", 50) == ["коротко"]

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import html
+import io
 from collections import Counter
 from collections.abc import Awaitable, Callable
 from datetime import date
@@ -24,8 +25,9 @@ from habit_bot.channels.telegram.ui.screens import Screens
 from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.errors.catalog import user_message
 from habit_bot.kernel.identity import Actor
+from habit_bot.modules.ai_commands.domain.actions import MAX_IMPORT_BYTES
 from habit_bot.modules.ai_commands.planner import GROUPS
-from habit_bot.modules.ai_commands.usecases import FILL, TEXT, CommandView, TextCommands, summary
+from habit_bot.modules.ai_commands.usecases import FILL, IMPORT, TEXT, CommandView, TextCommands, summary
 
 TEXT_KEY = "text"
 FILL_KEY = "fill"
@@ -33,9 +35,16 @@ PAGE = 10
 TEXT_PROMPT = ("✍️ Напишите обычным текстом, что записать или исправить. Например: «вчера на обед 2 бедра, а коктейль "
                "сегодня удали», «глаза сделал 2 раза», «пробежал 5,2 км за 28:40». Ничего не запишу без "
                "подтверждения.")
-FILL_PROMPT = ("✍️ Вставьте текстом то, что у вас уже есть: рецепты с КБЖУ и ценой, цели КБЖУ с датами, набор "
-               "зарядки, свои привычки, личные цели — до 4000 символов, можно частями. Покажу, как понял, и запишу "
-               "только после подтверждения.")
+FILL_PROMPT = ("🤖 Вставьте текстом то, что у вас уже есть: рецепты с КБЖУ и ценой, цели КБЖУ с датами, набор "
+               "зарядки, свои привычки, личные цели, прошлые записи — до 4000 символов за раз, длинное — несколькими "
+               "импортами. Покажу, как понял, и запишу только после подтверждения.")
+IMPORT_TITLE = ("📥 Импорт данных. Как загрузить?\n"
+                "🤖 С ИИ — пишете как удобно, модель разбирает текст.\n"
+                "📋 Готовые действия — список действий в JSON (без модели), например подготовленный заранее.")
+IMPORT_PROMPT = ("📋 Пришлите готовые действия в JSON — сообщением (до 4096 знаков) или файлом .json / .txt "
+                 f"(до {MAX_IMPORT_BYTES // 1000} КБ). Формат — README, раздел «Импорт». Покажу, как понял, и запишу "
+                 "только после «✅ Выполнить всё».")
+GROUPED = (FILL, IMPORT)  # длинные списки: группы и страницы по 10
 FIX_PROMPT = "✏️ Напишите, что поправить, — разберу заново с учётом прошлого."
 DayCard = Callable[[Actor, date], Awaitable[str]]
 
@@ -49,7 +58,8 @@ class AiCb(CallbackData, prefix="ai"):
 
 class AiInput(StatesGroup):
     text = State()     # после «✍️ Текстом»
-    fill = State()     # «✍️ Заполнить с помощью ИИ»
+    fill = State()     # «📥 Импорт» → «🤖 С ИИ»
+    importing = State()  # «📥 Импорт» → «📋 Готовые действия»
     correct = State()  # «✏️ Исправить»
 
 
@@ -57,13 +67,13 @@ def card_text(view: CommandView, page: int = 0) -> str:
     """«Понял так: 1. ➕ 24.10 Еда: …»; в заполнении — группы и страница по 10 пунктов."""
     lines = ["Понял так:"]
     ops = list(view.ops)
-    if view.mode == FILL:  # раздел 3.12: карточка сгруппирована по видам — «Рецепты: 4 · Цели: 2»
+    if view.mode in GROUPED:  # раздел 3.12: карточка сгруппирована по видам — «Рецепты: 4 · Цели: 2»
         groups = Counter(GROUPS.get(op["group"], op["group"]) for op in ops)
         lines.append(" · ".join(f"{g}: {n}" for g, n in groups.items()))
         if len(ops) > PAGE:
             lines.append(f"Страница {page + 1} из {(len(ops) + PAGE - 1) // PAGE}")
-    start = page * PAGE if view.mode == FILL else 0
-    shown = ops[start: start + PAGE] if view.mode == FILL else ops
+    start = page * PAGE if view.mode in GROUPED else 0
+    shown = ops[start: start + PAGE] if view.mode in GROUPED else ops
     lines += [f"{i}. {op['line']}" for i, op in enumerate(shown, start + 1)]
     if view.skipped:
         lines.append("")
@@ -82,15 +92,16 @@ def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable
 
     def card_markup(actor: Actor, view: CommandView, page: int = 0) -> InlineKeyboardMarkup:
         cid = view.public_id
-        rows = [[btn(actor, "✅ Выполнить всё", "run", cid), btn(actor, "✏️ Исправить", "fix", cid)]]
+        rows = [[btn(actor, "✅ Выполнить всё", "run", cid),
+                 *([btn(actor, "✏️ Исправить", "fix", cid)] if view.mode != IMPORT else [])]]  # исправляет модель
         ops = list(view.ops)
-        start = page * PAGE if view.mode == FILL else 0
-        visible = ops[start: start + PAGE] if view.mode == FILL else ops
+        start = page * PAGE if view.mode in GROUPED else 0
+        visible = ops[start: start + PAGE] if view.mode in GROUPED else ops
         drops = [btn(actor, f"{'Пропустить' if op.get('duplicate') else 'Убрать'} {i}", "drop", f"{cid}_{i}")
                  for i, op in enumerate(visible, start + 1)] if len(ops) > 1 else []
         rows += fit_rows(drops, 4)
         groups = list(dict.fromkeys(op["group"] for op in ops))
-        if view.mode == FILL and (len(ops) > PAGE or len(groups) > 1):
+        if view.mode in GROUPED and (len(ops) > PAGE or len(groups) > 1):
             rows += fit_rows([btn(actor, f"Убрать «{GROUPS.get(g, g)}»", "dropg", f"{cid}_{g}") for g in groups])
             pages = (len(ops) + PAGE - 1) // PAGE
             nav = []
@@ -124,19 +135,68 @@ def build_ai_router(commands: TextCommands, screens: Screens, day_card: Callable
             return
         await show(bot, chat_id, actor, view)
 
-    # --- «✍️ Текстом» и «✍️ Заполнить с помощью ИИ» ---
-    @router.callback_query(MenuCb.filter(F.k.in_({TEXT_KEY, FILL_KEY})))
+    # --- «✍️ Текстом» (старая кнопка «Ещё»; фразы можно писать сразу) ---
+    @router.callback_query(MenuCb.filter(F.k == TEXT_KEY))
     async def open_input(query: CallbackQuery, callback_data: MenuCb, bot: Bot, actor: Actor,
                          state: FSMContext) -> None:
         await screens.close_buttons(query)
         if not commands.available:
             await screens.home(bot, query.from_user.id, actor, user_message("LLM-OFF"))
             return
-        fill = callback_data.k == FILL_KEY
-        token = await start_dialog(state, AiInput.fill if fill else AiInput.text)
+        token = await start_dialog(state, AiInput.text)
         cancel = InlineKeyboardButton(text="✕ Отмена", callback_data=CancelCb(o=actor.user_id, t=token).pack())
-        await bot.send_message(query.from_user.id, FILL_PROMPT if fill else TEXT_PROMPT,
+        await bot.send_message(query.from_user.id, TEXT_PROMPT, reply_markup=inline([[cancel]]))
+
+    # --- «📥 Импорт»: с ИИ или готовые действия (правки 1.0.3) ---
+    @router.callback_query(MenuCb.filter(F.k == FILL_KEY))
+    async def open_import(query: CallbackQuery, bot: Bot, actor: Actor) -> None:
+        await screens.close_buttons(query)
+        await bot.send_message(query.from_user.id, IMPORT_TITLE, reply_markup=inline([
+            [btn(actor, "🤖 С ИИ", "imp", "ai"), btn(actor, "📋 Готовые действия", "imp", "json")]]))
+
+    @router.callback_query(AiCb.filter(F.a == "imp"))
+    async def choose_import(query: CallbackQuery, callback_data: AiCb, bot: Bot, actor: Actor,
+                            state: FSMContext) -> None:
+        await screens.close_buttons(query)
+        ai = callback_data.v == "ai"
+        if ai and not commands.available:
+            await screens.home(bot, query.from_user.id, actor, user_message("LLM-OFF"))
+            return
+        token = await start_dialog(state, AiInput.fill if ai else AiInput.importing)
+        cancel = InlineKeyboardButton(text="✕ Отмена", callback_data=CancelCb(o=actor.user_id, t=token).pack())
+        await bot.send_message(query.from_user.id, FILL_PROMPT if ai else IMPORT_PROMPT,
                                reply_markup=inline([[cancel]]))
+
+    async def import_text(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, payload: str) -> None:
+        try:
+            view = await commands.import_actions(actor, payload)
+        except AppError as err:  # ввод остаётся: можно прислать исправленное
+            await bot.send_message(chat_id, err.user_text())
+            return
+        await state.clear()
+        await show(bot, chat_id, actor, view)
+
+    @router.message(StateFilter(AiInput.importing), F.text)
+    async def import_typed(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        await import_text(bot, message.chat.id, actor, state, message.text or "")
+
+    @router.message(StateFilter(AiInput.importing), F.document)
+    async def import_file(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
+        document = message.document
+        assert document is not None
+        if (document.file_size or 0) > MAX_IMPORT_BYTES:
+            await bot.send_message(message.chat.id, AppError(
+                "INPUT-IMPORT", reason=f"файл больше {MAX_IMPORT_BYTES // 1000} КБ — разбейте на части").user_text())
+            return
+        buffer = io.BytesIO()
+        await bot.download(document, destination=buffer)
+        try:
+            payload = buffer.getvalue().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            await bot.send_message(message.chat.id, AppError(
+                "INPUT-IMPORT", reason="файл не текстовый (нужен UTF-8)").user_text())
+            return
+        await import_text(bot, message.chat.id, actor, state, payload)
 
     @router.message(StateFilter(AiInput.text, AiInput.fill), F.text)
     async def typed(message: Message, bot: Bot, actor: Actor, state: FSMContext, raw_state: str | None) -> None:

@@ -18,7 +18,17 @@ from habit_bot.kernel.db import UowFactory
 from habit_bot.kernel.domain.parsing import logical_day
 from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.identity import Actor
-from habit_bot.modules.ai_commands.domain.actions import MAX_FILL_TEXT, MAX_TEXT, ReplyInvalid, parse_reply
+from habit_bot.modules.ai_commands.domain.actions import (
+    MAX_ACTIONS,
+    MAX_FILL_ACTIONS,
+    MAX_FILL_TEXT,
+    MAX_IMPORT_ACTIONS,
+    MAX_IMPORT_BYTES,
+    MAX_TEXT,
+    ReplyInvalid,
+    parse_reply,
+    split_text,
+)
 from habit_bot.modules.ai_commands.executor import Done, Executor
 from habit_bot.modules.ai_commands.planner import Planner, Services
 from habit_bot.modules.ai_commands.prompt import Context, build_messages
@@ -32,7 +42,8 @@ log = logging.getLogger(__name__)
 UNDO_WINDOW = timedelta(minutes=10)
 KEEP = timedelta(days=30)
 CONTEXT_DAYS = 3  # сегодня, вчера, позавчера — записи для «удали коктейль», «планка во 2-й зарядке»
-TEXT, FILL = "text", "fill"
+TEXT, FILL, IMPORT = "text", "fill", "import"
+FILL_CHUNK = 1500  # заполнение через ИИ — частями: ответ модели на каждую часть умещается в её предел
 PENDING, DONE, CANCELLED, UNDONE, ERROR = "pending", "done", "cancelled", "undone", "error"
 
 
@@ -122,16 +133,17 @@ class TextCommands:
                        warmup=warmup, exercises=exercises, days={k: v for k, v in days.items() if v})
 
     # --- разбор ---
-    async def _ask(self, messages: list[dict[str, str]]) -> tuple[Any, LlmReply, LlmReply | None]:
+    async def _ask(self, messages: list[dict[str, str]],
+                   limit: int = MAX_ACTIONS) -> tuple[Any, LlmReply, LlmReply | None]:
         assert self.client is not None
         first = await self.client.complete(messages)
         try:
-            return parse_reply(first.text), first, None
+            return parse_reply(first.text, limit), first, None
         except ReplyInvalid:
             log.warning("Ответ модели не по схеме — повтор", extra={"code": "LLM-UNAVAILABLE"})
         second = await self.client.complete(messages)  # раздел 7.2: один повтор, затем «попробуйте кнопками»
         try:
-            return parse_reply(second.text), first, second
+            return parse_reply(second.text, limit), first, second
         except ReplyInvalid as exc:
             raise _Invalid(first, second) from exc
 
@@ -150,22 +162,31 @@ class TextCommands:
         today = self.today()
         if await self.budget.used_today(actor.user_id, today) >= self.budget.daily_limit:
             raise AppError("LLM-USER-LIMIT", limit=self.budget.daily_limit)
-        messages = build_messages(await self.context(actor, today), clean, previous=previous)
+        context = await self.context(actor, today)
+        # Заполнение — частями (правки 1.0.3): длинный список действий не обрывается на пределе ответа модели.
+        parts = split_text(clean, FILL_CHUNK) if mode == FILL else [clean]
         record = AiCommand(user_id=actor.user_id, day=today, mode=mode, text=clean[:MAX_FILL_TEXT], actions={},
                            undo=[], status=ERROR, tokens_in=0, tokens_out=0, cost_usd=0.0)
-        try:
-            parsed, first, second = await self._ask(messages)
-        except LlmError as err:
-            await self._save(record)
-            await self._alert(err.code, detail=err.detail)
-            raise AppError("LLM-BUDGET" if err.code == "LLM-402" else "LLM-UNAVAILABLE") from err
-        except _Invalid as invalid:
-            self._account(record, invalid.first, invalid.second)
-            await self._save(record)
-            raise AppError("LLM-UNAVAILABLE") from invalid
-        self._account(record, first, second)
-        plan = await Planner(self.services, actor, today, self._tz).plan(parsed.actions)
-        question = parsed.question.model_dump() if parsed.question and not plan.ops else None
+        actions: list[Any] = []
+        question_model = None
+        for part in parts:
+            try:
+                parsed, first, second = await self._ask(build_messages(context, part, previous=previous),
+                                                        MAX_FILL_ACTIONS if mode == FILL else MAX_ACTIONS)
+            except LlmError as err:
+                await self._save(record)
+                await self._alert(err.code, detail=err.detail)
+                raise AppError("LLM-BUDGET" if err.code == "LLM-402" else "LLM-UNAVAILABLE") from err
+            except _Invalid as invalid:
+                self._account(record, invalid.first, invalid.second)
+                await self._save(record)
+                raise AppError("LLM-UNAVAILABLE") from invalid
+            self._account(record, first, second)
+            actions.extend(parsed.actions)
+            question_model = parsed.question if len(parts) == 1 else None  # вопрос — только к короткому тексту
+        actions = actions[:MAX_FILL_ACTIONS]
+        plan = await Planner(self.services, actor, today, self._tz).plan(tuple(actions))
+        question = question_model.model_dump() if question_model and not plan.ops else None
         record.actions = {"ops": plan.ops, "skipped": plan.skipped, "question": question}
         record.status = PENDING if plan.ops or question else ERROR
         await self._save(record)
@@ -176,6 +197,27 @@ class TextCommands:
             if plan.skipped:
                 return self._view(record)
             raise AppError("LLM-UNCLEAR")
+        return self._view(record)
+
+    async def import_actions(self, actor: Actor, payload: str) -> CommandView:
+        """«📋 Готовые действия» (правки 1.0.3): JSON того же вида, что отвечает модель, — без модели и без бюджета.
+        Дальше тот же путь: проверка каждого действия, карточка «Понял так», «✅ Выполнить всё», «↩️ Отменить всё»."""
+        if len(payload.encode()) > MAX_IMPORT_BYTES:
+            raise AppError("INPUT-IMPORT", reason=f"больше {MAX_IMPORT_BYTES // 1000} КБ — разбейте на части")
+        try:
+            parsed = parse_reply(payload.strip(), MAX_IMPORT_ACTIONS, bare_list=True)
+        except ReplyInvalid as exc:
+            raise AppError("INPUT-IMPORT", reason=f"{exc} — нужен список действий в JSON") from exc
+        if not parsed.actions:
+            raise AppError("INPUT-IMPORT", reason=f"ни одно действие не подошло по формату (отброшено: "
+                                                  f"{parsed.dropped})")
+        today = self.today()
+        plan = await Planner(self.services, actor, today, self._tz).plan(parsed.actions)
+        skipped = [*plan.skipped, *([f"Не по формату: {parsed.dropped}"] if parsed.dropped else [])]
+        record = AiCommand(user_id=actor.user_id, day=today, mode=IMPORT, text=payload[:MAX_FILL_TEXT],
+                           actions={"ops": plan.ops, "skipped": skipped, "question": None},
+                           undo=[], status=PENDING if plan.ops else ERROR, tokens_in=0, tokens_out=0, cost_usd=0.0)
+        await self._save(record)
         return self._view(record)
 
     @staticmethod

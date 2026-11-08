@@ -60,7 +60,8 @@ async def test_s121_owner_recipes_goals_and_repeat(fill_world: World, me: Person
     """S-121. Раздел 9: 4 рецепта владельца из 6.2 одним сообщением → карточка «Рецепты: 4»; после подтверждения
     КБЖУ и цена совпадают с таблицей; две цели «с 22.09 … с 09.10» создают обе — остаток за 01.10 считается от 2410,
     за 22.10 — от 2800; повторная отправка рецептов предлагает «обновлю / Пропустить», дублей нет."""
-    await me.tap("✍️ Заполнить с помощью ИИ")
+    await me.tap("📥 Импорт")
+    await me.tap("🤖 С ИИ")
     card = await me.say(RECIPES_TEXT)
     assert card.startswith("Понял так:\nРецепты: 4\n1. 🍽 Рецепт «Обед»")
     assert "Убрать 4" in me.labels()
@@ -74,7 +75,8 @@ async def test_s121_owner_recipes_goals_and_repeat(fill_world: World, me: Person
 
     await me.tap("☰ Ещё")
     await me.tap("⚙️ Настройки")
-    await me.tap("✍️ Заполнить с помощью ИИ")
+    await me.tap("📥 Импорт")
+    await me.tap("🤖 С ИИ")
     assert (await me.say(GOALS_TEXT)).startswith("Понял так:\nЦели: 2\n1. 🎯 Цель КБЖУ с 22.09: 2 410 ккал")
     await me.tap("✅ Выполнить всё")
     profiles = fill_world.service("users.profiles")
@@ -83,7 +85,8 @@ async def test_s121_owner_recipes_goals_and_repeat(fill_world: World, me: Person
 
     await me.tap("☰ Ещё")
     await me.tap("⚙️ Настройки")
-    await me.tap("✍️ Заполнить с помощью ИИ")
+    await me.tap("📥 Импорт")
+    await me.tap("🤖 С ИИ")
     again = await me.say(RECIPES_TEXT)
     assert "1. ♻️ Рецепт «Обед» уже есть — обновлю:" in again
     assert me.labels()[2:6] == ["Пропустить 1", "Пропустить 2", "Пропустить 3", "Пропустить 4"]
@@ -96,7 +99,8 @@ async def test_s122_long_message_paged(fill_world: World, me: Persona) -> None:
     """S-122. Раздел 9: сообщение длиной 3500 символов разбирается; карточка листается по страницам."""
     text = LONG_TEXT[:3500]
     assert len(text) == 3500
-    await me.tap("✍️ Заполнить с помощью ИИ")
+    await me.tap("📥 Импорт")
+    await me.tap("🤖 С ИИ")
     card = await me.say(text)
     assert card.startswith("Понял так:\nРецепты: 40\nСтраница 1 из 4\n1. 🍽 Рецепт «Продукт 1» (на 100 г)")
     assert "Страница 2 из 4\n11. 🍽 Рецепт «Продукт 11»" in await me.tap("Дальше ▶")

@@ -278,9 +278,9 @@ class Planner:
 
     async def _weight_record(self, x: a.WeightRecord) -> dict[str, Any]:
         self._day(x.day, "Вес")
-        if x.day != self.today:
-            raise _Skip(f"Вес: за {format_day(x.day)} не записываю — только за сегодня")
-        return {"group": "weight", "line": f"⚖️ {format_day(x.day)} Вес {format_number(x.kg)} кг", "kg": str(x.kg)}
+        # прошлый день — только взвешивание этого дня, профиль (и пересчёт КБЖУ) — по весу за сегодня (1.0.3)
+        return {"group": "weight", "line": f"⚖️ {format_day(x.day)} Вес {format_number(x.kg)} кг", "kg": str(x.kg),
+                "day": x.day.isoformat()}
 
     # --- заполнение (раздел 3.12) ---
     async def _recipe_create(self, x: a.RecipeCreate) -> dict[str, Any]:
