@@ -18,6 +18,7 @@ from aiogram.methods import (
     EditMessageMedia,
     EditMessageReplyMarkup,
     EditMessageText,
+    GetFile,
     GetMe,
     SendDocument,
     SendMediaGroup,
@@ -25,7 +26,7 @@ from aiogram.methods import (
     SendPhoto,
     TelegramMethod,
 )
-from aiogram.types import BufferedInputFile, Chat, Document, Message, PhotoSize, User
+from aiogram.types import BufferedInputFile, Chat, Document, File, Message, PhotoSize, User
 
 from habit_bot.channels.telegram.ui.layout import row_problem
 
@@ -38,6 +39,7 @@ MAX_BUTTON_TEXT = 64  # практический предел: длиннее Te
 MAX_TOAST = 200
 MAX_CAPTION = 1024
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
+MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # Bot API: бот скачивает файлы пользователя до 20 МБ
 MAX_DOCUMENT_BYTES = 50 * 1024 * 1024
 HTML_TAGS = {"b", "strong", "i", "em", "u", "ins", "s", "strike", "del", "a", "code", "pre", "tg-spoiler",
              "blockquote", "span"}
@@ -178,6 +180,7 @@ class FakeTelegramSession(BaseSession):
         self._message_id = 100
         self.message_ids: dict[int, int] = {}       # id(SendMessage) → message_id, который вернул «Telegram»
         self.deleted: set[tuple[int, int]] = set()  # (chat_id, message_id) удалённых сообщений
+        self.uploads: dict[str, bytes] = {}  # файлы, которые прислал пользователь: file_id → содержимое
         self.contents: dict[tuple[int, int], tuple[str, Any]] = {}  # текущие текст и кнопки сообщения
         self.media: dict[tuple[int, int], tuple[str, str, Any]] = {}  # картинка (хэш), подпись и кнопки
 
@@ -282,6 +285,14 @@ class FakeTelegramSession(BaseSession):
                     "Bad Request: message is not modified: specified new message content and reply markup are "
                     "exactly the same as a current content and reply markup of the message"))
             return True
+        if isinstance(method, GetFile):
+            data = self.uploads.get(method.file_id)
+            if data is None:
+                raise TelegramBadRequest(method=method, message="Bad Request: invalid file_id")
+            if len(data) > MAX_DOWNLOAD_BYTES:
+                raise TelegramBadRequest(method=method, message="Bad Request: file is too big")
+            return File(file_id=method.file_id, file_unique_id=f"u{method.file_id}", file_size=len(data),
+                        file_path=f"documents/{method.file_id}")
         if isinstance(method, DeleteMessages):
             if not 1 <= len(method.message_ids) <= 100:
                 raise TelegramBadRequest(method=method, message="Bad Request: message identifiers are invalid")
@@ -300,8 +311,10 @@ class FakeTelegramSession(BaseSession):
         self, url: str, headers: dict[str, Any] | None = None, timeout: int = 30,
         chunk_size: int = 65536, raise_for_status: bool = True,
     ) -> AsyncGenerator[bytes, None]:
-        if False:  # pragma: no cover
-            yield b""
+        """Скачивание файла пользователя по ``file_path`` из getFile — содержимое из ``uploads``."""
+        data = self.uploads[url.rsplit("/", 1)[-1]]
+        for start in range(0, len(data), chunk_size):
+            yield data[start: start + chunk_size]
 
     # --- удобные выборки для проверок ---
     def sent(self, chat_id: int | None = None) -> list[SendMessage]:
@@ -447,6 +460,20 @@ class TgChat:
         update = message_update(self._next_id(), self.tg_id, text, first_name=self.first_name)
         update["message"]["date"] = int(self.app.ctx.clock.now().timestamp())  # время сообщения = часы теста
         self.typed.append(update["message"]["message_id"])
+        await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
+        return self.latest_text()
+
+    async def send_document(self, name: str, data: bytes) -> str:
+        """Пользователь присылает файл: в апдейте — документ, содержимое бот скачивает через getFile."""
+        update = message_update(self._next_id(), self.tg_id, "", first_name=self.first_name)
+        message = update["message"]
+        del message["text"]
+        file_id = f"up{message['message_id']}"
+        self.session.uploads[file_id] = data
+        message["document"] = {"file_id": file_id, "file_unique_id": f"u{file_id}", "file_name": name,
+                               "file_size": len(data)}
+        message["date"] = int(self.app.ctx.clock.now().timestamp())
+        self.typed.append(message["message_id"])
         await self.app.telegram.dispatcher.feed_raw_update(self.app.telegram.bot, update)
         return self.latest_text()
 

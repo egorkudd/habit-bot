@@ -119,6 +119,10 @@ class Executor:
             day = date.fromisoformat(op["day"])
             if await s.days.toggle_day_off(actor, day):
                 done.undo.append({"undo": "day.toggle", "day": op["day"]})
+        elif kind == "weight.record" and op.get("day", s.days.today().isoformat()) != s.days.today().isoformat():
+            day = date.fromisoformat(op["day"])
+            previous = await s.profiles.weigh_on(actor, day, _d(op["kg"]))
+            done.undo.append({"undo": "weight.day", "day": op["day"], "kg": str(previous) if previous else None})
         elif kind == "weight.record":
             before = await s.profiles.profile(actor)
             await s.profiles.update_profile(actor, weight_kg=_d(op["kg"]))
@@ -200,6 +204,9 @@ class Executor:
                     await s.runs.delete(actor, r["id"])
                 elif kind == "day.toggle":
                     await s.days.toggle_day_off(actor, date.fromisoformat(r["day"]))
+                elif kind == "weight.day":
+                    previous = _d(r["kg"]) if r.get("kg") else None
+                    await s.profiles.unweigh_on(actor, date.fromisoformat(r["day"]), previous)
                 elif kind == "weight":
                     if r.get("kg"):
                         await s.profiles.update_profile(actor, weight_kg=_d(r["kg"]))

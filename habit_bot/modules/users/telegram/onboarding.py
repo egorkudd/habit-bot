@@ -73,7 +73,7 @@ INTRO = (
 RESUME = "Продолжим анкету с того же места."
 ANSWER_ABOVE = "Анкету нельзя отменить, но можно прерваться — продолжим с того же шага. Ответьте на вопрос 👇"
 OLD_BUTTON = "Эта кнопка от прошлого шага"
-AFTER_TEXT = "Можно сразу внести свои рецепты, цели и последние результаты одним текстом:"
+AFTER_TEXT = "Можно сразу внести свои рецепты, цели и прошлые записи — текстом с ИИ или готовым списком действий:"
 LATER_TEXT = "Хорошо. Главное меню внизу 👇"
 
 
@@ -270,7 +270,7 @@ class OnboardingFlow:
         trail.result()  # вопросы анкеты и ответы убираются, итог «Готово…» остаётся
         await self.screens.home(bot, chat_id, actor, f"Готово, {profile.name}! Норма с сегодняшнего дня:\n"
                                                      f"{targets_line(goal)}")
-        fill = InlineKeyboardButton(text="✍️ Заполнить с помощью ИИ",
+        fill = InlineKeyboardButton(text="📥 Импорт данных",
                                     callback_data=MenuCb(o=actor.user_id, t=0, k="fill").pack())  # модуль ai_commands
         after = keyboard([[fill,
                            button(actor, 0, "Позже", "after", "later")]])

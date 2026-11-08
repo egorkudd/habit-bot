@@ -11,7 +11,8 @@ from typing import Any, Protocol
 import aiohttp
 
 log = logging.getLogger(__name__)
-TIMEOUT_SECONDS = 30
+TIMEOUT_SECONDS = 90  # длинный ответ (заполнение) идёт дольше обычного
+MAX_OUTPUT_TOKENS = 8000
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +70,8 @@ class OpenAiCompatibleClient:
         self.provider = base_url
 
     async def complete(self, messages: Sequence[dict[str, str]]) -> LlmReply:
-        body = {"model": self._model, "messages": list(messages), "temperature": 0,
+        # max_tokens — с запасом под длинный список действий в заполнении (DeepSeek и Kimi принимают 8000)
+        body = {"model": self._model, "messages": list(messages), "temperature": 0, "max_tokens": MAX_OUTPUT_TOKENS,
                 "response_format": {"type": "json_object"}, "stream": False}
         headers = {"Authorization": f"Bearer {self._key}", "Content-Type": "application/json"}
         try:

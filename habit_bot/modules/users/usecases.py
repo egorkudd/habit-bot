@@ -399,6 +399,27 @@ class Profiles:
                 for g in rows
             ]
 
+    async def weigh_on(self, actor: Actor, day: date, weight: Decimal) -> Decimal | None:
+        """Взвешивание за прошлый день (импорт, правки 1.0.3): профиль не меняется. Возвращает прежний вес дня."""
+        async with self._uow() as uow:
+            row = (await uow.session.execute(select(BodyWeight).where(
+                BodyWeight.user_id == actor.user_id, BodyWeight.day == day))).scalar_one_or_none()
+            before = Decimal(str(row.weight_kg)) if row is not None and row.deleted_at is None else None
+            await self._weigh(uow.session, actor.user_id, day, weight)
+            return before
+
+    async def unweigh_on(self, actor: Actor, day: date, before: Decimal | None) -> None:
+        """Отмена ``weigh_on``: вернуть прежний вес дня или убрать взвешивание."""
+        async with self._uow() as uow:
+            row = (await uow.session.execute(select(BodyWeight).where(
+                BodyWeight.user_id == actor.user_id, BodyWeight.day == day))).scalar_one_or_none()
+            if row is None:
+                return
+            if before is None:
+                row.deleted_at = self._clock.now()
+            else:
+                row.weight_kg = float(before)
+
     async def weights_between(self, actor: Actor, start: date, end: date) -> dict[date, Decimal]:
         """Взвешивания за период — для светофора «Вес» и экспорта."""
         async with self._uow() as uow:

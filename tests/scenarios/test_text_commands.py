@@ -153,7 +153,7 @@ async def test_s97_fix_and_cancel(ai_world: World, me: Persona) -> None:
 
 
 async def test_s98_fill_mode_groups_pages_duplicates(ai_world: World, me: Persona) -> None:
-    """S-98. Раздел 3.12: «✍️ Заполнить с помощью ИИ» — до 4000 символов; 12 действий — группы и страницы по 10;
+    """S-98. Раздел 3.12: «📥 Импорт» → «🤖 С ИИ» — до 4000 символов; 12 действий — группы и страницы по 10;
     «Убрать «Цели»»; дубль рецепта — «Обновить» вместо второго, «Пропустить N»."""
     recipes = [{"type": "recipe.create", "name": f"Рецепт {i}", "kcal": 300 + i, "protein": 20, "fat": 10,
                 "carbs": 30} for i in range(1, 11)]
@@ -163,7 +163,8 @@ async def test_s98_fill_mode_groups_pages_duplicates(ai_world: World, me: Person
     ai_world.llm.replies["Мои рецепты:"] = {"actions": [*recipes, goal]}
     await me.tap("☰ Ещё")
     await me.tap("⚙️ Настройки")
-    assert (await me.tap("✍️ Заполнить с помощью ИИ")).startswith("✍️ Вставьте текстом")
+    await me.tap("📥 Импорт")
+    assert (await me.tap("🤖 С ИИ")).startswith("🤖 Вставьте текстом")
     card = await me.say(text)
     assert card.startswith("Понял так:\nРецепты: 11 · Цели: 1\nСтраница 1 из 2\n1. 🍽 Рецепт «Рецепт 1»")
     assert "Дальше ▶" in me.labels() and "Убрать «Цели»" in me.labels()
@@ -268,7 +269,8 @@ async def test_s103_fill_page_after_cancel(ai_world: World, me: Persona) -> None
         for i in range(1, 13)]}
     await me.tap("☰ Ещё")
     await me.tap("⚙️ Настройки")
-    await me.tap("✍️ Заполнить с помощью ИИ")
+    await me.tap("📥 Импорт")
+    await me.tap("🤖 С ИИ")
     await me.say("Рецепты списком")
     nxt = me.find_button("Дальше ▶")
     assert "Страница 2 из 2" in await me.tap("Дальше ▶")

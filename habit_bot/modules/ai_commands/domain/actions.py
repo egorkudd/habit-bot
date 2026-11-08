@@ -17,6 +17,9 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 MAX_ACTIONS = 50
 MAX_TEXT = 1000       # обычная команда
 MAX_FILL_TEXT = 4000  # режим заполнения (раздел 3.12), предел Telegram
+MAX_FILL_ACTIONS = 500   # заполнение длинным текстом: модель отвечает частями, действий больше 50
+MAX_IMPORT_ACTIONS = 1000  # «📋 Готовые действия» (правки 1.0.3) — без модели
+MAX_IMPORT_BYTES = 200_000  # файл с действиями
 
 
 class _Action(BaseModel):
@@ -211,15 +214,19 @@ class ReplyInvalid(Exception):
     """Ответ модели — не JSON нужного вида: один повтор, затем «попробуйте кнопками» (раздел 7.2)."""
 
 
-def parse_reply(text: str) -> ParsedReply:
+def parse_reply(text: str, limit: int = MAX_ACTIONS, *, bare_list: bool = False) -> ParsedReply:
+    """Ответ модели или готовые действия: ``{"actions": [...]}``; готовые действия (``bare_list``) — можно и
+    просто ``[...]``."""
     try:
         payload = json.loads(text)
     except ValueError as exc:
         raise ReplyInvalid("не JSON") from exc
+    if bare_list and isinstance(payload, list):
+        payload = {"actions": payload}
     if not isinstance(payload, dict) or not isinstance(payload.get("actions", []), list):
         raise ReplyInvalid("нет списка actions")
     actions, dropped = [], 0
-    for raw in payload.get("actions", [])[:MAX_ACTIONS]:
+    for raw in payload.get("actions", [])[:limit]:
         try:
             actions.append(_ADAPTER.validate_python(raw))
         except ValidationError:
@@ -231,3 +238,28 @@ def parse_reply(text: str) -> ParsedReply:
         except ValidationError:
             question = None
     return ParsedReply(actions=tuple(actions), question=question, dropped=dropped)
+
+
+def split_text(text: str, size: int) -> list[str]:
+    """Длинный текст заполнения — частями не длиннее ``size`` по строкам (длинная строка — по словам): модель
+    отвечает на каждую часть отдельно, и длинный список действий не обрывается на пределе ответа модели."""
+    parts: list[str] = []
+    current = ""
+    for line in text.splitlines():
+        while len(line) > size:
+            cut = line.rfind(" ", 0, size)
+            cut = cut if cut > 0 else size
+            if current:
+                parts.append(current)
+                current = ""
+            parts.append(line[:cut].strip())
+            line = line[cut:].strip()
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > size and current:
+            parts.append(current)
+            current = line
+        else:
+            current = candidate
+    if current.strip():
+        parts.append(current)
+    return [p for p in parts if p.strip()]
