@@ -12,7 +12,7 @@ node "Смартфон пользователя" <<device>> as phone
 node "Смартфон администратора" <<device>> as admin
 cloud "Telegram Bot API\napi.telegram.org" as tg
 
-node "VPS вне РФ (NL/DE/FI/KZ)\nUbuntu, 1 vCPU, 1 ГБ RAM + 1 ГБ swap\nufw: только SSH :22" <<device>> as vps {
+node "VPS вне РФ (NL/DE/FI/KZ)\nUbuntu, 1 vCPU, 1 ГБ RAM + 1 ГБ swap\nufw: SSH :22, 443/tcp (VPN)" <<device>> as vps {
   node "Docker Engine + Compose" <<execution environment>> {
     node "habit-bot:<версия>\nPython 3.12" <<container>> as bot {
       component "aiogram 3 (FSM)" as aiogram
@@ -25,8 +25,10 @@ node "VPS вне РФ (NL/DE/FI/KZ)\nUbuntu, 1 vCPU, 1 ГБ RAM + 1 ГБ swap\nu
     }
     database "/srv/bot/data\nbot.db (SQLite WAL)\nbackup ×1, logs/ 14 дн ≤ 50 МБ" <<volume>> as vol
   }
+  node "Xray (systemd, не в Docker)\nVLESS + Reality :443\nличный VPN владельца" <<service>> as xray
 }
 
+node "Устройства владельца\n6 шт., v2rayNG / Hiddify" <<device>> as vpnc
 cloud "DeepSeek API\n+ запасной провайдер" as ds
 cloud "Open-Meteo" as om
 cloud "isdayoff.ru" as ido
@@ -57,5 +59,6 @@ gha --> ghcr : push образа
 gha --> vps : SSH :22 (deploy), выкладка / откат
 vps --> ghcr : docker pull
 gha --> tg : healthcheck-алерты
+vpnc --> xray : VLESS + Reality, TCP :443
 @enduml
 ```
