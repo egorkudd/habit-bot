@@ -60,8 +60,8 @@ def find(name: str, options: Sequence[Any], key: Any = lambda o: o.name, *, pref
     exact = [o for o in options if _fold(key(o)) == wanted]
     if exact or not prefix:
         return exact[0] if exact else None
-    prefix = [o for o in options if _fold(key(o)).startswith(wanted) or wanted.startswith(_fold(key(o)))]
-    return prefix[0] if len(prefix) == 1 else None
+    starts = [o for o in options if _fold(key(o)).startswith(wanted) or wanted.startswith(_fold(key(o)))]
+    return starts[0] if len(starts) == 1 else None
 
 
 def _kcal(item: Any, quantity: Decimal) -> Decimal:
