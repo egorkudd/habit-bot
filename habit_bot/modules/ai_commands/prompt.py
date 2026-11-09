@@ -1,7 +1,8 @@
 """Запрос к модели (раздел 3.10, 7.2). Неизменная инструкция и схема — в начале, чтобы попадать в кэш провайдера.
 
 В модель уходит только нужное для разбора: текст, даты, названия рецептов, продуктов, привычек и упражнений
-пользователя и записи упомянутых дней. Имя, Telegram-ID и профиль (пол, возраст, вес, рост) не отправляются.
+пользователя, записи упомянутых дней и подходящие к тексту позиции справочника еды.
+Имя, Telegram-ID и профиль (пол, возраст, вес, рост) не отправляются.
 """
 
 from __future__ import annotations
@@ -18,9 +19,13 @@ SYSTEM = """Ты разбираешь сообщение пользовател�
 начинаются в 04:00. Будущих дат не бывает. Числа — точкой: 4.5. Время — «мм:сс» или «ч:мм:сс».
 
 Действия (поле type и поля):
-- food.add: day, item (название из foods, если подходит; иначе как написал пользователь), quantity (порции,
-  граммы или штуки — как единица продукта в foods), для блюда, которого нет в foods, — оценка kcal, protein, fat,
-  carbs на всё количество и quantity 1; price — если назван.
+- food.add: day, item, quantity, price — если назван. Ищи блюдо по порядку: 1) foods (свои рецепты и продукты) —
+  item как там, quantity в единице продукта (порции, граммы или штуки); 2) reference (справочник) — item ровно как
+  там до « — », quantity в его единице (на 100 г — граммы, на 1 шт — штуки, на порцию — порции), КБЖУ не пиши;
+  3) нет ни там, ни там — item как написал пользователь, оценка kcal, protein, fat, carbs на всё количество и
+  quantity 1. Еда по умолчанию готовая (варёная, жареная): «200 г гречки» — «Гречка варёная»; сухую бери, только
+  если сказано «сухой», «пакет» или «в сухом виде». Названия сетей (Вкусно и точка, Burger King, Ростикс, Теремок)
+  — позиция этой сети.
 - food.quantity: day, item, quantity, time (если записей несколько). food.delete: day, item, time.
 - food.move: day, item, to_day, time.
 - warmup.add: day, values — {короткое название упражнения из warmup: "значение"}; повторы числом, время "6:15".
@@ -48,10 +53,12 @@ class Context:
     warmup: list[str] = field(default_factory=list)
     exercises: list[str] = field(default_factory=list)
     days: dict[str, dict[str, Any]] = field(default_factory=dict)
+    reference: list[str] = field(default_factory=list)
 
     def as_json(self) -> str:
         return json.dumps({"today": self.today, "now": self.now, "foods": self.foods, "habits": self.habits,
-                           "warmup": self.warmup, "exercises": self.exercises, "days": self.days},
+                           "warmup": self.warmup, "exercises": self.exercises, "days": self.days,
+                           "reference": self.reference},
                           ensure_ascii=False)
 
 

@@ -177,3 +177,23 @@ async def test_s152_import_too_long_text_and_undo_nothing(world: World, owner: P
     assert "разбейте на части" in err.value.user_text()
     await world.service("users.profiles").unweigh_on(actor, date(2026, 10, 1), None)
     assert await world.service("users.profiles").weights_between(actor, date(2026, 10, 1), date(2026, 10, 1)) == {}
+
+
+async def test_s155_import_resolves_reference_without_kcal(world: World, owner: Persona) -> None:
+    """S-155. Справочник еды в импорте (1.0.4): «гречка» 150 г без КБЖУ — «Гречка варёная» из справочника,
+    «Блин Цезарь (Теремок)» — на штуку; «картошка фри» есть у трёх сетей — без КБЖУ не выполняется; блюдо, которого
+    нет нигде, с КБЖУ — как прислано. Модель не нужна."""
+    actor = await _actor(world)
+    await _start_import(owner)
+    card = await owner.say(json.dumps([
+        {"type": "food.add", "day": "2026-11-02", "item": "гречка", "quantity": 150},
+        {"type": "food.add", "day": "2026-11-02", "item": "Блин Цезарь (Теремок)"},
+        {"type": "food.add", "day": "2026-11-02", "item": "картошка фри"},
+        {"type": "food.add", "day": "2026-11-02", "item": "Суп мамин", "kcal": 300},
+    ], ensure_ascii=False))
+    assert "Гречка варёная, 150 г — 165 ккал · Б 6,3 · Ж 1,65 · У 31,95 (справочник)" in card
+    assert "Блин Цезарь (Теремок) — 752,5 ккал" in card and "Суп мамин ≈ 300 ккал" in card
+    assert card.endswith("• Еда: «картошка фри» нет среди ваших рецептов и продуктов и в справочнике")
+    await owner.tap("✅ Выполнить всё")
+    entries = await world.service("food").entries(actor, YESTERDAY)
+    assert [e.name for e in entries] == ["Гречка варёная, 150 г", "Блин Цезарь (Теремок)", "Суп мамин"]
