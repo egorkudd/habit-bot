@@ -137,6 +137,23 @@ Telegram-бот «Дневник привычек»: питание, заряд�
 - **Откат** на прошлую версию: `ssh -i deploy_key deploy@IP 'bash /srv/bot/app/remote.sh rollback'`.
 - **«Бот жив?»** раз в час сейчас не работает; Docker сам перезапускает упавший бот.
 
+### Личный VPN на сервере бота
+
+`deploy/vpn.sh` ставит на тот же сервер Xray (VLESS + Reality, порт 443/tcp): снаружи это обычный HTTPS к
+www.microsoft.com, поэтому его не режут, как WireGuard и OpenVPN. Бот не затрагивается: Xray — отдельная служба
+systemd вне Docker. SSH не нужен — в веб-консоли хостинга под root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/egorkudd/habit-bot/main/deploy/vpn.sh | bash
+```
+
+Сценарий создаёт 6 устройств (`phone1`…`phone6`) и печатает для каждого ссылку `vless://…` и QR-код. Приложения:
+Android — v2rayNG или Hiddify, iPhone — Streisand или V2Box, Windows / macOS — Hiddify; в приложении «+» → «Сканировать
+QR» или «Импорт из буфера». Ссылки — ключи доступа: не пересылайте их в общие чаты. Ещё команды (тот же `curl … |`):
+`bash -s show` — показать ссылки снова, `bash -s add tablet` / `bash -s remove tablet` — добавить или отключить
+устройство, `bash -s uninstall` — удалить VPN и закрыть порт. Повторный запуск ключи не меняет. Трафик VPN — исходящий
+из лимита тарифа (3 ТБ в месяц): два видео 1080p по 2 часа в день — около 300 ГБ.
+
 ## Бэкапы
 
 - На сервере в `/srv/bot/data/backup/bot.db.bak` лежит одна последняя копия базы: её делает «Выкладка» перед
