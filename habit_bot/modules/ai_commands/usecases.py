@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, tzinfo
 from typing import Any, Protocol
 
@@ -32,6 +32,7 @@ from habit_bot.modules.ai_commands.domain.actions import (
 from habit_bot.modules.ai_commands.executor import Done, Executor
 from habit_bot.modules.ai_commands.planner import Planner, Services
 from habit_bot.modules.ai_commands.prompt import Context, build_messages
+from habit_bot.modules.food.domain import reference
 from habit_bot.modules.warmup.domain.warmup import format_value as warmup_format
 from habit_bot.modules.workouts.domain.training import Filters, Kind
 from habit_bot.platform.ai.budget import Budget, cost
@@ -171,7 +172,10 @@ class TextCommands:
         question_model = None
         for part in parts:
             try:
-                parsed, first, second = await self._ask(build_messages(context, part, previous=previous),
+                # Справочник еды (правки 1.0.4): в модель — только позиции, подходящие к словам этой части текста.
+                found = [r.describe() for r in reference.search(part)] if self.services.food else []
+                parsed, first, second = await self._ask(build_messages(replace(context, reference=found), part,
+                                                                       previous=previous),
                                                         MAX_FILL_ACTIONS if mode == FILL else MAX_ACTIONS)
             except LlmError as err:
                 await self._save(record)

@@ -3,6 +3,7 @@
 Модель — на записанных ответах (``FakeLlm``): ключа у владельца пока нет; живой прогон — ``tests/live``.
 """
 
+import re
 from collections.abc import AsyncIterator
 from datetime import date
 from decimal import Decimal
@@ -196,6 +197,8 @@ async def test_s100_privacy_double_tap_and_late_undo(ai_world: World, me: Person
     раз; «Отменить всё» через 11 минут — поздно, данные остаются; токены и стоимость записаны."""
     await me.say(PHRASE)
     request = " ".join(m["content"] for m in ai_world.llm.requests[-1])
+    assert "Гречка сухая (пакет 80 г)" in request  # справочник еды — общий, его числа не личные
+    request = re.sub(r'"reference": \[.*?\]', "", request)
     for secret in ("Егор", str(ADMIN_ID), "178", "15.03.2003", "2003-03-15", "Москва", "75"):
         assert secret not in request
     assert "Коктейль" in request and '"today": "2026-11-03"' in request
@@ -211,7 +214,7 @@ async def test_s100_privacy_double_tap_and_late_undo(ai_world: World, me: Person
 
 
 async def test_s101_approximate_dish_and_everything_else(ai_world: World, me: Persona) -> None:
-    """S-101. Незнакомое блюдо — оценка «≈ приблизительно» и «💾 Сохранить как рецепт»; зарядка, привычки,
+    """S-101. Незнакомое блюдо — «≈ оценка модели» и «💾 Сохранить как рецепт»; зарядка, привычки,
     тренировка, бег, выходной и вес одной командой записаны через те же сценарии, что и кнопки."""
     ai_world.llm.replies["всё сразу"] = {"actions": [
         *GOLDEN[15]["reply"]["actions"], *GOLDEN[9]["reply"]["actions"], *GOLDEN[2]["reply"]["actions"],
@@ -278,3 +281,57 @@ async def test_s103_fill_page_after_cancel(ai_world: World, me: Persona) -> None
     assert await me.tap("Убрать «Рецепты»") == "Все пункты убраны — ничего не записано."
     await me.press_data(nxt)
     assert me.last() == STALE
+
+
+REF_PHRASE = "вчера 200 г гречки и воппер в бургер кинге, потом шаурма"
+REF_REPLY = {"actions": [
+    {"type": "food.add", "day": "2026-11-02", "item": "Гречка варёная", "quantity": 200},
+    {"type": "food.add", "day": "2026-11-02", "item": "Воппер (Burger King)", "quantity": 2},
+    {"type": "food.add", "day": "2026-11-02", "item": "Шаурма", "kcal": 650, "protein": 30, "fat": 35, "carbs": 55},
+    {"type": "food.add", "day": "2026-11-02", "item": "Гречка сухая (пакет 80 г)"},
+    {"type": "food.add", "day": "2026-11-02", "item": "Чизбургер"},
+]}
+
+
+async def test_s153_food_reference_before_estimate(ai_world: World, me: Persona) -> None:
+    """S-153. Справочник еды (1.0.4): в модель уходят только позиции справочника, подходящие к словам сообщения
+    (гречка, воппер — да, блины Теремка — нет); гречка без «сухой» — варёная, КБЖУ на 200 г из справочника;
+    2 воппера — на 2 шт; шаурмы нет нигде — «≈ оценка модели»; пакет гречи — свой продукт (свой список первым);
+    «Чизбургер» без сети есть у трёх сетей и без оценки — не выполню. После выполнения — записи с КБЖУ справочника
+    и «💾 как рецепт»; «↩️ Отменить всё» — как было."""
+    ai_world.llm.replies[REF_PHRASE] = REF_REPLY
+    before = len(await _entries(ai_world))
+    card = await me.say(REF_PHRASE)
+    request = ai_world.llm.requests[-1][-1]["content"]
+    assert "Гречка варёная — на 100 г: 110 ккал, Б 4.2, Ж 1.1, У 21.3" in request
+    assert "Воппер (Burger King) — на 1 шт (274 г): 720 ккал" in request and "Блин Цезарь" not in request
+    assert card == (
+        "Понял так:\n"
+        "1. ➕ 02.11 Еда: Гречка варёная, 200 г — 220 ккал · Б 8,4 · Ж 2,2 · У 42,6 (справочник)\n"
+        "2. ➕ 02.11 Еда: Воппер (Burger King) × 2 — 1 440 ккал · Б 54 · Ж 88 · У 106 (справочник)\n"
+        "3. ➕ 02.11 Еда: Шаурма ≈ 650 ккал · Б 30 · Ж 35 · У 55 (оценка модели)\n"
+        "4. ➕ 02.11 Еда: Гречка сухая (пакет 80 г) — 288,8 ккал\n\n"
+        "Не выполню:\n• Еда: «Чизбургер» нет среди ваших рецептов и продуктов и в справочнике")
+    result = await me.tap("✅ Выполнить всё")
+    assert result.startswith("Готово:\n1. ➕ 02.11 Еда: Гречка варёная, 200 г")
+    added = (await _entries(ai_world))[before:]
+    assert [(e.name, float(e.kcal)) for e in added] == [
+        ("Гречка варёная, 200 г", 220), ("Воппер (Burger King) × 2", 1440), ("Шаурма", 650),
+        ("Гречка сухая (пакет 80 г)", 288.8)]
+    assert "💾 «Шаурма» как рецепт" in me.labels()
+    await me.tap("↩️ Отменить всё")
+    assert len(await _entries(ai_world)) == before
+
+
+async def test_s154_reference_quantity_out_of_range_and_restart(ai_world: World, me: Persona) -> None:
+    """S-154. 70 вопперов — больше 50 шт: строка не выполняется с подсказкой о пределе, остальное выполняется;
+    бот перезапустился между «Понял так» и «Выполнить всё» — запись из справочника сохранена в карточке."""
+    ai_world.llm.replies["70 вопперов"] = {"actions": [
+        {"type": "food.add", "day": "2026-11-03", "item": "Воппер (Burger King)", "quantity": 70},
+        {"type": "food.add", "day": "2026-11-03", "item": "Твистер (Ростикс)"}]}
+    card = await me.say("70 вопперов и твистер в ростиксе")
+    assert "Твистер (Ростикс) — 443,4 ккал · Б 20,8 · Ж 17,8 · У 49,7 (справочник)" in card
+    assert card.endswith("Не выполню:\n• Еда: Количество — от 0,25 до 50 шт. Вы ввели 70")
+    await ai_world.restart()
+    await me.tap("✅ Выполнить всё")
+    assert (await _entries(ai_world))[-1].name == "Твистер (Ростикс)"

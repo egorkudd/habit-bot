@@ -14,7 +14,8 @@ from habit_bot.kernel.domain.formatting import format_day, format_duration, form
 from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.identity import Actor
 from habit_bot.modules.ai_commands.domain import actions as a
-from habit_bot.modules.food.domain.nutrition import Nutrients, Unit
+from habit_bot.modules.food.domain import reference
+from habit_bot.modules.food.domain.nutrition import Nutrients, Unit, check_quantity
 from habit_bot.modules.habits.domain.habits import TEMPLATES, Measure, format_value
 from habit_bot.modules.runs.domain.runs import km, pace, parse_run_time
 from habit_bot.modules.warmup.domain.warmup import Measure as WarmupMeasure
@@ -53,12 +54,12 @@ def _fold(text: str) -> str:
     return " ".join(text.casefold().replace("ё", "е").split())
 
 
-def find(name: str, options: Sequence[Any], key: Any = lambda o: o.name) -> Any:
-    """Своё по названию: точное совпадение без учёта регистра, иначе единственное начинающееся с этого."""
+def find(name: str, options: Sequence[Any], key: Any = lambda o: o.name, *, prefix: bool = True) -> Any:
+    """Своё по названию: точное совпадение без учёта регистра, иначе (``prefix``) единственное начинающееся с этого."""
     wanted = _fold(name)
     exact = [o for o in options if _fold(key(o)) == wanted]
-    if exact:
-        return exact[0]
+    if exact or not prefix:
+        return exact[0] if exact else None
     prefix = [o for o in options if _fold(key(o)).startswith(wanted) or wanted.startswith(_fold(key(o)))]
     return prefix[0] if len(prefix) == 1 else None
 
@@ -125,7 +126,13 @@ class Planner:
 
     async def _food_add(self, x: a.FoodAdd) -> dict[str, Any]:
         self._day(x.day, x.item)
-        item = find(x.item, await self._foods())
+        # Порядок (правки 1.0.4): своё точно → справочник (название или синоним) → своё по началу → оценка модели.
+        foods = await self._foods()
+        item = find(x.item, foods, prefix=False)
+        ref = reference.find(x.item) if item is None else None
+        if ref is not None:
+            return self._food_reference(x, ref)
+        item = item or find(x.item, foods)
         if item is not None:
             kcal = _kcal(item, x.quantity)
             qty = _qty(item, x.quantity)
@@ -133,13 +140,25 @@ class Planner:
             return {"group": "food", "line": line, "day": x.day.isoformat(), "item_id": item.public_id,
                     "quantity": str(x.quantity)}
         if x.kcal is None:
-            raise _Skip(f"Еда: «{x.item}» нет среди ваших рецептов и продуктов")
+            raise _Skip(f"Еда: «{x.item}» нет среди ваших рецептов и продуктов и в справочнике")
         values = [str(v or 0) for v in (x.kcal, x.protein, x.fat, x.carbs)]
         p, f, c = (format_number(Decimal(v)) for v in values[1:])
         line = (f"➕ {format_day(x.day)} Еда: {x.item} ≈ {format_number(x.kcal)} ккал · Б {p} · Ж {f} · У {c} "
-                "(приблизительно)")
+                "(оценка модели)")
         return {"group": "food", "line": line, "day": x.day.isoformat(), "name": x.item[:64], "nutrients": values,
                 "price": str(x.price) if x.price is not None else None, "approx": True}
+
+    @staticmethod
+    def _food_reference(x: a.FoodAdd, ref: reference.RefFood) -> dict[str, Any]:
+        """Блюдо из справочника: КБЖУ на количество, запись — как «Другое» с названием и количеством."""
+        n = ref.scaled(check_quantity(ref.unit, x.quantity))
+        qty = _qty(ref, x.quantity)
+        name = f"{ref.title}{',' if ref.unit is Unit.GRAMS else ''} {qty}" if qty else ref.title
+        p, f, c = (format_number(v) for v in (n.protein, n.fat, n.carbs))
+        line = (f"➕ {format_day(x.day)} Еда: {name} — {format_number(n.kcal)} ккал · Б {p} · Ж {f} · У {c} "
+                "(справочник)")
+        return {"group": "food", "line": line, "day": x.day.isoformat(), "name": name[:64],
+                "nutrients": [str(v) for v in n.values()], "price": None, "approx": True}
 
     async def _entry(self, day: date, name: str, time: str | None) -> Any:
         self._day(day, name)
