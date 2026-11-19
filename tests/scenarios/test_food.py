@@ -298,8 +298,9 @@ async def test_s156_multi_select_with_quantities(world: World, owner: Persona) -
     assert "• Курица — 150 г — 169,5 ккал\n▶ Банан — 1 шт" in text
     text = await owner.tap("2 шт")
     assert "▶ Банан — 2 шт — 210 ккал" in text and "Всего: 1 023,5 ккал" in text
+    edits = len(world.session.edits())
     await owner.tap("▶ Банан · 2 шт")  # то же содержимое — Telegram «не изменено», сообщение остаётся
-    assert owner.latest_text() == text
+    assert owner.latest_text() == text and len(world.session.edits()) == edits + 1
     data, message = owner.find_button_at("✅ Записать (3)")
     assert message == screen  # выбор и количество — в одном сообщении
     result = await owner.tap("✅ Записать (3)")
@@ -316,7 +317,8 @@ async def test_s157_multi_select_back_cancel_restart_other_day(world: World, own
     """S-157. «➡️ Дальше (0)» без отметок — подсказка, экран тот же; «← Выбор» возвращает отметки; блюдо скрыли
     посреди выбора — «устарело»; «✕ Отмена» —
     ничего не записано; уход посреди ввода в «🏠 Домой» — старая кнопка «устарела»; перезапуск бота посреди
-    количества — ввод продолжается и записывается (сообщение удалили — бот присылает новое); «📅 Другой день» → «Вчера» — записи за 02.11."""
+    количества — ввод продолжается и записывается (сообщение удалили — бот присылает новое);
+    «📅 Другой день» → «Вчера» — записи за 02.11."""
     await _three(world)
     await owner.tap("🍽 Еда")
     await owner.tap("☑️ Выбрать несколько")

@@ -244,10 +244,8 @@ def build_food_router(
             try:
                 await bot.edit_message_text(text, chat_id=chat_id, message_id=message, reply_markup=markup)
                 return message
-            except TelegramBadRequest as err:
-                if "not modified" in str(err):
-                    return message
-                trail.discard(message)  # удалено или слишком старое — покажем заново
+            except TelegramBadRequest:  # «не изменено» гасит общий слой отправки; здесь — удалено или старое
+                trail.discard(message)
         sent = await bot.send_message(chat_id, text, reply_markup=markup)
         return sent.message_id
 
