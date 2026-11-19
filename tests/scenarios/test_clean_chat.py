@@ -173,7 +173,7 @@ async def test_s60_cancel_and_abandon(world: World, owner: Persona) -> None:
 
 async def test_s61_long_names_get_own_row(world: World, owner: Persona) -> None:
     """S-61. Раскладка по ширине подписи: короткие рецепты — по два в ряд, длинное название — один в ряду;
-    в зарядке длинное своё упражнение — «+» в отдельном ряду, ничего не обрезается."""
+    в зарядке длинное своё упражнение — «−» и «+» каждый в своём ряду, ничего не обрезается."""
     for name in ("Овсянка", "Омлет", "Салат с тунцом и авокадо", "Чай"):
         await _recipe(world, name)
     await owner.tap("🍽 Еда")
@@ -187,7 +187,7 @@ async def test_s61_long_names_get_own_row(world: World, owner: Persona) -> None:
     assert rows[0] == ["Отжимания −5", "Отжимания +5"]
     assert ["Подъёмы на носки стоя −5"] in rows and ["Подъёмы на носки стоя +5"] in rows
     await owner.say("50 50 5:45 25 30")
-    assert ["Подъёмы на носки стоя +5"] in _rows(owner) and ["Отжимания +5", "Мостик +5"] in _rows(owner)
+    assert ["Подъёмы на носки стоя +5"] in _rows(owner) and ["Отжимания −5", "Отжимания +5"] in _rows(owner)
 
 
 async def test_s134_home_wipes_whole_chat_but_files(world: World, owner: Persona) -> None:

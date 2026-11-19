@@ -1,5 +1,6 @@
-"""«🤸 Зарядка» в Telegram (раздел 3.3): черновик со значениями прошлой зарядки, «+шаг», «Изменить» с «−» / «+»,
-все значения одной строкой, «Записать»; настройки набора, шагов, целей."""
+"""«🤸 Зарядка» в Telegram (раздел 3.3): черновик со значениями прошлой зарядки, один экран «−шаг» / «+шаг»
+(правки 1.0.5: экран только с «+» и «Готово» убраны), все значения одной строкой, «Записать»; настройки набора,
+шагов, целей."""
 
 from __future__ import annotations
 
@@ -43,7 +44,7 @@ from habit_bot.modules.warmup.usecases import ExerciseView, SessionView, Warmup
 KIND = "warmup"
 EMPTY_SET = "Набор зарядки пуст. Возьмите набор по умолчанию или добавьте свои упражнения."
 FIRST_TIME = "Первая зарядка — пришлите результаты одной строкой по порядку, например: {example}. Или «−» / «+»."
-LINE_HINT = "«+» прибавит шаг. Или пришлите все значения по порядку: {example}"
+LINE_HINT = "«−» / «+» меняют на шаг. Или пришлите все значения по порядку: {example}"
 SETTINGS_TITLE = "🤸 Настройки зарядки"
 GOAL_PROMPT = "Цель и дата одной строкой, например: {example} 03.12.2026"
 DayCard = Callable[[Actor, date], Awaitable[str]]
@@ -103,17 +104,12 @@ def build_warmup_router(
         lines = [f"{e.short} — {format_value(e.measure, values.get(e.public_id, 0))}" for e in exercises]
         return "\n".join([f"🤸 Зарядка · {format_day(day)} · {ordinal(number)} за день", *lines, "", hint])
 
-    def main_keyboard(actor: Actor, token: int, exercises: list[ExerciseView]) -> InlineKeyboardMarkup:
-        rows = pairs([plus(actor, token, e) for e in exercises])
-        rows.append([wbtn(actor, token, "✏️ Изменить", "edit"), wbtn(actor, token, "💾 Записать", "save")])
-        return inline(rows)
-
-    def edit_keyboard(actor: Actor, token: int, exercises: list[ExerciseView]) -> InlineKeyboardMarkup:
+    def keyboard(actor: Actor, token: int, exercises: list[ExerciseView]) -> InlineKeyboardMarkup:
         """«Отжимания −5» / «Отжимания +5» — по два в ряд: в ряд из трёх название с числом не помещается."""
         rows: list[list[InlineKeyboardButton]] = []
         for e in exercises:
             rows += pairs([minus(actor, token, e), plus(actor, token, e)])
-        rows.append([wbtn(actor, token, "← Готово", "main"), wbtn(actor, token, "💾 Записать", "save")])
+        rows.append([wbtn(actor, token, "💾 Записать", "save")])
         return inline(rows)
 
     async def render(actor: Actor, state: FSMContext, day: date) -> tuple[str, InlineKeyboardMarkup]:
@@ -124,9 +120,7 @@ def build_warmup_router(
         example = values_example([e.measure for e in exercises], [values.get(e.public_id, 0) for e in exercises])
         hint = (FIRST_TIME if not data.get("has_last") else LINE_HINT).format(example=example)
         text = draft_text(exercises, values, day, await warmup.next_number(actor, day), hint)
-        if data.get("mode") == "edit":
-            return text, edit_keyboard(actor, token, exercises)
-        return text, main_keyboard(actor, token, exercises)
+        return text, keyboard(actor, token, exercises)
 
     async def send_draft(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date) -> None:
         text, markup = await render(actor, state, day)
@@ -142,7 +136,7 @@ def build_warmup_router(
             return
         last = await warmup.last_values(actor, day)
         await start_dialog(state, WarmupInput.draft, day)
-        await state.update_data(values=last or {}, has_last=last is not None, mode="main" if last else "edit")
+        await state.update_data(values=last or {}, has_last=last is not None)
         await send_draft(bot, chat_id, actor, state, day)
 
     async def refresh(query: CallbackQuery, actor: Actor, state: FSMContext, day: date) -> None:
@@ -186,9 +180,8 @@ def build_warmup_router(
         await refresh(query, actor, state, record_day)
 
     @router.callback_query(StateFilter(WarmupInput.draft), WCb.filter(F.a.in_({"edit", "main"})))
-    async def mode(query: CallbackQuery, callback_data: WCb, actor: Actor, state: FSMContext,
-                   record_day: date) -> None:
-        await state.update_data(mode="edit" if callback_data.a == "edit" else "main")
+    async def old_mode(query: CallbackQuery, actor: Actor, state: FSMContext, record_day: date) -> None:
+        """«✏️ Изменить» / «← Готово» из черновика до 1.0.5: экран один — просто обновить его."""
         await refresh(query, actor, state, record_day)
 
     @router.message(StateFilter(WarmupInput.draft), F.text)
@@ -199,7 +192,7 @@ def build_warmup_router(
         data = await state.get_data()
         trail.discard(data.get("message"))  # прежний черновик заменяет новый — двух в чате не нужно
         await state.update_data(values={e.public_id: v for e, v in zip(exercises, parsed, strict=True)},
-                                mode="main", has_last=True)
+                                has_last=True)
         await send_draft(bot, message.chat.id, actor, state, record_day)
 
     async def saved(bot: Bot, chat_id: int, actor: Actor, session: SessionView, today: date) -> None:

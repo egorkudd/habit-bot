@@ -1,5 +1,6 @@
 """«🍽 Еда» в Telegram (раздел 3.2): рецепты кнопками, вес и штуки, множитель, «Другое», записи дня, каталог,
-свои рецепты и продукты. Логика — в ``Food``; здесь только кнопки и тексты."""
+свои рецепты и продукты; «☑️ Выбрать несколько» — несколько блюд с количеством каждого в одном сообщении
+(правки 1.0.5). Логика — в ``Food``; здесь только кнопки и тексты."""
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 
 from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
@@ -28,7 +30,15 @@ from habit_bot.kernel.domain.parsing import ensure_not_future, parse_date, parse
 from habit_bot.kernel.errors import AppError
 from habit_bot.kernel.identity import Actor
 from habit_bot.modules.days.public import Days
-from habit_bot.modules.food.domain.nutrition import QUICK_AMOUNTS, Nutrients, Unit, quantity_label
+from habit_bot.modules.food.domain.nutrition import (
+    NOTHING,
+    QUICK_AMOUNTS,
+    Nutrients,
+    Unit,
+    check_quantity,
+    quantity_label,
+    unit_factor,
+)
 from habit_bot.modules.food.domain.other_line import parse_other_line, parse_values_line
 from habit_bot.modules.food.usecases import PRODUCT, RECIPE, EntryView, Food, ItemView
 
@@ -43,6 +53,9 @@ ITEMS_PER_SCREEN = 24
 UNIT_NAMES = {Unit.PORTION: "порцию", Unit.GRAMS: "100 г", Unit.PIECE: "1 шт"}
 UNIT_BUTTONS = {Unit.PORTION.value: "Порция", Unit.GRAMS.value: "На 100 г", Unit.PIECE.value: "За 1 шт"}
 PORTION_AMOUNTS = (Decimal("0.5"), Decimal(1), Decimal("1.5"), Decimal(2))
+PICK_TITLE = "☑️ Еда за {day}. Отметьте блюда, затем «➡️ Дальше» — количество каждого."
+MULTI_HINT = "Количество для ▶ — кнопкой или числом; после выбора ▶ переходит к следующему."
+DEFAULT_AMOUNT = {Unit.PORTION: Decimal(1), Unit.GRAMS: Decimal(100), Unit.PIECE: Decimal(1)}
 
 
 class FCb(CallbackData, prefix="f"):
@@ -73,6 +86,8 @@ class FoodInput(StatesGroup):
     new_values = State()
     edit_values = State()
     edit_name = State()
+    pick = State()   # «☑️ Выбрать несколько»: отметки блюд
+    multi = State()  # количество каждого отмеченного — в одном сообщении
 
 
 DayCard = Callable[[Actor, date], Awaitable[str]]
@@ -155,6 +170,8 @@ def build_food_router(
         items = await food.items(actor)
         buttons = [fbtn(actor, 0, i.name, "log", i.public_id) for i in items[:ITEMS_PER_SCREEN]]
         rows = rows_of(buttons)
+        if len(items) > 1:
+            rows.append([fbtn(actor, 0, "☑️ Выбрать несколько", "pick")])
         rows.append([fbtn(actor, 0, "✍️ Другое", "other"), fbtn(actor, 0, "📋 Записи дня", "entries")])
         rows.append([fbtn(actor, 0, "📚 Каталог", "cat"), fbtn(actor, 0, "⚙️ Мои", "my")])
         title = (FOOD_TITLE if items else EMPTY_LIST).format(day=format_day(day))
@@ -218,6 +235,150 @@ def build_food_router(
                           request_id: str | None) -> None:
         await log_amount(bot, message.chat.id, actor, state, record_day, parse_number(message.text or ""),
                          request_id)
+
+    # --- «☑️ Выбрать несколько» (правки 1.0.5) ---
+    async def edit_or_send(bot: Bot, chat_id: int, message: int | None, text: str,
+                           markup: InlineKeyboardMarkup) -> int:
+        """Мультивыбор живёт в одном сообщении: оно правится; не вышло (удалено, старое) — отправляется новое."""
+        if message is not None:
+            try:
+                await bot.edit_message_text(text, chat_id=chat_id, message_id=message, reply_markup=markup)
+                return message
+            except TelegramBadRequest:  # «не изменено» гасит общий слой отправки; здесь — удалено или старое
+                trail.discard(message)
+        sent = await bot.send_message(chat_id, text, reply_markup=markup)
+        return sent.message_id
+
+    async def pick_screen(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date) -> None:
+        data = await state.get_data()
+        chosen = [i for i, _ in data.get("sel", [])]
+        token = await dialog_token(state)
+        items = (await food.items(actor))[:ITEMS_PER_SCREEN]
+        buttons = [fbtn(actor, token, ("✅ " if i.public_id in chosen else "") + i.name, "mt", i.public_id)
+                   for i in items]
+        rows = [*rows_of(buttons), [fbtn(actor, token, f"➡️ Дальше ({len(chosen)})", "mn"), cancel(actor, token)]]
+        message = await edit_or_send(bot, chat_id, data.get("message"), PICK_TITLE.format(day=format_day(day)),
+                                     inline(rows))
+        await state.update_data(message=message)
+
+    async def multi_items(actor: Actor, state: FSMContext) -> list[tuple[ItemView, Decimal]]:
+        """Отмеченные блюда с количеством; скрытые или удалённые за это время — пропускаются."""
+        own = {i.public_id: i for i in await food.items(actor)}
+        return [(own[i], Decimal(q)) for i, q in (await state.get_data()).get("sel", []) if i in own]
+
+    async def multi_screen(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date) -> None:
+        data = await state.get_data()
+        chosen = await multi_items(actor, state)
+        active = min(int(data.get("act", 0)), len(chosen) - 1)
+        token = await dialog_token(state)
+        total = NOTHING
+        lines, buttons = [f"🍽 Записать за {format_day(day)}:"], []
+        for n, (item, qty) in enumerate(chosen):
+            values = item.nutrients.scaled(unit_factor(item.unit, qty))
+            total = total + values
+            mark = "▶" if n == active else "•"
+            label = quantity_label(item.unit, qty, item.portion_label)
+            lines.append(f"{mark} {item.name} — {label} — {format_number(values.kcal)} ккал")
+            buttons.append(fbtn(actor, token, f"{'▶ ' if n == active else ''}{item.name} · {label}", "ma", str(n)))
+        lines += [f"Всего: {format_number(total.kcal)} ккал · Б {format_number(total.protein)}", "", MULTI_HINT]
+        current = chosen[active][0]
+        if current.unit is Unit.PORTION:
+            amounts = [fbtn(actor, token, f"×{format_number(a)}", "mq", str(a)) for a in PORTION_AMOUNTS]
+        else:
+            unit = "г" if current.unit is Unit.GRAMS else "шт"
+            amounts = [fbtn(actor, token, f"{a} {unit}", "mq", str(a)) for a in QUICK_AMOUNTS[current.unit]]
+        rows = [*rows_of(buttons), amounts,
+                [fbtn(actor, token, f"✅ Записать ({len(chosen)})", "msave"), fbtn(actor, token, "← Выбор", "mback")],
+                [cancel(actor, token)]]
+        message = await edit_or_send(bot, chat_id, data.get("message"), "\n".join(lines), inline(rows))
+        await state.update_data(message=message, act=active)
+
+    @router.callback_query(FCb.filter(F.a == "pick"))
+    async def pick(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
+        await query.answer()
+        await start_dialog(state, FoodInput.pick, record_day)
+        await state.update_data(sel=[], message=message_id(query))
+        await pick_screen(bot, query.from_user.id, actor, state, record_day)
+
+    @router.callback_query(StateFilter(FoodInput.pick), FCb.filter(F.a == "mt"))
+    async def pick_toggle(query: CallbackQuery, callback_data: FCb, bot: Bot, actor: Actor, state: FSMContext,
+                          record_day: date) -> None:
+        item = await food.item(actor, callback_data.v or "")
+        if item is None or not item.active:
+            await screens.refuse_button(bot, query, actor, "UI-STALE")
+            return
+        await query.answer()
+        sel: list[list[str]] = list((await state.get_data()).get("sel", []))
+        if any(i == item.public_id for i, _ in sel):
+            sel = [s for s in sel if s[0] != item.public_id]
+        else:
+            sel.append([item.public_id, str(DEFAULT_AMOUNT[item.unit])])
+        await state.update_data(sel=sel)
+        await pick_screen(bot, query.from_user.id, actor, state, record_day)
+
+    @router.callback_query(StateFilter(FoodInput.pick), FCb.filter(F.a == "mn"))
+    async def pick_next(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
+        if not await multi_items(actor, state):
+            await query.answer("Отметьте хотя бы одно блюдо", show_alert=False)
+            return
+        await query.answer()
+        await state.set_state(FoodInput.multi)
+        await state.update_data(act=0)
+        await multi_screen(bot, query.from_user.id, actor, state, record_day)
+
+    @router.callback_query(StateFilter(FoodInput.multi), FCb.filter(F.a == "mback"))
+    async def multi_back(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext, record_day: date) -> None:
+        await query.answer()
+        await state.set_state(FoodInput.pick)
+        await pick_screen(bot, query.from_user.id, actor, state, record_day)
+
+    @router.callback_query(StateFilter(FoodInput.multi), FCb.filter(F.a == "ma"))
+    async def multi_active(query: CallbackQuery, callback_data: FCb, bot: Bot, actor: Actor, state: FSMContext,
+                           record_day: date) -> None:
+        await query.answer()
+        await state.update_data(act=int(callback_data.v or "0"))
+        await multi_screen(bot, query.from_user.id, actor, state, record_day)
+
+    async def multi_amount(bot: Bot, chat_id: int, actor: Actor, state: FSMContext, day: date,
+                           amount: Decimal) -> None:
+        """Количество для ▶; затем ▶ — на следующее блюдо (на последнем остаётся)."""
+        data = await state.get_data()
+        chosen = await multi_items(actor, state)
+        active = min(int(data.get("act", 0)), len(chosen) - 1)
+        item = chosen[active][0]
+        check_quantity(item.unit, amount)  # вне пределов — подсказка, ввод остаётся
+        sel = [[i.public_id, str(amount) if n == active else str(q)] for n, (i, q) in enumerate(chosen)]
+        await state.update_data(sel=sel, act=min(active + 1, len(sel) - 1))
+        await multi_screen(bot, chat_id, actor, state, day)
+
+    @router.callback_query(StateFilter(FoodInput.multi), FCb.filter(F.a == "mq"))
+    async def multi_amount_button(query: CallbackQuery, callback_data: FCb, bot: Bot, actor: Actor,
+                                  state: FSMContext, record_day: date) -> None:
+        await query.answer()
+        await multi_amount(bot, query.from_user.id, actor, state, record_day, Decimal(callback_data.v or "1"))
+
+    @router.message(StateFilter(FoodInput.multi), F.text)
+    async def multi_amount_text(message: Message, bot: Bot, actor: Actor, state: FSMContext,
+                                record_day: date) -> None:
+        await multi_amount(bot, message.chat.id, actor, state, record_day, parse_number(message.text or ""))
+
+    @router.callback_query(StateFilter(FoodInput.multi), FCb.filter(F.a == "msave"))
+    async def multi_save(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext, record_day: date,
+                         request_id: str | None) -> None:
+        chosen = await multi_items(actor, state)
+        if not chosen:
+            await screens.refuse_button(bot, query, actor, "UI-STALE")
+            return
+        await screens.close_buttons(query)
+        trail.discard(message_id(query))
+        await state.clear()
+        logged = [await food.log_item(actor, item.public_id, quantity=qty, day=record_day,
+                                      request_id=f"{request_id}#{n}" if request_id else None)
+                  for n, (item, qty) in enumerate(chosen)]
+        trail.result()
+        text = "\n".join([f"🍽 Записано {len(logged)}:", *(f"• {entry_line(e)}" for e in logged)])
+        await send_card(bot, query.from_user.id, actor, text, record_day,
+                        inline([[fbtn(actor, 0, "📋 Записи дня", "entries")]]))
 
     # --- «Другое» ---
     @router.callback_query(FCb.filter(F.a == "other"))
@@ -446,6 +607,7 @@ def build_food_router(
         state_text = "показан в списке" if item.active else "скрыт — прошлые записи остались"
         trail.result()
         await bot.send_message(query.from_user.id, f"«{item.name}» {state_text}.")
+        await my_items(bot, query.from_user.id, actor)
 
     @router.callback_query(FCb.filter(F.a.in_({"ied", "inm"})))
     async def edit_item(query: CallbackQuery, callback_data: FCb, bot: Bot, actor: Actor, state: FSMContext) -> None:
@@ -461,21 +623,23 @@ def build_food_router(
                                reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(FoodInput.edit_values), F.text)
-    async def edit_values(message: Message, actor: Actor, state: FSMContext) -> None:
+    async def edit_values(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
         nutrients, price = parse_values_line(message.text or "")
         item = await food.update_item(actor, (await state.get_data()).get("item", ""), nutrients=nutrients,
                                       price=price)
         await state.clear()
         trail.result()
         await message.answer(f"Сохранено: {item_line(item)}\nПрошлые записи не изменились.")
+        await my_items(bot, message.chat.id, actor)
 
     @router.message(StateFilter(FoodInput.edit_name), F.text)
-    async def edit_name(message: Message, actor: Actor, state: FSMContext) -> None:
+    async def edit_name(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
         item = await food.update_item(actor, (await state.get_data()).get("item", ""),
                                       name=" ".join((message.text or "").split())[:64])
         await state.clear()
         trail.result()
         await message.answer(f"Сохранено: {item_line(item)}")
+        await my_items(bot, message.chat.id, actor)
 
     @router.callback_query(FCb.filter(F.a == "new"))
     async def new_item(query: CallbackQuery, bot: Bot, actor: Actor, state: FSMContext) -> None:
@@ -509,7 +673,7 @@ def build_food_router(
                                reply_markup=inline([[cancel(actor, token)]]))
 
     @router.message(StateFilter(FoodInput.new_values), F.text)
-    async def new_values(message: Message, actor: Actor, state: FSMContext) -> None:
+    async def new_values(message: Message, bot: Bot, actor: Actor, state: FSMContext) -> None:
         nutrients, price = parse_values_line(message.text or "")
         data: dict[str, Any] = await state.get_data()
         unit = Unit(data["unit"])
@@ -518,5 +682,6 @@ def build_food_router(
         await state.clear()
         trail.result()
         await message.answer(f"Добавлено: {item_line(item)}\nОно уже в списке «🍽 Еда».")
+        await my_items(bot, message.chat.id, actor)  # правки 1.0.5: остаёмся в «Моих рецептах»
 
     return nav, router
