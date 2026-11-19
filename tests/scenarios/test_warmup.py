@@ -62,8 +62,9 @@ async def test_s43_same_as_last_time(world: World, owner: Persona) -> None:
     await _history(world, date(2026, 11, 3))
     screen = await owner.tap("🤸 Зарядка")
     assert screen == (f"🤸 Зарядка · 03.11 · 2-я за день\n{LAST_LINES}\n\n"
-                      "«+» прибавит шаг. Или пришлите все значения по порядку: 50 50 5:45 25")
-    assert owner.labels() == ["Отжимания +5", "Мостик +5", "Планка +15 сек", "Спина +5", "✏️ Изменить", "💾 Записать"]
+                      "«−» / «+» меняют на шаг. Или пришлите все значения по порядку: 50 50 5:45 25")
+    assert owner.labels() == ["Отжимания −5", "Отжимания +5", "Мостик −5", "Мостик +5", "Планка −15 сек",
+                              "Планка +15 сек", "Спина −5", "Спина +5", "💾 Записать"]
     text = await owner.tap("💾 Записать")
     assert text.startswith(f"🤸 Зарядка 2-я за 03.11: {LAST}")
     assert "🤸 Зарядка 2/2" in text
@@ -97,18 +98,20 @@ async def test_s45_custom_step(world: World, owner: Persona) -> None:
 
 
 async def test_s46_edit_minus_plus_exact(world: World, owner: Persona) -> None:
-    """S-46. Раздел 9: «Изменить» показывает «−» и «+» с названием для каждого упражнения по два в ряд;
-    «Отжимания −5», точное «6:15» у планки — строкой всех значений; «← Готово» возвращает «+»."""
+    """S-46. Правки 1.0.5: экран один — «−» и «+» с названием для каждого упражнения по два в ряд, без
+    «✏️ Изменить» и «← Готово»; «Отжимания −5», точное «6:15» у планки — строкой всех значений; старая кнопка
+    «✏️ Изменить» из черновика до обновления просто обновляет экран."""
     await _history(world)
     await owner.tap("🤸 Зарядка")
-    await owner.tap("✏️ Изменить")
+    assert not owner.sees("✏️ Изменить") and not owner.sees("← Готово")
     assert [row for row in _rows(owner)][:4] == [["Отжимания −5", "Отжимания +5"], ["Мостик −5", "Мостик +5"],
                                                   ["Планка −15 сек", "Планка +15 сек"], ["Спина −5", "Спина +5"]]
     assert "Отжимания — 45" in await owner.tap("Отжимания −5")
     assert "Планка — 6:15" in await owner.say("45 50 6:15 25")
-    await owner.tap("✏️ Изменить")
-    await owner.tap("← Готово")
-    assert owner.sees("Планка +15 сек") and not owner.sees("Планка −15 сек")
+    assert owner.sees("Планка +15 сек") and owner.sees("Планка −15 сек")
+    data, message = owner.find_button_at("💾 Записать")
+    await owner.press_data(data.replace(":save", ":edit"), message)  # «✏️ Изменить» из черновика до 1.0.5
+    assert "Планка — 6:15" in owner.latest_text() and owner.sees("Отжимания −5")
     text = await owner.tap("💾 Записать")
     assert "Отжимания 45 · Мостик 50 · Планка 6:15 · Спина 25" in text
 

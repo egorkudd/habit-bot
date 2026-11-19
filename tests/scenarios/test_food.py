@@ -102,7 +102,8 @@ async def test_s32_recipe_edit_keeps_history(world: World, owner: Persona) -> No
     await owner.tap("⚙️ Мои")
     await owner.tap("Коктейль")
     await owner.tap("✏️ КБЖУ и цена")
-    assert (await owner.say("400 30 10 50 160")).endswith("Прошлые записи не изменились.")
+    assert await owner.say("400 30 10 50 160") == "⚙️ Мои рецепты и продукты:"  # правки 1.0.5: остаёмся в «Моих»
+    assert owner.replies()[-2].endswith("Прошлые записи не изменились.")
     (entry,) = await _entries(world)
     assert (entry.kcal, entry.price) == (322, 140)
     await owner.tap("🍽 Еда")
@@ -190,7 +191,9 @@ async def test_s37_own_product_and_hiding(world: World, owner: Persona) -> None:
     await owner.tap("➕ Новый рецепт или продукт")
     await owner.say("Творог 5%")
     await owner.tap("На 100 г")
-    assert (await owner.say("121 17 5 1,8 30")).startswith("Добавлено: Творог 5% — на 100 г: 121 ккал")
+    assert await owner.say("121 17 5 1,8 30") == "⚙️ Мои рецепты и продукты:"
+    assert owner.replies()[-2].startswith("Добавлено: Творог 5% — на 100 г: 121 ккал")
+    assert "Творог 5%" in owner.labels()
     await owner.tap("🍽 Еда")
     await owner.tap("⚙️ Мои")
     await owner.tap("➕ Новый рецепт или продукт")
@@ -259,3 +262,125 @@ async def test_s41_deleted_entry_purged_after_30_days(world: World, owner: Perso
     await world.restart()  # задача окончательного удаления запускается и при старте
     async with world.app.ctx.uow() as uow:
         assert (await uow.session.execute(select(FoodEntry))).scalars().all() == []
+
+
+async def _three(world: World) -> None:
+    """Коктейль (порция), курица (на 100 г) и банан (штуки) в своём списке."""
+    await _cocktail(world)
+    food, actor = world.service("food"), await _actor(world)
+    await food.create_item(actor, name="Курица", kind="product", unit=Unit.GRAMS,
+                           nutrients=Nutrients.of(113, 23.6, 1.9, 0.4), price=None)
+    await food.create_item(actor, name="Банан", kind="product", unit=Unit.PIECE,
+                           nutrients=Nutrients.of(105, 1.3, 0.4, 27), price=None)
+
+
+async def test_s156_multi_select_with_quantities(world: World, owner: Persona) -> None:
+    """S-156. Правки 1.0.5: «☑️ Выбрать несколько» → отметить коктейль, курицу и банан (повторное нажатие снимает
+    отметку) → «➡️ Дальше (3)» → количество каждого в том же сообщении: «×2» коктейлю, курице числом 150, ▶ сам
+    переходит к следующему, банану «2 шт»; 6000 г — подсказка о пределе, ввод остаётся; «✅ Записать (3)» — три
+    записи с этими количествами и карточка дня; второе нажатие — «устарело», записей по-прежнему три."""
+    await _three(world)
+    await owner.tap("🍽 Еда")
+    _, screen = owner.find_button_at("☑️ Выбрать несколько")
+    assert (await owner.tap("☑️ Выбрать несколько")).startswith("☑️ Еда за 03.11. Отметьте блюда")
+    for label in ("Коктейль", "Курица", "Банан", "✅ Банан", "Банан"):
+        await owner.tap(label)
+    assert {"✅ Коктейль", "✅ Курица", "✅ Банан", "➡️ Дальше (3)"} <= set(owner.labels())
+    text = await owner.tap("➡️ Дальше (3)")
+    assert text.startswith("🍽 Записать за 03.11:\n▶ Коктейль — 1 порция — 322 ккал\n• Курица — 100 г — 113 ккал\n"
+                           "• Банан — 1 шт — 105 ккал\nВсего: 540 ккал")
+    assert {"×0,5", "×1", "×1,5", "×2"} <= set(owner.labels())
+    assert "▶ Курица — 100 г" in await owner.tap("×2")
+    assert {"100 г", "150 г", "200 г", "300 г"} <= set(owner.labels())
+    assert await owner.say("6000") == "Вес — от 1 до 5 000 г. Вы ввели 6 000"
+    assert owner.sees("150 г")  # сообщение с количеством на месте, ввод остаётся
+    text = await owner.say("150")
+    assert "• Курица — 150 г — 169,5 ккал\n▶ Банан — 1 шт" in text
+    text = await owner.tap("2 шт")
+    assert "▶ Банан — 2 шт — 210 ккал" in text and "Всего: 1 023,5 ккал" in text
+    await owner.tap("▶ Банан · 2 шт")  # то же содержимое — Telegram «не изменено», сообщение остаётся
+    assert owner.latest_text() == text
+    data, message = owner.find_button_at("✅ Записать (3)")
+    assert message == screen  # выбор и количество — в одном сообщении
+    result = await owner.tap("✅ Записать (3)")
+    assert result.startswith("🍽 Записано 3:\n• Коктейль — ×2: 644 ккал")
+    assert "• Курица — 150 г: 169,5 ккал" in result and "• Банан — 2 шт: 210 ккал" in result
+    assert "Факт      1024" in result or "Факт      1023" in result
+    await owner.press_data(data, message)
+    assert owner.latest_text() == STALE
+    assert sorted((e.name, e.quantity) for e in await _entries(world)) == [
+        ("Банан", 2), ("Коктейль", 2), ("Курица", 150)]
+
+
+async def test_s157_multi_select_back_cancel_restart_other_day(world: World, owner: Persona) -> None:
+    """S-157. «➡️ Дальше (0)» без отметок — подсказка, экран тот же; «← Выбор» возвращает отметки; блюдо скрыли
+    посреди выбора — «устарело»; «✕ Отмена» —
+    ничего не записано; уход посреди ввода в «🏠 Домой» — старая кнопка «устарела»; перезапуск бота посреди
+    количества — ввод продолжается и записывается (сообщение удалили — бот присылает новое); «📅 Другой день» → «Вчера» — записи за 02.11."""
+    await _three(world)
+    await owner.tap("🍽 Еда")
+    await owner.tap("☑️ Выбрать несколько")
+    await owner.tap("➡️ Дальше (0)")
+    assert owner.latest_text().startswith("☑️ Еда за 03.11.")
+    await owner.tap("Курица")
+    await owner.tap("➡️ Дальше (1)")
+    await owner.tap("← Выбор")
+    assert "✅ Курица" in owner.labels()
+    await owner.tap("➡️ Дальше (1)")
+    food, actor = world.service("food"), await _actor(world)
+    chicken = next(i for i in await food.items(actor) if i.name == "Курица")
+    await food.update_item(actor, chicken.public_id, active=False)  # скрыли в другом окне
+    assert await owner.tap("✅ Записать (1)") == STALE
+    await food.update_item(actor, chicken.public_id, active=True)
+    await owner.tap("🍽 Еда")
+    await owner.tap("☑️ Выбрать несколько")
+    await food.update_item(actor, chicken.public_id, active=False)
+    assert await owner.tap("Курица") == STALE
+    await food.update_item(actor, chicken.public_id, active=True)
+    await owner.tap("🍽 Еда")
+    await owner.tap("☑️ Выбрать несколько")
+    await owner.tap("✕ Отмена")
+    await owner.tap("🍽 Еда")
+    await owner.tap("☑️ Выбрать несколько")
+    old = owner.find_button("Банан")
+    await owner.tap("🏠 Домой")
+    await owner.press_data(old)
+    assert owner.latest_text() == STALE
+    assert await _entries(world) == []
+    await owner.tap("☰ Ещё")
+    await owner.tap("📅 Другой день")
+    await owner.tap("Вчера (02.11)")
+    await owner.tap("🍽 Еда")
+    await owner.tap("☑️ Выбрать несколько")
+    await owner.tap("Банан")
+    await owner.tap("Коктейль")
+    assert (await owner.tap("➡️ Дальше (2)")).startswith("🍽 Записать за 02.11:\n▶ Банан")
+    await world.restart()
+    _, screen = owner.find_button_at("✅ Записать (2)")
+    world.session.deleted.add((ADMIN_ID, screen))  # сообщение удалили — количество придёт новым сообщением
+    assert (await owner.say("3")).startswith("🍽 Записать за 02.11:\n• Банан — 3 шт")
+    await owner.tap("✅ Записать (2)")
+    assert sorted((e.name, e.quantity, e.day) for e in await _entries(world)) == [
+        ("Банан", 3, date(2026, 11, 2)), ("Коктейль", 1, date(2026, 11, 2))]
+
+
+async def test_s158_my_recipes_stay_open(world: World, owner: Persona) -> None:
+    """S-158. Правки 1.0.5: после нового рецепта, правки КБЖУ, названия и «Скрыть» бот остаётся в «⚙️ Мои
+    рецепты и продукты» — список сразу под ответом, следующий рецепт можно вносить без «🍽 Еда» → «⚙️ Мои»."""
+    await owner.tap("🍽 Еда")
+    await owner.tap("⚙️ Мои")
+    await owner.tap("➕ Новый рецепт или продукт")
+    await owner.say("Омлет")
+    await owner.tap("Порция")
+    assert await owner.say("250 15 18 2") == "⚙️ Мои рецепты и продукты:"
+    await owner.tap("➕ Новый рецепт или продукт")
+    await owner.say("Сырники")
+    await owner.tap("Порция")
+    await owner.say("320 20 14 28 150")
+    assert {"Омлет", "Сырники"} <= set(owner.labels())
+    await owner.tap("Омлет")
+    await owner.tap("✏️ Название")
+    assert await owner.say("Омлет из 3 яиц") == "⚙️ Мои рецепты и продукты:"
+    await owner.tap("Сырники")
+    assert await owner.tap("🙈 Скрыть") == "⚙️ Мои рецепты и продукты:"
+    assert "🙈 Сырники" in owner.labels() and "Омлет из 3 яиц" in owner.labels()
